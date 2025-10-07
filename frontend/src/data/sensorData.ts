@@ -77,26 +77,12 @@ export const calculateStats = (): StatCardData[] => {
     {
       title: 'Dispositivos Activos',
       value: `${activeDevices}/${totalDevices}`,
-      subtitle: 'Campus Principal',
       icon: '🔌',
     },
     {
       title: 'Temperatura Promedio',
       value: `${avgTemperature.toFixed(1)}°C`,
-      subtitle: 'Sensores activos',
       icon: '🌡️',
-    },
-    {
-      title: 'Alertas Hoy',
-      value: alertsToday.toString(),
-      subtitle: 'Requieren atención',
-      icon: '⚠️',
-    },
-    {
-      title: 'Cobertura Campus',
-      value: '95%',
-      subtitle: 'Área monitoreada',
-      icon: '📍',
     },
   ];
 };

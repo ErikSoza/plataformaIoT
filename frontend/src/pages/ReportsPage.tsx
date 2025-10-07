@@ -3,7 +3,7 @@ import { ContentSection } from '../components/layout';
 
 const ReportsPage: React.FC = () => {
   return (
-    <ContentSection title="📊 Reportes y Análisis">
+    <ContentSection title="📊 Reportes">
       <div style={styles.container}>
         <div style={styles.header}>
           <h3>📈 Centro de Reportes UTalca</h3>
@@ -50,18 +50,6 @@ const ReportsPage: React.FC = () => {
               <li>Sugerencias para nuevos sensores</li>
             </ul>
           </div>
-        </div>
-
-        <div style={styles.comingSoon}>
-          <h4>🚀 Próximamente</h4>
-          <p>Estamos desarrollando:</p>
-          <ul>
-            <li>Dashboard interactivo con gráficos en tiempo real</li>
-            <li>Exportación de datos en Excel/PDF</li>
-            <li>Sistema de alertas personalizables</li>
-            <li>Predicciones basadas en IA</li>
-            <li>Integración con sistemas meteorológicos</li>
-          </ul>
         </div>
       </div>
     </ContentSection>
