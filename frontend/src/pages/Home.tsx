@@ -1,7 +1,8 @@
 import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import {UtalcaHeader, TabNavigation, MainLayout, ContentSection, StatsGrid, MapContainer, TabItem, StatCardData} from '../components/layout';
 
 // Fix para los íconos de Leaflet en React
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -12,63 +13,120 @@ L.Icon.Default.mergeOptions({
 });
 
 const Home: React.FC = () => {
-  // Coordenadas de ejemplo (Madrid, España) - cambia estas por tu ubicación
-  const position: [number, number] = [40.4168, -3.7038];
+  // Coordenadas de Talca, Chile - Campus Universidad de Talca
+  const position: [number, number] = [-35.0020711,-71.2288796];
+
+  // Configuración de tabs
+  const tabs: TabItem[] = [
+    { id: 'monitoring', label: 'MONITOREO', active: true },
+    { id: 'devices', label: 'DISPOSITIVOS' },
+    { id: 'reports', label: 'REPORTES' },
+    { id: 'settings', label: 'CONFIGURACIÓN' },
+  ];
+
+  // Datos de estadísticas
+  const statsData: StatCardData[] = [
+    {
+      title: 'Dispositivos Activos',
+      value: '5',
+      subtitle: 'Campus Principal',
+      icon: '🔌',
+    },
+    {
+      title: 'Alertas Hoy',
+      value: '3',
+      subtitle: 'Últimas 24 horas',
+      icon: '⚠️',
+    },
+  ];
+
+const handleTabChange = (tabId: string) => {
+    console.log('Tab seleccionado:', tabId);
+    // Aquí puedes manejar el cambio de pestaña
+};
+
+// Datos de dispositivos IoT
+const deviceData = [
+    {
+        id: 1,
+        name: 'Sensor Principal',
+        type: 'Temperatura/Humedad',
+        status: 'Activo',
+        lastUpdate: '2024-01-15 14:30',
+        location: 'Facultad de Ingeniería'
+    },
+    {
+        id: 2,
+        name: 'Estación Meteorológica',
+        type: 'Clima Completo',
+        status: 'Activo',
+        lastUpdate: '2024-01-15 14:28',
+        location: 'Campus Central'
+    },
+    {
+        id: 3,
+        name: 'Sensor Biblioteca',
+        type: 'Calidad de Aire',
+        status: 'Mantenimiento',
+        lastUpdate: '2024-01-15 12:15',
+        location: 'Biblioteca Central'
+    }
+];
+
+  const handleStatCardClick = (stat: StatCardData, index: number) => {
+    console.log('Estadística seleccionada:', stat, 'Índice:', index);
+    // Aquí puedes manejar el click en las cards de estadísticas
+  };
 
   return (
-    <div style={styles.homeContainer}>
-      <div style={styles.homeHeader}>
-        <h1 style={styles.headerTitle}>Plataforma IoT</h1>
-        <p style={styles.headerSubtitle}>Bienvenido a tu plataforma de monitoreo IoT</p>
-      </div>
-      
-      <div style={styles.mapSection}>
-        <h2 style={styles.sectionTitle}>Mapa de Dispositivos</h2>
-        <div style={styles.mapContainer}>
-          <MapContainer
-            center={position}
-            zoom={13}
-            style={{ height: '500px', width: '100%' }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-            <Marker position={position}>
-              <Popup>
-                <div>
-                  <strong>Dispositivo IoT Principal</strong>
-                  <br />
-                  Estado: Activo
-                  <br />
-                  Última actualización: {new Date().toLocaleString()}
-                </div>
-              </Popup>
-            </Marker>
-          </MapContainer>
-        </div>
-      </div>
+    <div style={styles.pageContainer}>
+      {/* Header principal con diseño UTalca */}
+      <UtalcaHeader
+        title="Clima Utalca"
+        subtitle="Universidad de Talca - Sistema de Monitoreo IoT"
+      />
 
-      <div style={styles.statsSection}>
-        <div style={styles.statsGrid}>
-          <div style={styles.statCard}>
-            <h3 style={styles.statCardTitle}>Dispositivos Activos</h3>
-            <div style={styles.statNumber}>5</div>
-          </div>
-          <div style={styles.statCard}>
-            <h3 style={styles.statCardTitle}>Sensores Monitoreando</h3>
-            <div style={styles.statNumber}>12</div>
-          </div>
-          <div style={styles.statCard}>
-            <h3 style={styles.statCardTitle}>Alertas Hoy</h3>
-            <div style={styles.statNumber}>3</div>
-          </div>
-          <div style={styles.statCard}>
-            <h3 style={styles.statCardTitle}>Uptime Sistema</h3>
-            <div style={styles.statNumber}>99.8%</div>
-          </div>
-        </div>
-      </div>
+      {/* Navegación de pestañas */}
+      <TabNavigation tabs={tabs} onTabChange={handleTabChange} />
+
+      {/* Contenido principal */}
+      <MainLayout>
+        {/* Sección del mapa */}
+        <ContentSection title="Mapa de Dispositivos - Campus UTalca">
+          <MapContainer>
+            <LeafletMapContainer
+              center={position}
+              zoom={15}
+              style={{ height: '500px', width: '100%' }}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <Marker position={position}>
+                <Popup>
+                  <div style={{ padding: '10px' }}>
+                    <strong style={{ color: '#00BCD4' }}>🎓 Campus Universidad de Talca</strong>
+                    <br />
+                    <strong>📡 Dispositivo IoT Principal</strong>
+                    <br />
+                    Estado: <span style={{ color: '#28a745', fontWeight: 'bold' }}>🟢 Activo</span>
+                    <br />
+                    Última actualización: {new Date().toLocaleString()}
+                    <br />
+                    <small style={{ color: '#6c757d' }}>Facultad de Ingeniería</small>
+                  </div>
+                </Popup>
+              </Marker>
+            </LeafletMapContainer>
+          </MapContainer>
+        </ContentSection>
+
+        {/* Sección de estadísticas */}
+        <ContentSection title="Panel de Control - Estadísticas en Tiempo Real">
+          <StatsGrid stats={statsData} onCardClick={handleStatCardClick} />
+        </ContentSection>
+      </MainLayout>
     </div>
   );
 };
@@ -76,77 +134,9 @@ const Home: React.FC = () => {
 export default Home;
 
 const styles = {
-    homeContainer: {
-      padding: '20px',
-      maxWidth: '1200px',
-      margin: '0 auto',
-      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    },
-    homeHeader: {
-      textAlign: 'center' as const,
-      marginBottom: '40px',
-      padding: '20px',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: 'white',
-      borderRadius: '12px',
-      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
-    },
-    headerTitle: {
-      margin: '0 0 10px 0',
-      fontSize: '2.5rem',
-      fontWeight: '300' as const,
-    },
-    headerSubtitle: {
-      margin: '0',
-      fontSize: '1.2rem',
-      opacity: 0.9,
-    },
-    mapSection: {
-      marginBottom: '40px',
-    },
-    sectionTitle: {
-      color: '#333',
-      marginBottom: '20px',
-      fontSize: '1.8rem',
-      fontWeight: '500' as const,
-    },
-    mapContainer: {
-      borderRadius: '12px',
-      overflow: 'hidden' as const,
-      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
-      border: '2px solid #e0e0e0',
-    },
-    statsSection: {
-      marginTop: '40px',
-    },
-    statsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-      gap: '20px',
-      marginTop: '20px',
-    },
-    statCard: {
-      background: 'white',
-      padding: '30px',
-      borderRadius: '12px',
-      boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)',
-      textAlign: 'center' as const,
-      borderLeft: '4px solid #667eea',
-      transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-      cursor: 'pointer',
-    },
-    statCardTitle: {
-      margin: '0 0 15px 0',
-      color: '#666',
-      fontSize: '1rem',
-      fontWeight: '500' as const,
-      textTransform: 'uppercase' as const,
-      letterSpacing: '0.5px',
-    },
-    statNumber: {
-      fontSize: '2.5rem',
-      fontWeight: 'bold' as const,
-      color: '#333',
-      margin: '0',
-    },
-  };
+  pageContainer: {
+    minHeight: '100vh',
+    backgroundColor: '#f8f9fa',
+    fontFamily: "'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+  },
+};
