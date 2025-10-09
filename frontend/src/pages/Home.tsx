@@ -12,7 +12,7 @@ import {
 // Importar páginas separadas
 import { MonitoringPage, DevicesPage, ReportsPage, SettingsPage } from './index';
 
-// Importar datos compartidos
+// Importar datos de ejemplo
 import { deviceData, calculateStats } from '../data/DatosEjemplos';
 
 // Fix para los íconos de Leaflet en React

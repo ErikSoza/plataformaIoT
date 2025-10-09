@@ -5,12 +5,12 @@ export { default as MainLayout } from './MainLayout';
 export { default as ContentSection } from './ContentSection';
 export { default as StatsGrid, StatCard } from './StatsGrid';
 export { default as MapContainer } from './MapContainer';
-export { default as DeviceList } from './DeviceList';
+export { default as DeviceList } from './ListaDispositivos';
 export { default as InteractiveMap } from './InteractiveMap';
-export { default as InteractiveMapWithHeatmap } from './InteractiveMapWithHeatmap';
-export { default as HeatMapLayer } from './HeatMapLayer';
+export { default as InteractiveMapWithHeatmap } from './MapaInteractivo';
+export { default as HeatMapLayer } from './MapaCalor';
 
 // Exportar tipos
 export type { TabItem } from './TabNavigation';
 export type { StatCardData } from './StatsGrid';
-export type { DeviceData } from './DeviceList';
+export type { DeviceData } from './ListaDispositivos';

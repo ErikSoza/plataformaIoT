@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { DeviceData } from './DeviceList';
+import { DeviceData } from './ListaDispositivos';
 
 // Importar leaflet.heat de manera que extienda L
 require('leaflet.heat');

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { DeviceData } from './DeviceList';
-import HeatMapLayer from './HeatMapLayer';
+import { DeviceData } from './ListaDispositivos';
+import HeatMapLayer from './MapaCalor';
 
 interface InteractiveMapWithHeatmapProps {
   devices: DeviceData[];

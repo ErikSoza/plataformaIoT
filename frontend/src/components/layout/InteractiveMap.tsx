@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { DeviceData } from './DeviceList';
+import { DeviceData } from './ListaDispositivos';
 
 interface InteractiveMapProps {
   devices: DeviceData[];
