@@ -13,7 +13,7 @@ import {
 import { MonitoringPage, DevicesPage, ReportsPage, SettingsPage } from './index';
 
 // Importar datos compartidos
-import { deviceData, calculateStats } from '../data/sensorData';
+import { deviceData, calculateStats } from '../data/DatosEjemplos';
 
 // Fix para los íconos de Leaflet en React
 delete (L.Icon.Default.prototype as any)._getIconUrl;
