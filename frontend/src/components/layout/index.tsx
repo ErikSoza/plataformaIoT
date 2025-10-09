@@ -7,6 +7,8 @@ export { default as StatsGrid, StatCard } from './StatsGrid';
 export { default as MapContainer } from './MapContainer';
 export { default as DeviceList } from './DeviceList';
 export { default as InteractiveMap } from './InteractiveMap';
+export { default as InteractiveMapWithHeatmap } from './InteractiveMapWithHeatmap';
+export { default as HeatMapLayer } from './HeatMapLayer';
 
 // Exportar tipos
 export type { TabItem } from './TabNavigation';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ContentSection, StatsGrid, InteractiveMap, DeviceData, StatCardData } from '../components/layout';
+import { ContentSection, StatsGrid, InteractiveMapWithHeatmap, DeviceData, StatCardData } from '../components/layout';
 
 interface MonitoringPageProps {
   devices: DeviceData[];
@@ -20,7 +20,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
     <>
       {/* Sección del mapa general */}
       <ContentSection title="🌡️ Red de Sensores Ambientales - Campus UTalca">
-        <InteractiveMap 
+        <InteractiveMapWithHeatmap 
           devices={devices}
           selectedDevice={selectedDevice}
           onDeviceMarkerClick={onDeviceMarkerClick}
