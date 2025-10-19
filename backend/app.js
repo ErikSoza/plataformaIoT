@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import stationRouters from './routes/stationRouters.js';
+import stationRouters from './src/routes/stationRouters.js';
 
 dotenv.config();
 const app = express();
@@ -16,4 +16,4 @@ app.get('/', (req, res) => {
 
 // Iniciar el servidor
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor corriendo en el puerto ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor corriendo en el puerto ${PORT} 🐾`));
