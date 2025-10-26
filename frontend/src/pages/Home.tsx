@@ -1,18 +1,15 @@
 import React, { useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import {
-  UtalcaHeader, 
-  TabNavigation, 
-  MainLayout,
-  TabItem, 
-  DeviceData
-} from '../components/layout';
+import {UtalcaHeader, TabNavigation, MainLayout, TabItem, DeviceData} from '../components/layout';
 
 // Importar páginas separadas
 import { MonitoringPage, DevicesPage, ReportsPage, SettingsPage } from './index';
 
-// Importar datos de ejemplo
+// Importar hooks para datos de la API
+import { useStations, useStats, useApiConnection } from '../hooks/useApi';
+
+// Importar datos de ejemplo como fallback
 import { deviceData, calculateStats } from '../data/DatosEjemplos';
 
 // Fix para los íconos de Leaflet en React
@@ -28,9 +25,27 @@ const Home: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('monitoring');
   const [selectedDevice, setSelectedDevice] = useState<DeviceData | undefined>(undefined);
 
-  // Obtener datos y estadísticas
-  const devices = deviceData;
-  const stats = calculateStats();
+  // Obtener datos de la API
+  const { devices: apiDevices, loading: devicesLoading, error: devicesError } = useStations();
+  const { isConnected } = useApiConnection();
+
+  // Usar datos de la API si están disponibles, sino usar datos de ejemplo
+  const devices = isConnected && apiDevices.length > 0 ? apiDevices : deviceData;
+  
+  // Obtener estadísticas basadas en los datos actuales
+  const { stats } = useStats(devices);
+  
+  // Usar estadísticas calculadas o fallback
+  const currentStats = stats.length > 0 ? stats : calculateStats();
+
+  // Mostrar estado de carga o error si es necesario
+  if (devicesLoading && devices === deviceData) {
+    console.log('Cargando datos de la API...');
+  }
+  
+  if (devicesError && !isConnected) {
+    console.warn('Error al conectar con la API, usando datos de ejemplo:', devicesError);
+  }
 
   // Configuración de tabs con estado dinámico
   const tabs: TabItem[] = [
@@ -70,7 +85,7 @@ const Home: React.FC = () => {
         return (
           <MonitoringPage
             devices={devices}
-            stats={stats}
+            stats={currentStats}
             selectedDevice={selectedDevice}
             onDeviceMarkerClick={handleDeviceMarkerClick}
             onStatCardClick={handleStatCardClick}
@@ -105,9 +120,22 @@ const Home: React.FC = () => {
         subtitle="Universidad de Talca - Sistema de Monitoreo IoT"
       />
 
+      {/* Indicador de conexión API */}
+      <div style={styles.connectionIndicator}>
+        <span style={{
+          ...styles.connectionDot,
+          backgroundColor: isConnected ? '#28a745' : '#ffc107'
+        }}></span>
+        <span style={styles.connectionText}>
+          {isConnected 
+            ? `API Conectada - ${apiDevices.length} estaciones` 
+            : 'Usando datos de ejemplo - API no disponible'
+          }
+        </span>
+      </div>
+
       {/* Navegación de pestañas */}
       <TabNavigation tabs={tabs} onTabChange={handleTabChange} />
-
       {/* Contenido principal */}
       <MainLayout>
         {renderContent()}
@@ -123,5 +151,25 @@ const styles = {
     minHeight: '100vh',
     backgroundColor: '#f8f9fa',
     fontFamily: "'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+  },
+  connectionIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '8px 16px',
+    backgroundColor: '#fff',
+    borderBottom: '1px solid #dee2e6',
+    fontSize: '14px',
+    color: '#6c757d',
+  },
+  connectionDot: {
+    width: '8px',
+    height: '8px',
+    borderRadius: '50%',
+    marginRight: '8px',
+    display: 'inline-block',
+  },
+  connectionText: {
+    fontWeight: '500',
   },
 };

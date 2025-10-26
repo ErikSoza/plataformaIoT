@@ -10,40 +10,34 @@ export const getAllStations = async () => {
 };
 export const addStation = async (station) => {
     const{
+        id_usuario,
         nombre,
-        tipo,
-        estado,
-        ultima_actualizacion,
         localizacion,
         latitud,
         longitud,
-        temperatura,
-        humedad,
+        estado,
         bateria,
     } = station;
     const [result] = await pool.query(
-        'INSERT INTO estaciones (nombre, tipo, estado, ultima_actualizacion, localizacion, latitud, longitud, temperatura, humedad, bateria) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [nombre, tipo, estado, ultima_actualizacion, localizacion, latitud, longitud, temperatura, humedad, bateria]
+        'INSERT INTO estaciones (id_usuario, nombre, localizacion, latitud, longitud, estado, bateria) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [id_usuario || null, nombre, localizacion, latitud, longitud, estado || 'Activo', bateria]
     );
     return result.insertId;
 };
 
 export const updateStation = async (id, station) => {
     const {
+        id_usuario,
         nombre,
-        tipo,
-        estado,
-        ultima_actualizacion,
         localizacion,
         latitud,
         longitud,
-        temperatura,
-        humedad,
+        estado,
         bateria,
     } = station;
     const [result] = await pool.query(
-        'UPDATE estaciones SET nombre = ?, tipo = ?, estado = ?, ultima_actualizacion = ?, localizacion = ?, latitud = ?, longitud = ?, temperatura = ?, humedad = ?, bateria = ? WHERE id = ?',
-        [nombre, tipo, estado, ultima_actualizacion, localizacion, latitud, longitud, temperatura, humedad, bateria, id]
+        'UPDATE estaciones SET id_usuario = ?, nombre = ?, localizacion = ?, latitud = ?, longitud = ?, estado = ?, bateria = ?, ultima_actualizacion = CURRENT_TIMESTAMP WHERE id = ?',
+        [id_usuario, nombre, localizacion, latitud, longitud, estado, bateria, id]
     );
     return result.affectedRows;
 };
