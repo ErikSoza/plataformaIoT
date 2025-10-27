@@ -105,7 +105,10 @@ export const getGlobalStats = async () => {
             COUNT(l.id) as total_lecturas_24h,
             AVG(JSON_EXTRACT(l.json, '$.temperatura')) as temp_promedio_global,
             AVG(JSON_EXTRACT(l.json, '$.humedad')) as humedad_promedio_global,
-            AVG(JSON_EXTRACT(l.json, '$.bateria')) as bateria_promedio_global,
+            AVG(JSON_EXTRACT(l.json, '$.presion')) as presion_promedio,
+            AVG(JSON_EXTRACT(l.json, '$.gas')) as gas_promedio,
+            AVG(JSON_EXTRACT(l.json, '$.radiacion')) as radiacion_promedio,
+            AVG(JSON_EXTRACT(l.json, '$.viento')) as viento_promedio,
             COUNT(CASE WHEN e.estado = 'Activo' THEN 1 END) as estaciones_activas
         FROM lecturas l
         LEFT JOIN estaciones e ON l.id_estacion = e.id

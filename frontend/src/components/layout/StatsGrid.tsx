@@ -53,35 +53,41 @@ export const StatsGrid: React.FC<StatsGridProps> = ({ stats, onCardClick }) => {
 const styles = {
   statsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: '25px',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: '20px',
     marginTop: '25px',
+    maxWidth: '100%',
   },
 
   statCard: {
     background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
-    padding: '35px 25px',
+    padding: '25px 20px',
     borderRadius: '12px',
-    boxShadow: '0 6px 25px rgba(0, 0, 0, 0.08)',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
     textAlign: 'center' as const,
     border: '1px solid #e9ecef',
-    borderLeft: '5px solid #00BCD4',
+    borderLeft: '4px solid #00BCD4',
     transition: 'all 0.3s ease',
     cursor: 'pointer',
     position: 'relative' as const,
+    minHeight: '120px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    justifyContent: 'space-between',
   },
 
   statCardTitle: {
-    margin: '0 0 20px 0',
+    margin: '0 0 15px 0',
     color: '#6c757d',
-    fontSize: '0.95rem',
+    fontSize: '0.85rem',
     fontWeight: '600' as const,
     textTransform: 'uppercase' as const,
-    letterSpacing: '1px',
+    letterSpacing: '0.5px',
+    lineHeight: '1.2',
   },
 
   statNumber: {
-    fontSize: '2.8rem',
+    fontSize: '2.2rem',
     fontWeight: '300' as const,
     color: '#00BCD4',
     margin: '0',
@@ -90,9 +96,9 @@ const styles = {
 
   statSubtitle: {
     color: '#6c757d',
-    fontSize: '0.85rem',
+    fontSize: '0.8rem',
     display: 'block',
-    marginTop: '10px',
+    marginTop: '8px',
   },
 };
 

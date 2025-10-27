@@ -70,11 +70,24 @@ export const useStats = (devices: DeviceData[] = []) => {
         ? devicesWithHumidity.reduce((sum, d) => sum + (d.humidity || 0), 0) / devicesWithHumidity.length
         : 0;
 
-      // Calcular batería promedio
-      const devicesWithBattery = devices.filter(d => d.battery !== undefined);
-      const avgBattery = devicesWithBattery.length > 0
-        ? devicesWithBattery.reduce((sum, d) => sum + (d.battery || 0), 0) / devicesWithBattery.length
-        : 0;
+      // Inicializar estadísticas adicionales
+      let avgPressure = 0;
+      let avgGas = 0;
+      let avgRadiation = 0;
+      let avgWind = 0;
+
+      // Si tenemos dispositivos, intentar obtener estadísticas globales de la API
+      try {
+        if (devices.length > 0) {
+          const globalStats = await readingService.getGlobalStats();
+          avgPressure = globalStats.presion_promedio || 0;
+          avgGas = globalStats.gas_promedio || 0;
+          avgRadiation = globalStats.radiacion_promedio || 0;
+          avgWind = globalStats.viento_promedio || 0;
+        }
+      } catch (error) {
+        console.warn('No se pudieron obtener estadísticas adicionales:', error);
+      }
 
       const calculatedStats: StatCardData[] = [
         {
@@ -93,9 +106,24 @@ export const useStats = (devices: DeviceData[] = []) => {
           icon: '💧',
         },
         {
-          title: 'Batería Promedio',
-          value: avgBattery > 0 ? `${avgBattery.toFixed(0)}%` : 'N/A',
-          icon: '🔋',
+          title: 'Presión Promedio',
+          value: avgPressure > 0 ? `${avgPressure.toFixed(1)} hPa` : 'N/A',
+          icon: '�️',
+        },
+        {
+          title: 'Calidad del Aire',
+          value: avgGas > 0 ? `${avgGas.toFixed(3)}` : 'N/A',
+          icon: '🌪️',
+        },
+        {
+          title: 'Radiación Solar',
+          value: avgRadiation > 0 ? `${avgRadiation.toFixed(0)} W/m²` : 'N/A',
+          icon: '☀️',
+        },
+        {
+          title: 'Velocidad del Viento',
+          value: avgWind > 0 ? `${avgWind.toFixed(1)} m/s` : 'N/A',
+          icon: '💨',
         },
       ];
 
