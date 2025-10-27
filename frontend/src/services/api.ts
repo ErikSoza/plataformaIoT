@@ -3,6 +3,7 @@ import axios from 'axios';
 // Configuración base de axios
 const API_BASE_URL = 'http://localhost:3000/api';
 
+// Crear instancia de axios
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
@@ -85,69 +86,7 @@ export const stationService = {
   },
 };
 
-// ==================== SENSORES ====================
 
-export const sensorService = {
-  // Obtener todos los sensores
-  getAll: async () => {
-    try {
-      const response = await api.get('/sensores');
-      return response.data;
-    } catch (error) {
-      throw new Error('Error al obtener los sensores');
-    }
-  },
-
-  // Obtener sensores por estación
-  getByStation: async (stationId: number) => {
-    try {
-      const response = await api.get(`/estaciones/${stationId}/sensores`);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Error al obtener los sensores de la estación ${stationId}`);
-    }
-  },
-
-  // Obtener sensor por ID
-  getById: async (id: number) => {
-    try {
-      const response = await api.get(`/sensores/${id}`);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Error al obtener el sensor ${id}`);
-    }
-  },
-
-  // Crear nuevo sensor
-  create: async (sensorData: any) => {
-    try {
-      const response = await api.post('/sensores', sensorData);
-      return response.data;
-    } catch (error) {
-      throw new Error('Error al crear el sensor');
-    }
-  },
-
-  // Actualizar sensor
-  update: async (id: number, sensorData: any) => {
-    try {
-      const response = await api.put(`/sensores/${id}`, sensorData);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Error al actualizar el sensor ${id}`);
-    }
-  },
-
-  // Eliminar sensor
-  delete: async (id: number) => {
-    try {
-      const response = await api.delete(`/sensores/${id}`);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Error al eliminar el sensor ${id}`);
-    }
-  },
-};
 
 // ==================== LECTURAS ====================
 
@@ -162,16 +101,6 @@ export const readingService = {
     }
   },
 
-  // Obtener lecturas por sensor
-  getBySensor: async (sensorId: number) => {
-    try {
-      const response = await api.get(`/sensores/${sensorId}/lecturas`);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Error al obtener las lecturas del sensor ${sensorId}`);
-    }
-  },
-
   // Obtener lecturas por estación
   getByStation: async (stationId: number) => {
     try {
@@ -182,13 +111,23 @@ export const readingService = {
     }
   },
 
-  // Obtener últimas lecturas por estación
+  // Obtener última lectura por estación
   getLatestByStation: async (stationId: number) => {
     try {
       const response = await api.get(`/estaciones/${stationId}/lecturas/latest`);
       return response.data;
     } catch (error) {
-      throw new Error(`Error al obtener las últimas lecturas de la estación ${stationId}`);
+      throw new Error(`Error al obtener la última lectura de la estación ${stationId}`);
+    }
+  },
+
+  // Obtener últimas lecturas de todas las estaciones
+  getLatestAll: async () => {
+    try {
+      const response = await api.get('/lecturas/latest');
+      return response.data;
+    } catch (error) {
+      throw new Error('Error al obtener las últimas lecturas de todas las estaciones');
     }
   },
 
@@ -212,7 +151,7 @@ export const readingService = {
     }
   },
 
-  // Obtener estadísticas
+  // Obtener estadísticas por estación
   getStats: async () => {
     try {
       const response = await api.get('/estadisticas');
@@ -221,34 +160,41 @@ export const readingService = {
       throw new Error('Error al obtener las estadísticas');
     }
   },
+
+  // Obtener estadísticas globales
+  getGlobalStats: async () => {
+    try {
+      const response = await api.get('/estadisticas/global');
+      return response.data;
+    } catch (error) {
+      throw new Error('Error al obtener las estadísticas globales');
+    }
+  },
 };
 
 // ==================== UTILIDADES ====================
 
 export const apiUtils = {
-  // Función para obtener datos completos de estaciones con sensores y lecturas
+  // Función para obtener datos completos de estaciones con última lectura
   getStationsWithData: async () => {
     try {
       const stations = await stationService.getAll();
       
-      // Para cada estación, obtener sus sensores y últimas lecturas
+      // Para cada estación, obtener su última lectura
       const stationsWithData = await Promise.all(
         stations.map(async (station: any) => {
           try {
-            const sensors = await sensorService.getByStation(station.id);
-            const latestReadings = await readingService.getLatestByStation(station.id);
+            const latestReading = await readingService.getLatestByStation(station.id);
             
             return {
               ...station,
-              sensors,
-              latestReadings,
+              latestReading: latestReading || null,
             };
           } catch (error) {
             console.warn(`Error al obtener datos para la estación ${station.id}:`, error);
             return {
               ...station,
-              sensors: [],
-              latestReadings: [],
+              latestReading: null,
             };
           }
         })

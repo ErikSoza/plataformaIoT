@@ -2,7 +2,6 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import stationRouters from './src/routes/stationRouters.js';
-import sensorRoutes from './src/routes/sensorRoutes.js';
 import readingRoutes from './src/routes/readingRoutes.js';
 
 dotenv.config();
@@ -19,7 +18,6 @@ app.use(express.json());
 
 // Rutas API
 app.use('/api', stationRouters);
-app.use('/api', sensorRoutes);
 app.use('/api', readingRoutes);
 
 // Ruta base

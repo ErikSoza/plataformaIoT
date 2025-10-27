@@ -1,3 +1,7 @@
+-- ==========================================================
+-- 🌤️ Proyecto: Estaciones Meteorológicas IoT
+-- ==========================================================
+
 -- Crear base de datos si no existe
 CREATE DATABASE IF NOT EXISTS plataformaiot
   CHARACTER SET utf8mb4
@@ -6,9 +10,9 @@ CREATE DATABASE IF NOT EXISTS plataformaiot
 USE plataformaiot;
 
 -- ==========================================================
--- Tabla: Usuario
+-- Tabla: Usuarios
 -- ==========================================================
-CREATE TABLE IF NOT EXISTS usuarios(
+CREATE TABLE IF NOT EXISTS usuarios (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
   email VARCHAR(100) UNIQUE NOT NULL,
@@ -37,37 +41,24 @@ CREATE TABLE IF NOT EXISTS estaciones (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ==========================================================
--- Tabla: Sensores
--- ==========================================================
-CREATE TABLE IF NOT EXISTS sensores (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  id_estacion INT NOT NULL,
-  nombre VARCHAR(100) NOT NULL,
-  tipo VARCHAR(50) NOT NULL,
-  estado VARCHAR(50) DEFAULT 'Activo',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_sensor_estacion
-    FOREIGN KEY (id_estacion) REFERENCES estaciones(id)
-    ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- ==========================================================
 -- Tabla: Lecturas
 -- ==========================================================
+-- Cada fila representa una lectura completa enviada por una estación.
+-- El campo 'json' almacena todos los valores de sensores (temperatura, humedad, etc.)
 CREATE TABLE IF NOT EXISTS lecturas (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  id_sensor INT NOT NULL,
+  id_estacion INT NOT NULL,
   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-  valor FLOAT,
-  json JSON,
-  CONSTRAINT fk_lectura_sensor
-    FOREIGN KEY (id_sensor) REFERENCES sensores(id)
+  json JSON NOT NULL,
+  CONSTRAINT fk_lectura_estacion
+    FOREIGN KEY (id_estacion) REFERENCES estaciones(id)
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ==========================================================
 -- Tabla: Alertas
 -- ==========================================================
+-- Registra eventos o notificaciones de cada estación
 CREATE TABLE IF NOT EXISTS alertas (
   id INT AUTO_INCREMENT PRIMARY KEY,
   id_estacion INT NOT NULL,
@@ -78,3 +69,16 @@ CREATE TABLE IF NOT EXISTS alertas (
     FOREIGN KEY (id_estacion) REFERENCES estaciones(id)
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==========================================================
+-- Datos de ejemplo opcionales
+-- ==========================================================
+INSERT INTO usuarios (nombre, email, contrasena, rol)
+VALUES ('Admin Principal', 'admin@utalca.cl', 'hash123', 'admin')
+ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+
+INSERT INTO estaciones (id_usuario, nombre, localizacion, latitud, longitud, estado, bateria)
+VALUES 
+(NULL, 'Sensor Facultad Ingeniería', 'Campus Curicó', -35.0017581, -71.2297514, 'Activo', 92),
+(NULL, 'Sensor Biblioteca Central', 'Campus Curicó', -35.0029305, -71.2292251, 'Mantenimiento', 23)
+ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);

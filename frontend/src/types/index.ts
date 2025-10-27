@@ -22,28 +22,37 @@ export interface Estacion {
   created_at: string;
 }
 
-export interface Sensor {
-  id: number;
-  id_estacion: number;
-  nombre: string;
-  tipo: string;
-  estado: string;
-  created_at: string;
-  // Campos adicionales de JOIN
-  estacion_nombre?: string;
-}
-
 export interface Lectura {
   id: number;
-  id_sensor: number;
+  id_estacion: number;
   timestamp: string;
-  valor?: number;
-  json?: any;
+  json: {
+    temperatura: number;
+    humedad: number;
+    presion: number;
+    gas: number;
+    radiacion: number;
+    viento: number;
+    bateria: number;
+  };
   // Campos adicionales de JOIN
-  sensor_nombre?: string;
-  sensor_tipo?: string;
   estacion_nombre?: string;
   localizacion?: string;
+}
+
+// Tipo para los datos que envía el ESP32
+export interface ESP32Data {
+  id_estacion: number;
+  timestamp: string;
+  data: {
+    temperatura: number;
+    humedad: number;
+    presion: number;
+    gas: number;
+    radiacion: number;
+    viento: number;
+    bateria: number;
+  };
 }
 
 export interface Alerta {
@@ -57,14 +66,8 @@ export interface Alerta {
 // ==================== INTERFACES EXTENDIDAS ====================
 
 export interface EstacionCompleta extends Estacion {
-  sensors: Sensor[];
-  latestReadings: Lectura[];
+  latestReading: Lectura | null;
   usuario?: Usuario;
-}
-
-export interface SensorConLecturas extends Sensor {
-  lecturas: Lectura[];
-  ultimaLectura?: Lectura;
 }
 
 // ==================== INTERFACES PARA COMPONENTES ====================
@@ -115,21 +118,7 @@ export interface EstadisticasLecturas {
 // ==================== FUNCIONES DE TRANSFORMACIÓN ====================
 
 // Transformar Estacion a DeviceData para compatibilidad
-export const transformEstacionToDevice = (
-  estacion: EstacionCompleta, 
-  lecturas: Lectura[] = []
-): DeviceData => {
-  // Buscar lecturas de temperatura, humedad, etc.
-  const temperaturaReading = lecturas.find(l => 
-    l.sensor_tipo?.toLowerCase().includes('temperatura') || 
-    l.sensor_tipo?.toLowerCase().includes('temp')
-  );
-  
-  const humedadReading = lecturas.find(l => 
-    l.sensor_tipo?.toLowerCase().includes('humedad') || 
-    l.sensor_tipo?.toLowerCase().includes('humidity')
-  );
-
+export const transformEstacionToDevice = (estacion: EstacionCompleta): DeviceData => {
   // Mapear estado a valores válidos
   const mapStatus = (estado: string): DeviceData['status'] => {
     const normalizedStatus = estado.toLowerCase();
@@ -139,29 +128,32 @@ export const transformEstacionToDevice = (
     return 'Error';
   };
 
+  // Extraer datos de la última lectura si existe
+  const latestReading = estacion.latestReading;
+  const sensorData = latestReading?.json;
+
   return {
     id: estacion.id,
     name: estacion.nombre,
     type: 'Sensor Ambiental IoT',
     status: mapStatus(estacion.estado),
-    lastUpdate: estacion.ultima_actualizacion,
+    lastUpdate: latestReading?.timestamp || estacion.ultima_actualizacion,
     location: estacion.localizacion || 'Sin ubicación',
     coordinates: estacion.latitud && estacion.longitud 
       ? [estacion.latitud, estacion.longitud] 
       : [0, 0],
-    temperature: temperaturaReading?.valor,
-    humidity: humedadReading?.valor,
-    battery: estacion.bateria,
+    temperature: sensorData?.temperatura,
+    humidity: sensorData?.humedad,
+    battery: sensorData?.bateria || estacion.bateria,
   };
 };
 
 // Transformar múltiples estaciones
+// Convierte los datos de la base de datos al formato que esperan tus componentes React existentes, para no tener que cambiar todo el frontend.
 export const transformEstacionesToDevices = (
   estaciones: EstacionCompleta[]
 ): DeviceData[] => {
-  return estaciones.map(estacion => 
-    transformEstacionToDevice(estacion, estacion.latestReadings)
-  );
+  return estaciones.map(estacion => transformEstacionToDevice(estacion));
 };
 
 // ==================== TIPOS DE FORMULARIOS ====================
@@ -174,15 +166,16 @@ export interface NuevaEstacionForm {
   id_usuario?: number;
 }
 
-export interface NuevoSensorForm {
-  id_estacion: number;
-  nombre: string;
-  tipo: string;
-  estado?: string;
-}
-
 export interface NuevaLecturaForm {
-  id_sensor: number;
-  valor?: number;
-  json?: any;
+  id_estacion: number;
+  timestamp?: string;
+  json: {
+    temperatura: number;
+    humedad: number;
+    presion: number;
+    gas: number;
+    radiacion: number;
+    viento: number;
+    bateria: number;
+  };
 }
