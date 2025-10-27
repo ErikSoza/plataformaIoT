@@ -12,7 +12,10 @@ export const deviceData: DeviceData[] = [
     coordinates: [-34.9849294, -71.2406668],
     temperature: 22.5,
     humidity: 65,
-    battery: 87
+    battery: 87,
+    pressure: 1013.2,
+    gas: 0.045,
+    radiation: 650
   },
   {
     id: 2,
@@ -24,7 +27,10 @@ export const deviceData: DeviceData[] = [
     coordinates: [-35.0017581, -71.2297514],
     temperature: 28.1,
     humidity: 45,
-    battery: 92
+    battery: 92,
+    pressure: 1015.8,
+    gas: 0.032,
+    radiation: 820
   },
   {
     id: 3,
@@ -36,7 +42,10 @@ export const deviceData: DeviceData[] = [
     coordinates: [-35.0029305, -71.2292251],
     temperature: 18.8,
     humidity: 82,
-    battery: 23
+    battery: 23,
+    pressure: 1009.5,
+    gas: 0.058,
+    radiation: 420
   },
   {
     id: 4,
@@ -48,7 +57,10 @@ export const deviceData: DeviceData[] = [
     coordinates: [-35.0020822, -71.2291337],
     temperature: 25.2,
     humidity: 52,
-    battery: 65
+    battery: 65,
+    pressure: 1011.7,
+    gas: 0.039,
+    radiation: 750
   },
   {
     id: 5,
@@ -60,7 +72,10 @@ export const deviceData: DeviceData[] = [
     coordinates: [-34.9779525, -71.2260893],
     temperature: 16.3,
     humidity: 78,
-    battery: 76
+    battery: 76,
+    pressure: 1008.3,
+    gas: 0.025,
+    radiation: 520
   },
   {
     id: 6,
@@ -72,7 +87,10 @@ export const deviceData: DeviceData[] = [
     coordinates: [-35.0015225, -71.2285634],
     temperature: 31.5,
     humidity: 38,
-    battery: 88
+    battery: 88,
+    pressure: 1016.9,
+    gas: 0.067,
+    radiation: 920
   },
   {
     id: 7,
@@ -84,7 +102,10 @@ export const deviceData: DeviceData[] = [
     coordinates: [-35.0025118, -71.2298467],
     temperature: 19.7,
     humidity: 60,
-    battery: 45
+    battery: 45,
+    pressure: 1010.4,
+    gas: 0.041,
+    radiation: 580
   },
   {
     id: 8,
@@ -96,7 +117,10 @@ export const deviceData: DeviceData[] = [
     coordinates: [-35.0022634, -71.2294852],
     temperature: 26.8,
     humidity: 55,
-    battery: 71
+    battery: 71,
+    pressure: 1012.6,
+    gas: 0.048,
+    radiation: 690
   }
 ];
 

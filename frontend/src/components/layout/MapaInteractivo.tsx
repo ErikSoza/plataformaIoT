@@ -32,7 +32,7 @@ const InteractiveMapWithHeatmap: React.FC<InteractiveMapWithHeatmapProps> = ({
   height = '500px'
 }) => {
   const [showHeatmap, setShowHeatmap] = useState(false);
-  const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'battery'>('temperature');
+  const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation'>('temperature');
 
   // Centro por defecto (Campus UTalca)
   const defaultCenter: [number, number] = [-35.0020711, -71.2288796];
@@ -90,6 +90,9 @@ const InteractiveMapWithHeatmap: React.FC<InteractiveMapWithHeatmapProps> = ({
       case 'temperature': return '🌡️';
       case 'humidity': return '💧';
       case 'battery': return '🔋';
+      case 'pressure': return '🌫️';
+      case 'gas': return '🌪️';
+      case 'radiation': return '☀️';
       default: return '📊';
     }
   };
@@ -99,7 +102,29 @@ const InteractiveMapWithHeatmap: React.FC<InteractiveMapWithHeatmapProps> = ({
       case 'temperature': return 'Temperatura';
       case 'humidity': return 'Humedad';
       case 'battery': return 'Batería';
+      case 'pressure': return 'Presión';
+      case 'gas': return 'Calidad del Aire';
+      case 'radiation': return 'Radiación Solar';
       default: return 'Métrica';
+    }
+  };
+
+  const getLegendColors = (metric: string) => {
+    switch (metric) {
+      case 'temperature':
+        return { low: 'blue', high: 'red' };
+      case 'humidity':
+        return { low: '#f7fbff', high: '#08519c' };
+      case 'battery':
+        return { low: '#d73027', high: '#5e4fa2' };
+      case 'pressure':
+        return { low: '#800026', high: '#feb24c' };
+      case 'gas':
+        return { low: '#00ff00', high: '#ff0000' };
+      case 'radiation':
+        return { low: '#ffffcc', high: '#f03b20' };
+      default:
+        return { low: '#cccccc', high: '#333333' };
     }
   };
 
@@ -145,7 +170,7 @@ const InteractiveMapWithHeatmap: React.FC<InteractiveMapWithHeatmapProps> = ({
             <div style={{ marginBottom: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}>
               Métrica a visualizar:
             </div>
-            {['temperature', 'humidity', 'battery'].map((metric) => (
+            {['temperature', 'humidity', 'battery', 'pressure', 'gas', 'radiation'].map((metric) => (
               <label key={metric} style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -158,7 +183,7 @@ const InteractiveMapWithHeatmap: React.FC<InteractiveMapWithHeatmapProps> = ({
                   name="heatmapMetric"
                   value={metric}
                   checked={heatmapMetric === metric}
-                  onChange={(e) => setHeatmapMetric(e.target.value as 'temperature' | 'humidity' | 'battery')}
+                  onChange={(e) => setHeatmapMetric(e.target.value as 'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation')}
                 />
                 <span>
                   {getMetricIcon(metric)} {getMetricName(metric)}
@@ -184,7 +209,7 @@ const InteractiveMapWithHeatmap: React.FC<InteractiveMapWithHeatmapProps> = ({
               <div style={{ 
                 width: '15px', 
                 height: '15px', 
-                background: heatmapMetric === 'temperature' ? 'blue' : heatmapMetric === 'humidity' ? '#f7fbff' : '#d73027',
+                background: getLegendColors(heatmapMetric).low,
                 borderRadius: '3px'
               }}></div>
               <span>Bajo</span>
@@ -193,7 +218,7 @@ const InteractiveMapWithHeatmap: React.FC<InteractiveMapWithHeatmapProps> = ({
               <div style={{ 
                 width: '15px', 
                 height: '15px', 
-                background: heatmapMetric === 'temperature' ? 'red' : heatmapMetric === 'humidity' ? '#08519c' : '#5e4fa2',
+                background: getLegendColors(heatmapMetric).high,
                 borderRadius: '3px'
               }}></div>
               <span>Alto</span>

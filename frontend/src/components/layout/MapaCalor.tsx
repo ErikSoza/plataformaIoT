@@ -3,24 +3,19 @@ import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { DeviceData } from './ListaDispositivos';
 
-// Importar leaflet.heat de manera que extienda L
-require('leaflet.heat');
+// Importar leaflet.heat
+import 'leaflet.heat';
 
-// Extendemos la interfaz de Leaflet para incluir el plugin de heatmap
-declare global {
-  interface Window {
-    L: typeof L & {
-      heatLayer: (latlngs: number[][], options?: any) => any;
-    };
+// Extender la interfaz de Leaflet para incluir el plugin de heatmap
+declare module 'leaflet' {
+  namespace L {
+    function heatLayer(latlngs: Array<[number, number, number?]>, options?: any): any;
   }
 }
 
-// Extender el namespace L directamente
-(L as any).heatLayer = (L as any).heatLayer;
-
 interface HeatMapLayerProps {
   devices: DeviceData[];
-  metric: 'temperature' | 'humidity' | 'battery';
+  metric: 'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation';
   visible: boolean;
 }
 
@@ -37,9 +32,17 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
         return value !== undefined && value !== null && !isNaN(Number(value));
       });
 
+      console.log(`MapaCalor: Métrica=${metric}, Dispositivos válidos=${validDevices.length}/${devices.length}`);
+      
       if (validDevices.length > 0) {
+        console.log(`MapaCalor: Datos de dispositivos para ${metric}:`, validDevices.map(d => ({
+          id: d.id,
+          name: d.name,
+          value: d[metric]
+        })));
+
         // Preparar datos para el mapa de calor
-        const heatData = validDevices.map(device => {
+        const heatData: Array<[number, number, number]> = validDevices.map(device => {
           const [lat, lng] = device.coordinates;
           let intensity = 0;
 
@@ -57,10 +60,24 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
               // Normalizar batería (0% = 0, 100% = 1)
               intensity = Math.max(0, Math.min(1, device.battery! / 100));
               break;
+            case 'pressure':
+              // Normalizar presión (1000 hPa = 0, 1020 hPa = 1)
+              intensity = Math.max(0, Math.min(1, (device.pressure! - 1000) / 20));
+              break;
+            case 'gas':
+              // Normalizar calidad del aire (0 = 0, 0.1 = 1)
+              intensity = Math.max(0, Math.min(1, device.gas! / 0.1));
+              break;
+            case 'radiation':
+              // Normalizar radiación (0 W/m² = 0, 1000 W/m² = 1)
+              intensity = Math.max(0, Math.min(1, device.radiation! / 1000));
+              break;
           }
 
-          return [lat, lng, intensity];
+          return [lat, lng, intensity] as [number, number, number];
         });
+
+        console.log(`MapaCalor: Datos de calor generados:`, heatData);
 
         // Configurar opciones del mapa de calor según la métrica
         const getHeatmapOptions = () => {
@@ -75,42 +92,79 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
               return {
                 ...baseOptions,
                 gradient: {
-                  0.0: 'blue',
-                  0.2: 'cyan',
-                  0.4: 'lime',
-                  0.6: 'yellow',
-                  0.8: 'orange',
-                  1.0: 'red'
+                  '0.0': 'blue',
+                  '0.2': 'cyan',
+                  '0.4': 'lime',
+                  '0.6': 'yellow',
+                  '0.8': 'orange',
+                  '1.0': 'red'
                 }
               };
             case 'humidity':
               return {
                 ...baseOptions,
                 gradient: {
-                  0.0: '#f7fbff',
-                  0.2: '#deebf7',
-                  0.4: '#c6dbef',
-                  0.6: '#9ecae1',
-                  0.8: '#6baed6',
-                  1.0: '#08519c'
+                  '0.0': '#f7fbff',
+                  '0.2': '#deebf7',
+                  '0.4': '#c6dbef',
+                  '0.6': '#9ecae1',
+                  '0.8': '#6baed6',
+                  '1.0': '#08519c'
                 }
               };
             case 'battery':
               return {
                 ...baseOptions,
                 gradient: {
-                  0.0: '#d73027',
-                  0.1: '#f46d43',
-                  0.2: '#fdae61',
-                  0.3: '#fee08b',
-                  0.4: '#ffffbf',
-                  0.5: '#e6f598',
-                  0.6: '#abdda4',
-                  0.7: '#66c2a5',
-                  0.8: '#3288bd',
-                  1.0: '#5e4fa2'
+                  '0.0': '#d73027',
+                  '0.1': '#f46d43',
+                  '0.2': '#fdae61',
+                  '0.3': '#fee08b',
+                  '0.4': '#ffffbf',
+                  '0.5': '#e6f598',
+                  '0.6': '#abdda4',
+                  '0.7': '#66c2a5',
+                  '0.8': '#3288bd',
+                  '1.0': '#5e4fa2'
                 }
               };
+            case 'pressure':
+              return {
+                ...baseOptions,
+                gradient: {
+                  '0.0': '#800026',
+                  '0.2': '#bd0026',
+                  '0.4': '#e31a1c',
+                  '0.6': '#fc4e2a',
+                  '0.8': '#fd8d3c',
+                  '1.0': '#feb24c'
+                }
+              };
+            case 'gas':
+              return {
+                ...baseOptions,
+                gradient: {
+                  '0.0': '#00ff00',
+                  '0.2': '#80ff00',
+                  '0.4': '#ffff00',
+                  '0.6': '#ff8000',
+                  '0.8': '#ff4000',
+                  '1.0': '#ff0000'
+                }
+              };
+            case 'radiation':
+              return {
+                ...baseOptions,
+                gradient: {
+                  '0.0': '#ffffcc',
+                  '0.2': '#ffeda0',
+                  '0.4': '#fed976',
+                  '0.6': '#feb24c',
+                  '0.8': '#fd8d3c',
+                  '1.0': '#f03b20'
+                }
+              };
+            
             default:
               return baseOptions;
           }

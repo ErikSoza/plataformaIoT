@@ -11,6 +11,9 @@ export interface DeviceData {
   temperature?: number; // Todos los sensores miden temperatura
   humidity?: number;    // Todos los sensores miden humedad
   battery?: number;     // Todos los sensores tienen batería
+  pressure?: number;    // Todos los sensores miden presión
+  gas?: number;         // Todos los sensores miden calidad del aire
+  radiation?: number;   // Todos los sensores miden radiación 
 }
 
 interface DeviceListProps {
