@@ -31,16 +31,8 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
         const value = device[metric];
         return value !== undefined && value !== null && !isNaN(Number(value));
       });
-
-      console.log(`MapaCalor: Métrica=${metric}, Dispositivos válidos=${validDevices.length}/${devices.length}`);
       
       if (validDevices.length > 0) {
-        console.log(`MapaCalor: Datos de dispositivos para ${metric}:`, validDevices.map(d => ({
-          id: d.id,
-          name: d.name,
-          value: d[metric]
-        })));
-
         // Preparar datos para el mapa de calor
         const heatData: Array<[number, number, number]> = validDevices.map(device => {
           const [lat, lng] = device.coordinates;
@@ -76,8 +68,6 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
 
           return [lat, lng, intensity] as [number, number, number];
         });
-
-        console.log(`MapaCalor: Datos de calor generados:`, heatData);
 
         // Configurar opciones del mapa de calor según la métrica
         const getHeatmapOptions = () => {

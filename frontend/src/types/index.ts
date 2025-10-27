@@ -84,6 +84,9 @@ export interface DeviceData {
   temperature?: number;
   humidity?: number;
   battery?: number;
+  pressure?: number;
+  gas?: number;
+  radiation?: number;
 }
 
 export interface StatCardData {
@@ -145,6 +148,9 @@ export const transformEstacionToDevice = (estacion: EstacionCompleta): DeviceDat
     temperature: sensorData?.temperatura,
     humidity: sensorData?.humedad,
     battery: sensorData?.bateria || estacion.bateria,
+    pressure: sensorData?.presion,
+    gas: sensorData?.gas,
+    radiation: sensorData?.radiacion,
   };
 };
 
