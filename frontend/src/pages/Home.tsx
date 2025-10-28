@@ -6,8 +6,8 @@ import {UtalcaHeader, TabNavigation, MainLayout, TabItem, DeviceData} from '../c
 // Importar páginas separadas
 import { MonitoringPage, DevicesPage, ReportsPage, SettingsPage } from './index';
 
-// Importar hooks para datos de la API
-import { useStations, useStats, useApiConnection } from '../hooks/useApi';
+// Importar hook unificado para datos de la API
+import { useDeviceData } from '../hooks/useDeviceData';
 
 // Importar datos de ejemplo como fallback
 import { deviceData, calculateStats } from '../data/DatosEjemplos';
@@ -25,15 +25,21 @@ const Home: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('monitoring');
   const [selectedDevice, setSelectedDevice] = useState<DeviceData | undefined>(undefined);
 
-  // Obtener datos de la API
-  const { devices: apiDevices, loading: devicesLoading, error: devicesError } = useStations();
-  const { isConnected } = useApiConnection();
+  // Obtener datos de la API usando hook unificado
+  const { 
+    devices: apiDevices, 
+    loading: devicesLoading, 
+    error: devicesError,
+    isConnected,
+    stats 
+  } = useDeviceData({
+    autoRefresh: true,
+    refreshInterval: 30000,
+    includeInactive: true
+  });
 
   // Usar datos de la API si están disponibles, sino usar datos de ejemplo
-  const devices = isConnected && apiDevices.length > 0 ? apiDevices : deviceData;
-  
-  // Obtener estadísticas basadas en los datos actuales
-  const { stats } = useStats(devices);
+  const devices = (isConnected && apiDevices.length > 0 ? apiDevices : deviceData) as DeviceData[];
   
   // Usar estadísticas calculadas o fallback
   const currentStats = stats.length > 0 ? stats : calculateStats();

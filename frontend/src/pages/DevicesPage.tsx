@@ -1,5 +1,5 @@
 import React from 'react';
-import { ContentSection, DeviceList, InteractiveMap, DeviceData } from '../components/layout';
+import { ContentSection, DeviceList, UnifiedMap, DeviceData } from '../components/layout';
 
 interface DevicesPageProps {
   devices: DeviceData[];
@@ -28,11 +28,12 @@ const DevicesPage: React.FC<DevicesPageProps> = ({
       {/* Mapa interactivo */}
       <div style={styles.deviceMapContainer}>
         <ContentSection title={selectedDevice ? `Ubicación: ${selectedDevice.name}` : "Selecciona un Dispositivo"}>
-          <InteractiveMap 
+          <UnifiedMap 
             devices={devices}
             selectedDevice={selectedDevice}
             onDeviceMarkerClick={onDeviceSelect}
             height="500px"
+            showHeatmapControls={false}
           />
         </ContentSection>
       </div>

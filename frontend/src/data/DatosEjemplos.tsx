@@ -100,7 +100,7 @@ export const deviceData: DeviceData[] = [
     lastUpdate: '2025-10-07 14:29',
     location: 'Auditorio Principal',
     coordinates: [-35.0025118, -71.2298467],
-    temperature: 19.7,
+    temperature: 39.7,
     humidity: 60,
     battery: 45,
     pressure: 1010.4,

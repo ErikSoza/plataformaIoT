@@ -4,11 +4,15 @@ import L from 'leaflet';
 import { DeviceData } from './ListaDispositivos';
 import HeatMapLayer from './MapaCalor';
 
-interface InteractiveMapWithHeatmapProps {
+interface UnifiedMapProps {
   devices: DeviceData[];
   selectedDevice?: DeviceData;
   onDeviceMarkerClick?: (device: DeviceData) => void;
   height?: string;
+  // Nuevas props para controlar funcionalidades
+  showHeatmapControls?: boolean;
+  defaultHeatmapVisible?: boolean;
+  defaultHeatmapMetric?: 'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation';
 }
 
 // Componente para manejar el cambio de centro del mapa
@@ -25,14 +29,17 @@ const MapController: React.FC<{ center: [number, number] }> = ({ center }) => {
   return null;
 };
 
-const InteractiveMapWithHeatmap: React.FC<InteractiveMapWithHeatmapProps> = ({ 
+const UnifiedMap: React.FC<UnifiedMapProps> = ({ 
   devices, 
   selectedDevice, 
   onDeviceMarkerClick,
-  height = '500px'
+  height = '500px',
+  showHeatmapControls = true,
+  defaultHeatmapVisible = false,
+  defaultHeatmapMetric = 'temperature'
 }) => {
-  const [showHeatmap, setShowHeatmap] = useState(false);
-  const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation'>('temperature');
+  const [showHeatmap, setShowHeatmap] = useState(defaultHeatmapVisible);
+  const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation'>(defaultHeatmapMetric);
 
   // Centro por defecto (Campus UTalca)
   const defaultCenter: [number, number] = [-35.0020711, -71.2288796];
@@ -130,102 +137,104 @@ const InteractiveMapWithHeatmap: React.FC<InteractiveMapWithHeatmapProps> = ({
 
   return (
     <div style={{ position: 'relative' }}>
-      {/* Controles del Mapa de Calor */}
-      <div style={{
-        position: 'absolute',
-        top: '10px',
-        right: '10px',
-        zIndex: 1000,
-        background: 'white',
-        padding: '15px',
-        borderRadius: '10px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-        minWidth: '200px'
-      }}>
-        <div style={{ marginBottom: '10px' }}>
-          <strong style={{ color: '#00BCD4' }}>🗺️ Mapa de Calor</strong>
-        </div>
-        
-        {/* Toggle del Mapa de Calor */}
-        <div style={{ marginBottom: '10px' }}>
-          <label style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px',
-            cursor: 'pointer'
-          }}>
-            <input
-              type="checkbox"
-              checked={showHeatmap}
-              onChange={(e) => setShowHeatmap(e.target.checked)}
-              style={{ transform: 'scale(1.2)' }}
-            />
-            <span>Mostrar Mapa de Calor</span>
-          </label>
-        </div>
-
-        {/* Selector de Métrica */}
-        {showHeatmap && (
-          <div>
-            <div style={{ marginBottom: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-              Métrica a visualizar:
-            </div>
-            {['temperature', 'humidity', 'battery', 'pressure', 'gas', 'radiation'].map((metric) => (
-              <label key={metric} style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px',
-                cursor: 'pointer',
-                marginBottom: '5px'
-              }}>
-                <input
-                  type="radio"
-                  name="heatmapMetric"
-                  value={metric}
-                  checked={heatmapMetric === metric}
-                  onChange={(e) => setHeatmapMetric(e.target.value as 'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation')}
-                />
-                <span>
-                  {getMetricIcon(metric)} {getMetricName(metric)}
-                </span>
-              </label>
-            ))}
+      {/* Controles del Mapa de Calor - Solo mostrar si está habilitado */}
+      {showHeatmapControls && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          zIndex: 1000,
+          background: 'white',
+          padding: '15px',
+          borderRadius: '10px',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+          minWidth: '200px'
+        }}>
+          <div style={{ marginBottom: '10px' }}>
+            <strong style={{ color: '#00BCD4' }}>🗺️ Mapa de Calor</strong>
           </div>
-        )}
-
-        {/* Leyenda del Mapa de Calor */}
-        {showHeatmap && (
-          <div style={{ 
-            marginTop: '10px', 
-            padding: '8px', 
-            background: '#f8f9fa', 
-            borderRadius: '5px',
-            fontSize: '0.8rem'
-          }}>
-            <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-              Leyenda - {getMetricName(heatmapMetric)}:
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
-              <div style={{ 
-                width: '15px', 
-                height: '15px', 
-                background: getLegendColors(heatmapMetric).low,
-                borderRadius: '3px'
-              }}></div>
-              <span>Bajo</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <div style={{ 
-                width: '15px', 
-                height: '15px', 
-                background: getLegendColors(heatmapMetric).high,
-                borderRadius: '3px'
-              }}></div>
-              <span>Alto</span>
-            </div>
+          
+          {/* Toggle del Mapa de Calor */}
+          <div style={{ marginBottom: '10px' }}>
+            <label style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              cursor: 'pointer'
+            }}>
+              <input
+                type="checkbox"
+                checked={showHeatmap}
+                onChange={(e) => setShowHeatmap(e.target.checked)}
+                style={{ transform: 'scale(1.2)' }}
+              />
+              <span>Mostrar Mapa de Calor</span>
+            </label>
           </div>
-        )}
-      </div>
+
+          {/* Selector de Métrica */}
+          {showHeatmap && (
+            <div>
+              <div style={{ marginBottom: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                Métrica a visualizar:
+              </div>
+              {['temperature', 'humidity', 'battery', 'pressure', 'gas', 'radiation'].map((metric) => (
+                <label key={metric} style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px',
+                  cursor: 'pointer',
+                  marginBottom: '5px'
+                }}>
+                  <input
+                    type="radio"
+                    name="heatmapMetric"
+                    value={metric}
+                    checked={heatmapMetric === metric}
+                    onChange={(e) => setHeatmapMetric(e.target.value as 'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation')}
+                  />
+                  <span>
+                    {getMetricIcon(metric)} {getMetricName(metric)}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
+
+          {/* Leyenda del Mapa de Calor */}
+          {showHeatmap && (
+            <div style={{ 
+              marginTop: '10px', 
+              padding: '8px', 
+              background: '#f8f9fa', 
+              borderRadius: '5px',
+              fontSize: '0.8rem'
+            }}>
+              <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
+                Leyenda - {getMetricName(heatmapMetric)}:
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
+                <div style={{ 
+                  width: '15px', 
+                  height: '15px', 
+                  background: getLegendColors(heatmapMetric).low,
+                  borderRadius: '3px'
+                }}></div>
+                <span>Bajo</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <div style={{ 
+                  width: '15px', 
+                  height: '15px', 
+                  background: getLegendColors(heatmapMetric).high,
+                  borderRadius: '3px'
+                }}></div>
+                <span>Alto</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Mapa */}
       <div style={{ height, width: '100%', borderRadius: '10px', overflow: 'hidden' }}>
@@ -242,12 +251,14 @@ const InteractiveMapWithHeatmap: React.FC<InteractiveMapWithHeatmapProps> = ({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {/* Capa del Mapa de Calor */}
-          <HeatMapLayer 
-            devices={devices} 
-            metric={heatmapMetric} 
-            visible={showHeatmap}
-          />
+          {/* Capa del Mapa de Calor - Solo mostrar si está habilitado */}
+          {showHeatmapControls && (
+            <HeatMapLayer 
+              devices={devices} 
+              metric={heatmapMetric} 
+              visible={showHeatmap}
+            />
+          )}
 
           {/* Marcadores para todos los dispositivos */}
           {devices.map((device) => {
@@ -361,4 +372,4 @@ const InteractiveMapWithHeatmap: React.FC<InteractiveMapWithHeatmapProps> = ({
   );
 };
 
-export default InteractiveMapWithHeatmap;
+export default UnifiedMap;
