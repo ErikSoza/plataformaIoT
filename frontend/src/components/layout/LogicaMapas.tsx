@@ -1,3 +1,7 @@
+/*
+El componente UnifiedMap utiliza la librería React Leaflet para renderizar un mapa interactivo. Permite a los usuarios ver la ubicación de varios dispositivos, seleccionar un dispositivo para ver más detalles y activar un mapa de calor que visualiza diferentes métricas ambientales (como temperatura, humedad, presión, calidad del aire y radiación solar) basándose en los datos recopilados por los dispositivos. El componente también incluye controles para personalizar la visualización del mapa de calor, como elegir la métrica a mostrar y activar o desactivar el mapa de calor.
+*/
+
 import React, { useState, useEffect } from 'react';
 import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';

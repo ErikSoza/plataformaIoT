@@ -26,7 +26,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
           onDeviceMarkerClick={onDeviceMarkerClick}
           height="500px"
           showHeatmapControls={true}
-          defaultHeatmapVisible={false}
+          defaultHeatmapVisible={true}
           defaultHeatmapMetric="temperature"
         />
       </ContentSection>
