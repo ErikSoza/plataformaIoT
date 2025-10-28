@@ -12,7 +12,7 @@ interface UnifiedMapProps {
   // Nuevas props para controlar funcionalidades
   showHeatmapControls?: boolean;
   defaultHeatmapVisible?: boolean;
-  defaultHeatmapMetric?: 'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation';
+  defaultHeatmapMetric?: 'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation';
 }
 
 // Componente para manejar el cambio de centro del mapa
@@ -39,7 +39,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   defaultHeatmapMetric = 'temperature'
 }) => {
   const [showHeatmap, setShowHeatmap] = useState(defaultHeatmapVisible);
-  const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation'>(defaultHeatmapMetric);
+  const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation'>(defaultHeatmapMetric);
 
   // Centro por defecto (Campus UTalca)
   const defaultCenter: [number, number] = [-35.0020711, -71.2288796];
@@ -96,7 +96,6 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
     switch (metric) {
       case 'temperature': return '🌡️';
       case 'humidity': return '💧';
-      case 'battery': return '🔋';
       case 'pressure': return '🌫️';
       case 'gas': return '🌪️';
       case 'radiation': return '☀️';
@@ -108,7 +107,6 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
     switch (metric) {
       case 'temperature': return 'Temperatura';
       case 'humidity': return 'Humedad';
-      case 'battery': return 'Batería';
       case 'pressure': return 'Presión';
       case 'gas': return 'Calidad del Aire';
       case 'radiation': return 'Radiación Solar';
@@ -121,9 +119,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
       case 'temperature':
         return { low: 'blue', high: 'red' };
       case 'humidity':
-        return { low: '#f7fbff', high: '#08519c' };
-      case 'battery':
-        return { low: '#d73027', high: '#5e4fa2' };
+        return { low: '#f7fbff', high: '#08519c' };    
       case 'pressure':
         return { low: '#800026', high: '#feb24c' };
       case 'gas':
@@ -178,7 +174,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
               <div style={{ marginBottom: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}>
                 Métrica a visualizar:
               </div>
-              {['temperature', 'humidity', 'battery', 'pressure', 'gas', 'radiation'].map((metric) => (
+              {['temperature', 'humidity', 'pressure', 'gas', 'radiation'].map((metric) => (
                 <label key={metric} style={{ 
                   display: 'flex', 
                   alignItems: 'center', 
@@ -191,7 +187,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                     name="heatmapMetric"
                     value={metric}
                     checked={heatmapMetric === metric}
-                    onChange={(e) => setHeatmapMetric(e.target.value as 'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation')}
+                    onChange={(e) => setHeatmapMetric(e.target.value as 'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation')}
                   />
                   <span>
                     {getMetricIcon(metric)} {getMetricName(metric)}

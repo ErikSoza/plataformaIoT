@@ -15,7 +15,7 @@ declare module 'leaflet' {
 
 interface HeatMapLayerProps {
   devices: DeviceData[];
-  metric: 'temperature' | 'humidity' | 'battery' | 'pressure' | 'gas' | 'radiation';
+  metric: 'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation';
   visible: boolean;
 }
 
@@ -47,10 +47,6 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
             case 'humidity':
               // Normalizar humedad (0% = 0, 100% = 1)
               intensity = Math.max(0, Math.min(1, device.humidity! / 100));
-              break;
-            case 'battery':
-              // Normalizar batería (0% = 0, 100% = 1)
-              intensity = Math.max(0, Math.min(1, device.battery! / 100));
               break;
             case 'pressure':
               // Normalizar presión (1000 hPa = 0, 1020 hPa = 1)
@@ -100,22 +96,6 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
                   '0.6': '#9ecae1',
                   '0.8': '#6baed6',
                   '1.0': '#08519c'
-                }
-              };
-            case 'battery':
-              return {
-                ...baseOptions,
-                gradient: {
-                  '0.0': '#d73027',
-                  '0.1': '#f46d43',
-                  '0.2': '#fdae61',
-                  '0.3': '#fee08b',
-                  '0.4': '#ffffbf',
-                  '0.5': '#e6f598',
-                  '0.6': '#abdda4',
-                  '0.7': '#66c2a5',
-                  '0.8': '#3288bd',
-                  '1.0': '#5e4fa2'
                 }
               };
             case 'pressure':
