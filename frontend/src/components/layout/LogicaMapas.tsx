@@ -168,6 +168,13 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
             </label>
           </div>
 
+          {/* Fecha del mapa de calor*/}
+          {showHeatmap && devices.length > 0 && (
+            <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#6c757d' }}>
+              <strong>Última actualización del mapa de calor:</strong><br />
+              {formatLastUpdate(devices[0].lastUpdate)}
+            </div>
+          )}
           {/* Selector de Métrica */}
           {showHeatmap && (
             <div>
@@ -255,7 +262,6 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
               visible={showHeatmap}
             />
           )}
-
           {/* Marcadores para todos los dispositivos */}
           {devices.map((device) => {
             const isSelected = selectedDevice?.id === device.id;

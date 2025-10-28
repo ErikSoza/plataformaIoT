@@ -6,7 +6,7 @@ export { default as ContentSection } from './ContentSection';
 export { default as StatsGrid, StatCard } from './StatsGrid';
 export { default as DeviceList } from './ListaDispositivos';
 export { default as HeatMapLayer } from './MapaCalor';
-export { default as UnifiedMap } from './UnifiedMap';
+export { default as UnifiedMap } from './LogicaMapas';
 
 // Exportar tipos
 export type { TabItem } from './TabNavigation';
