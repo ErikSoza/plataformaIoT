@@ -9,7 +9,7 @@ import { DeviceData } from './ListaDispositivos';
 import HeatMapLayer from './MapaCalor';
 
 // Configuración de métricas disponibles
-const METRIC_CONFIG = {
+const MetricaVariables = {
   temperature: {
     id: 'temperature',
     name: 'Temperatura',
@@ -71,7 +71,7 @@ const MetricSelector: React.FC<MetricSelectorProps> = ({ selectedMetric, onMetri
     setIsOpen(false);
   };
 
-  const selectedConfig = METRIC_CONFIG[selectedMetric];
+  const selectedConfig = MetricaVariables[selectedMetric];
 
   return (
     <div style={{ position: 'relative', marginBottom: '10px' }}>
@@ -79,14 +79,14 @@ const MetricSelector: React.FC<MetricSelectorProps> = ({ selectedMetric, onMetri
         Parámetro a visualizar:
       </div>
       
-      {/* Botón selector principal */}
-      <div
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
+      {/* Botón selector principal */} 
+      <div 
+        onClick={() => setIsOpen(!isOpen)} 
+        style={{ 
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '12px 16px',
+          padding: '10px 10px',
           background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
           border: `2px solid ${selectedConfig.color}`,
           borderRadius: '12px',
@@ -111,7 +111,7 @@ const MetricSelector: React.FC<MetricSelectorProps> = ({ selectedMetric, onMetri
         />
         
         {/* Contenido del selector */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: 1 }}>
           <span style={{ fontSize: '1.5em' }}>{selectedConfig.icon}</span>
           <div>
             <div style={{ fontWeight: '600', color: '#2c3e50', fontSize: '0.95em' }}>
@@ -122,7 +122,6 @@ const MetricSelector: React.FC<MetricSelectorProps> = ({ selectedMetric, onMetri
             </div>
           </div>
         </div>
-        
         {/* Flecha indicadora */}
         <div style={{
           transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
@@ -148,51 +147,52 @@ const MetricSelector: React.FC<MetricSelectorProps> = ({ selectedMetric, onMetri
             borderRadius: '12px',
             boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
             zIndex: 1001,
-            marginTop: '4px',
-            overflow: 'hidden',
+            marginTop: '4px', 
+            maxHeight: '300px',
+            overflowY: 'auto',
             animation: 'slideDown 0.3s ease-out'
           }}
         >
-          {Object.values(METRIC_CONFIG).map((config) => (
+          {Object.values(MetricaVariables).map((config) => (
             <div
               key={config.id}
               onClick={() => handleMetricSelect(config.id)}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '14px 16px',
-                cursor: 'pointer',
-                borderBottom: '1px solid #f0f0f0',
-                transition: 'all 0.2s ease',
-                background: selectedMetric === config.id 
-                  ? `linear-gradient(135deg, ${config.color}15, ${config.color}25)` 
-                  : 'white',
-                position: 'relative'
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '14px 16px',
+          cursor: 'pointer',
+          borderBottom: '1px solid #f0f0f0',
+          transition: 'all 0.2s ease',
+          background: selectedMetric === config.id 
+            ? `linear-gradient(135deg, ${config.color}15, ${config.color}25)` 
+            : 'white',
+          position: 'relative'
               }}
               onMouseEnter={(e) => {
-                if (selectedMetric !== config.id) {
-                  e.currentTarget.style.background = '#f8f9fa';
-                }
+          if (selectedMetric !== config.id) {
+            e.currentTarget.style.background = '#f8f9fa';
+          }
               }}
               onMouseLeave={(e) => {
-                if (selectedMetric !== config.id) {
-                  e.currentTarget.style.background = 'white';
-                }
+          if (selectedMetric !== config.id) {
+            e.currentTarget.style.background = 'white';
+          }
               }}
             >
               {/* Indicador de selección */}
               {selectedMetric === config.id && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: '3px',
-                    background: config.color,
-                  }}
-                />
+          <div
+            style={{
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: 0,
+              width: '3px',
+              background: config.color,
+            }}
+          />
               )}
               
               {/* Icono */}
@@ -200,47 +200,47 @@ const MetricSelector: React.FC<MetricSelectorProps> = ({ selectedMetric, onMetri
               
               {/* Información de la métrica */}
               <div style={{ flex: 1 }}>
-                <div style={{ 
-                  fontWeight: selectedMetric === config.id ? '600' : '500', 
-                  color: selectedMetric === config.id ? config.color : '#2c3e50',
-                  fontSize: '0.9em'
-                }}>
-                  {config.name}
-                </div>
-                <div style={{ 
-                  fontSize: '0.75em', 
-                  color: '#7f8c8d',
-                  marginTop: '2px'
-                }}>
-                  {config.description} • {config.unit}
-                </div>
+          <div style={{ 
+            fontWeight: selectedMetric === config.id ? '600' : '500', 
+            color: selectedMetric === config.id ? config.color : '#2c3e50',
+            fontSize: '0.9em'
+          }}>
+            {config.name}
+          </div>
+          <div style={{ 
+            fontSize: '0.75em', 
+            color: '#7f8c8d',
+            marginTop: '2px'
+          }}>
+            {config.description} • {config.unit}
+          </div>
               </div>
               
               {/* Gradient preview */}
               <div style={{ display: 'flex', gap: '2px' }}>
-                {config.gradient.map((color, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      width: '8px',
-                      height: '20px',
-                      background: color,
-                      borderRadius: index === 0 ? '4px 0 0 4px' : 
-                                  index === config.gradient.length - 1 ? '0 4px 4px 0' : '0'
-                    }}
-                  />
-                ))}
+          {config.gradient.map((color, index) => (
+            <div
+              key={index}
+              style={{
+                width: '8px',
+                height: '20px',
+                background: color,
+                borderRadius: index === 0 ? '4px 0 0 4px' : 
+                index === config.gradient.length - 1 ? '0 4px 4px 0' : '0'
+              }}
+            />
+          ))}
               </div>
               
               {/* Check icon para seleccionado */}
               {selectedMetric === config.id && (
-                <div style={{ 
-                  color: config.color, 
-                  fontWeight: 'bold',
-                  marginLeft: '8px'
-                }}>
-                  ✓
-                </div>
+          <div style={{ 
+            color: config.color, 
+            fontWeight: 'bold',
+            marginLeft: '8px'
+          }}>
+            ✓
+          </div>
               )}
             </div>
           ))}
@@ -355,7 +355,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   };
   // Obtener configuración de la métrica seleccionada
   const getMetricConfig = (metric: string) => {
-    return METRIC_CONFIG[metric as keyof typeof METRIC_CONFIG] || METRIC_CONFIG.temperature;
+    return MetricaVariables[metric as keyof typeof MetricaVariables] || MetricaVariables.temperature;
   };
   
   // Obtener colores para la leyenda del mapa de calor
@@ -406,12 +406,10 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
           {/* Leyenda del Mapa de Calor Mejorada */}
           {showHeatmap && (
             <div style={{ 
-              marginTop: '10px', 
-              padding: '12px', 
-              background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', 
-              borderRadius: '8px',
+              marginTop: '5px' ,  
+              padding: '5px',
+              background: 'white', 
               fontSize: '0.8rem',
-              border: `1px solid ${getMetricConfig(heatmapMetric).color}20`
             }}>
               <div style={{ 
                 fontWeight: 'bold', 
@@ -459,15 +457,6 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                   <span>Bajo</span>
                   <span>Alto</span>
                 </div>
-              </div>
-              
-              {/* Información adicional */}
-              <div style={{ 
-                fontSize: '0.75em', 
-                color: '#6c757d',
-                fontStyle: 'italic'
-              }}>
-                Unidad: {getMetricConfig(heatmapMetric).unit}
               </div>
             </div>
           )}
