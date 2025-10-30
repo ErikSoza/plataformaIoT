@@ -150,7 +150,8 @@ const MetricSelector: React.FC<MetricSelectorProps> = ({ selectedMetric, onMetri
             marginTop: '4px', 
             maxHeight: '300px',
             overflowY: 'auto',
-            animation: 'slideDown 0.3s ease-out'
+            animation: 'slideDown 0.3s ease-out',
+            overflowX: 'hidden',
           }}
         >
           {Object.values(MetricaVariables).map((config) => (
@@ -207,6 +208,7 @@ const MetricSelector: React.FC<MetricSelectorProps> = ({ selectedMetric, onMetri
           }}>
             {config.name}
           </div>
+          {/* Descripción y unidad */}
           <div style={{ 
             fontSize: '0.75em', 
             color: '#7f8c8d',
@@ -299,7 +301,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   defaultHeatmapVisible = false,
   defaultHeatmapMetric = 'temperature'
 }) => {
-  const [showHeatmap, setShowHeatmap] = useState(defaultHeatmapVisible);
+  const [showHeatmap] = useState(defaultHeatmapVisible);
   const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation'>(defaultHeatmapMetric);
 
   // Centro por defecto (Campus UTalca)
@@ -432,6 +434,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                   border: '1px solid #dee2e6',
                   position: 'relative'
                 }}>
+
                   {/* Marcadores en el gradiente */}
                   <div style={{
                     position: 'absolute',
@@ -454,8 +457,20 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                   fontSize: '0.75em',
                   color: '#6c757d'
                 }}>
-                  <span>Bajo</span>
-                  <span>Alto</span>
+                  <span>
+                    {heatmapMetric === 'temperature' && '0°C'}
+                    {heatmapMetric === 'humidity' && '0%'}
+                    {heatmapMetric === 'pressure' && '1000 hPa'}
+                    {heatmapMetric === 'gas' && '0 ppm'}
+                    {heatmapMetric === 'radiation' && '0 W/m²'}
+                  </span>
+                  <span>
+                    {heatmapMetric === 'temperature' && '40°C'}
+                    {heatmapMetric === 'humidity' && '100%'}
+                    {heatmapMetric === 'pressure' && '1020 hPa'}
+                    {heatmapMetric === 'gas' && '0.1 ppm'}
+                    {heatmapMetric === 'radiation' && '1000 W/m²'}
+                  </span>
                 </div>
               </div>
             </div>
