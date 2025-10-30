@@ -8,6 +8,262 @@ import L from 'leaflet';
 import { DeviceData } from './ListaDispositivos';
 import HeatMapLayer from './MapaCalor';
 
+// Configuración de métricas disponibles
+const METRIC_CONFIG = {
+  temperature: {
+    id: 'temperature',
+    name: 'Temperatura',
+    icon: '🌡️',
+    unit: '°C',
+    description: 'Temperatura ambiente',
+    color: '#FF6B35',
+    gradient: ['#0066cc', '#33cc33', '#ffff00', '#ff6600', '#cc0000']
+  },
+  humidity: {
+    id: 'humidity',
+    name: 'Humedad',
+    icon: '💧',
+    unit: '%',
+    description: 'Humedad relativa del aire',
+    color: '#00BCD4',
+    gradient: ['#f7fbff', '#deebf7', '#9ecae1', '#6baed6', '#08519c']
+  },
+  pressure: {
+    id: 'pressure',
+    name: 'Presión',
+    icon: '🌫️',
+    unit: 'hPa',
+    description: 'Presión atmosférica',
+    color: '#9C27B0',
+    gradient: ['#800026', '#bd0026', '#e31a1c', '#fc4e2a', '#feb24c']
+  },
+  gas: {
+    id: 'gas',
+    name: 'Calidad del Aire',
+    icon: '🌪️',
+    unit: 'ppm',
+    description: 'Calidad del aire y gases',
+    color: '#4CAF50',
+    gradient: ['#00ff00', '#80ff00', '#ffff00', '#ff8000', '#ff0000']
+  },
+  radiation: {
+    id: 'radiation',
+    name: 'Radiación Solar',
+    icon: '☀️',
+    unit: 'W/m²',
+    description: 'Radiación solar',
+    color: '#FF9800',
+    gradient: ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#f03b20']
+  }
+} as const;
+
+// Componente de selector dinámico de métricas
+interface MetricSelectorProps {
+  selectedMetric: 'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation';
+  onMetricChange: (metric: 'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation') => void;
+}
+
+const MetricSelector: React.FC<MetricSelectorProps> = ({ selectedMetric, onMetricChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleMetricSelect = (metricId: typeof selectedMetric) => {
+    onMetricChange(metricId);
+    setIsOpen(false);
+  };
+
+  const selectedConfig = METRIC_CONFIG[selectedMetric];
+
+  return (
+    <div style={{ position: 'relative', marginBottom: '10px' }}>
+      <div style={{ marginBottom: '8px', fontSize: '0.9rem', fontWeight: 'bold', color: '#333' }}>
+        Parámetro a visualizar:
+      </div>
+      
+      {/* Botón selector principal */}
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '12px 16px',
+          background: 'linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%)',
+          border: `2px solid ${selectedConfig.color}`,
+          borderRadius: '12px',
+          cursor: 'pointer',
+          minHeight: '50px',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          transition: 'all 0.3s ease',
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Indicador de color de fondo */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: '4px',
+            background: selectedConfig.color,
+          }}
+        />
+        
+        {/* Contenido del selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
+          <span style={{ fontSize: '1.5em' }}>{selectedConfig.icon}</span>
+          <div>
+            <div style={{ fontWeight: '600', color: '#2c3e50', fontSize: '0.95em' }}>
+              {selectedConfig.name}
+            </div>
+            <div style={{ fontSize: '0.75em', color: '#7f8c8d', marginTop: '2px' }}>
+              {selectedConfig.description}
+            </div>
+          </div>
+        </div>
+        
+        {/* Flecha indicadora */}
+        <div style={{
+          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform 0.3s ease',
+          color: selectedConfig.color,
+          fontWeight: 'bold',
+          fontSize: '1.2em'
+        }}>
+          ▼
+        </div>
+      </div>
+
+      {/* Dropdown de opciones */}
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            right: 0,
+            background: 'white',
+            border: '1px solid #e0e0e0',
+            borderRadius: '12px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            zIndex: 1001,
+            marginTop: '4px',
+            overflow: 'hidden',
+            animation: 'slideDown 0.3s ease-out'
+          }}
+        >
+          {Object.values(METRIC_CONFIG).map((config) => (
+            <div
+              key={config.id}
+              onClick={() => handleMetricSelect(config.id)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '14px 16px',
+                cursor: 'pointer',
+                borderBottom: '1px solid #f0f0f0',
+                transition: 'all 0.2s ease',
+                background: selectedMetric === config.id 
+                  ? `linear-gradient(135deg, ${config.color}15, ${config.color}25)` 
+                  : 'white',
+                position: 'relative'
+              }}
+              onMouseEnter={(e) => {
+                if (selectedMetric !== config.id) {
+                  e.currentTarget.style.background = '#f8f9fa';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (selectedMetric !== config.id) {
+                  e.currentTarget.style.background = 'white';
+                }
+              }}
+            >
+              {/* Indicador de selección */}
+              {selectedMetric === config.id && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: '3px',
+                    background: config.color,
+                  }}
+                />
+              )}
+              
+              {/* Icono */}
+              <span style={{ fontSize: '1.4em', minWidth: '24px' }}>{config.icon}</span>
+              
+              {/* Información de la métrica */}
+              <div style={{ flex: 1 }}>
+                <div style={{ 
+                  fontWeight: selectedMetric === config.id ? '600' : '500', 
+                  color: selectedMetric === config.id ? config.color : '#2c3e50',
+                  fontSize: '0.9em'
+                }}>
+                  {config.name}
+                </div>
+                <div style={{ 
+                  fontSize: '0.75em', 
+                  color: '#7f8c8d',
+                  marginTop: '2px'
+                }}>
+                  {config.description} • {config.unit}
+                </div>
+              </div>
+              
+              {/* Gradient preview */}
+              <div style={{ display: 'flex', gap: '2px' }}>
+                {config.gradient.map((color, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      width: '8px',
+                      height: '20px',
+                      background: color,
+                      borderRadius: index === 0 ? '4px 0 0 4px' : 
+                                  index === config.gradient.length - 1 ? '0 4px 4px 0' : '0'
+                    }}
+                  />
+                ))}
+              </div>
+              
+              {/* Check icon para seleccionado */}
+              {selectedMetric === config.id && (
+                <div style={{ 
+                  color: config.color, 
+                  fontWeight: 'bold',
+                  marginLeft: '8px'
+                }}>
+                  ✓
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Estilos CSS para animación */}
+      <style>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 interface UnifiedMapProps {
   devices: DeviceData[];
   selectedDevice?: DeviceData;
@@ -33,11 +289,12 @@ const MapController: React.FC<{ center: [number, number] }> = ({ center }) => {
   return null;
 };
 
+// componente que renderiza el mapa
 const UnifiedMap: React.FC<UnifiedMapProps> = ({ 
   devices, 
   selectedDevice, 
   onDeviceMarkerClick,
-  height = '500px',
+  height = '500px',  
   showHeatmapControls = true,
   defaultHeatmapVisible = false,
   defaultHeatmapMetric = 'temperature'
@@ -61,6 +318,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
     }
   };
 
+  // Crear un ícono personalizado para los marcadores
   const createCustomIcon = (color: string, isSelected: boolean) => {
     return L.divIcon({
       className: 'custom-div-icon',
@@ -86,7 +344,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
       iconAnchor: [isSelected ? 13 : 10.5, isSelected ? 13 : 10.5]
     });
   };
-
+  // Formatear la fecha de la última actualización
   const formatLastUpdate = (dateString: string) => {
     try {
       const date = new Date(dateString);
@@ -95,46 +353,22 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
       return dateString;
     }
   };
-
-  const getMetricIcon = (metric: string) => {
-    switch (metric) {
-      case 'temperature': return '🌡️';
-      case 'humidity': return '💧';
-      case 'pressure': return '🌫️';
-      case 'gas': return '🌪️';
-      case 'radiation': return '☀️';
-      default: return '📊';
-    }
+  // Obtener configuración de la métrica seleccionada
+  const getMetricConfig = (metric: string) => {
+    return METRIC_CONFIG[metric as keyof typeof METRIC_CONFIG] || METRIC_CONFIG.temperature;
   };
-
-  const getMetricName = (metric: string) => {
-    switch (metric) {
-      case 'temperature': return 'Temperatura';
-      case 'humidity': return 'Humedad';
-      case 'pressure': return 'Presión';
-      case 'gas': return 'Calidad del Aire';
-      case 'radiation': return 'Radiación Solar';
-      default: return 'Métrica';
-    }
-  };
-
+  
+  // Obtener colores para la leyenda del mapa de calor
   const getLegendColors = (metric: string) => {
-    switch (metric) {
-      case 'temperature':
-        return { low: 'blue', high: 'red' };
-      case 'humidity':
-        return { low: '#f7fbff', high: '#08519c' };    
-      case 'pressure':
-        return { low: '#800026', high: '#feb24c' };
-      case 'gas':
-        return { low: '#00ff00', high: '#ff0000' };
-      case 'radiation':
-        return { low: '#ffffcc', high: '#f03b20' };
-      default:
-        return { low: '#cccccc', high: '#333333' };
-    }
+    const config = getMetricConfig(metric);
+    const gradient = config.gradient;
+    return { 
+      low: gradient[0], 
+      high: gradient[gradient.length - 1],
+      gradient: gradient
+    };
   };
-
+  
   return (
     <div style={{ position: 'relative' }}>
       {/* Controles del Mapa de Calor - Solo mostrar si está habilitado */}
@@ -145,31 +379,13 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
           right: '10px',
           zIndex: 1000,
           background: 'white',
-          padding: '15px',
+          padding: '10px',
           borderRadius: '10px',
           boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
           minWidth: '200px'
         }}>
           <div style={{ marginBottom: '10px' }}>
             <strong style={{ color: '#00BCD4' }}>🗺️ Mapa de Calor</strong>
-          </div>
-          
-          {/* Toggle del Mapa de Calor */}
-          <div style={{ marginBottom: '10px' }}>
-            <label style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px',
-              cursor: 'pointer'
-            }}>
-              <input
-                type="checkbox"
-                checked={showHeatmap}
-                onChange={(e) => setShowHeatmap(e.target.checked)}
-                style={{ transform: 'scale(1.2)' }}
-              />
-              <span>Mostrar Mapa de Calor</span>
-            </label>
           </div>
 
           {/* Fecha del mapa de calor*/}
@@ -179,64 +395,79 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
               {formatLastUpdate(devices[0].lastUpdate)}
             </div>
           )}
-          {/* Selector de Métrica */}
+          {/* Selector de Métrica Dinámico */}
           {showHeatmap && (
-            <div>
-              <div style={{ marginBottom: '8px', fontSize: '0.9rem', fontWeight: 'bold' }}>
-                Métrica a visualizar:
-              </div>
-              {['temperature', 'humidity', 'pressure', 'gas', 'radiation'].map((metric) => (
-                <label key={metric} style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '8px',
-                  cursor: 'pointer',
-                  marginBottom: '5px'
-                }}>
-                  <input
-                    type="radio"
-                    name="heatmapMetric"
-                    value={metric}
-                    checked={heatmapMetric === metric}
-                    onChange={(e) => setHeatmapMetric(e.target.value as 'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation')}
-                  />
-                  <span>
-                    {getMetricIcon(metric)} {getMetricName(metric)}
-                  </span>
-                </label>
-              ))}
-            </div>
+            <MetricSelector
+              selectedMetric={heatmapMetric}
+              onMetricChange={setHeatmapMetric}
+            />
           )}
 
-          {/* Leyenda del Mapa de Calor */}
+          {/* Leyenda del Mapa de Calor Mejorada */}
           {showHeatmap && (
             <div style={{ 
               marginTop: '10px', 
-              padding: '8px', 
-              background: '#f8f9fa', 
-              borderRadius: '5px',
-              fontSize: '0.8rem'
+              padding: '12px', 
+              background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)', 
+              borderRadius: '8px',
+              fontSize: '0.8rem',
+              border: `1px solid ${getMetricConfig(heatmapMetric).color}20`
             }}>
-              <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                Leyenda - {getMetricName(heatmapMetric)}:
+              <div style={{ 
+                fontWeight: 'bold', 
+                marginBottom: '8px',
+                color: '#2c3e50',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span>{getMetricConfig(heatmapMetric).icon}</span>
+                Leyenda - {getMetricConfig(heatmapMetric).name}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '3px' }}>
+              
+              {/* Gradient bar */}
+              <div style={{ marginBottom: '8px' }}>
                 <div style={{ 
-                  width: '15px', 
-                  height: '15px', 
-                  background: getLegendColors(heatmapMetric).low,
-                  borderRadius: '3px'
-                }}></div>
-                <span>Bajo</span>
+                  height: '12px',
+                  borderRadius: '6px',
+                  background: `linear-gradient(to right, ${getLegendColors(heatmapMetric).gradient.join(', ')})`,
+                  border: '1px solid #dee2e6',
+                  position: 'relative'
+                }}>
+                  {/* Marcadores en el gradiente */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '-4px',
+                    left: '0',
+                    right: '0',
+                    display: 'flex',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ width: '2px', height: '20px', background: '#6c757d' }} />
+                    <div style={{ width: '2px', height: '20px', background: '#6c757d' }} />
+                  </div>
+                </div>
+                
+                {/* Labels del gradiente */}
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between',
+                  marginTop: '6px',
+                  fontSize: '0.75em',
+                  color: '#6c757d'
+                }}>
+                  <span>Bajo</span>
+                  <span>Alto</span>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <div style={{ 
-                  width: '15px', 
-                  height: '15px', 
-                  background: getLegendColors(heatmapMetric).high,
-                  borderRadius: '3px'
-                }}></div>
-                <span>Alto</span>
+              
+              {/* Información adicional */}
+              <div style={{ 
+                fontSize: '0.75em', 
+                color: '#6c757d',
+                fontStyle: 'italic'
+              }}>
+                Unidad: {getMetricConfig(heatmapMetric).unit}
               </div>
             </div>
           )}
