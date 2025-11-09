@@ -482,7 +482,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
       <div style={{ height, width: '100%', borderRadius: '10px', overflow: 'hidden' }}>
         <LeafletMapContainer
           center={mapCenter}
-          zoom={15}
+          zoom={20}
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={true}
         >
