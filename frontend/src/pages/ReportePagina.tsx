@@ -10,17 +10,14 @@ const ReportsPage: React.FC = () => {
   const [filteredReadings, setFilteredReadings] = useState<Lectura[]>([]);
   const [filters, setFilters] = useState({
     estacion: '',
+    fechaInicio: '',
+    fechaFin: '',
   });
 
   // Cargar datos de lecturas al montar el componente
   useEffect(() => {
     loadReadings();
   }, []);
-
-  // Filtrar lecturas cuando cambian los filtros
-  useEffect(() => {
-    applyFilters();
-  }, [readings, filters]);
 
   const loadReadings = async () => {
     try {
@@ -46,11 +43,43 @@ const ReportsPage: React.FC = () => {
       );
     }
 
+    // Filtro por fecha de inicio
+    if (filters.fechaInicio) {
+      const fechaInicio = new Date(filters.fechaInicio);
+      filtered = filtered.filter(reading => {
+        const fechaReading = new Date(reading.timestamp);
+        return fechaReading >= fechaInicio;
+      });
+    }
+
+    // Filtro por fecha de fin
+    if (filters.fechaFin) {
+      const fechaFin = new Date(filters.fechaFin);
+      fechaFin.setHours(23, 59, 59, 999); //23:59:59 para incluir todo el día
+      filtered = filtered.filter(reading => {
+        const fechaReading = new Date(reading.timestamp);
+        return fechaReading <= fechaFin;
+      });
+    }
+
     setFilteredReadings(filtered);
-  }, [readings, filters.estacion]);
+  }, [readings, filters.estacion, filters.fechaInicio, filters.fechaFin]);
+
+  // Filtrar lecturas cuando cambian los filtros
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   const handleFilterChange = (field: string, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      estacion: '',
+      fechaInicio: '',
+      fechaFin: '',
+    });
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -64,6 +93,31 @@ const ReportsPage: React.FC = () => {
     });
   };
 
+  const getDateRange = () => {
+    if (readings.length === 0) return null;
+    
+    const dates = readings.map(r => new Date(r.timestamp));
+    const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
+    const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+    
+    return {
+      min: minDate.toISOString().split('T')[0],
+      max: maxDate.toISOString().split('T')[0]
+    };
+  };
+
+  const setQuickDateFilter = (days: number) => {
+    const today = new Date();
+    const pastDate = new Date();
+    pastDate.setDate(today.getDate() - days);
+    
+    setFilters(prev => ({
+      ...prev,
+      fechaInicio: pastDate.toISOString().split('T')[0],
+      fechaFin: today.toISOString().split('T')[0]
+    }));
+  };
+
   const getUniqueStations = () => {
     const stations = readings
       .map(r => r.estacion_nombre)
@@ -74,7 +128,7 @@ const ReportsPage: React.FC = () => {
   };
 
   return (
-    <ContentSection title="📊 Reportes y Análisis de Datos">
+    <ContentSection title="📊 Reportes y Análisis de Datos Resumido">
       <div style={styles.container}>
         {/* Estado de carga y errores */}
         {loading && (
@@ -98,15 +152,6 @@ const ReportsPage: React.FC = () => {
             <div style={styles.statCard}>
               <h4>📊 Total de Lecturas</h4>
               <p style={styles.statValue}>{filteredReadings.length}</p>
-            </div>
-            <div style={styles.statCard}>
-              <h4>⏱️ Última Lectura</h4>
-              <p style={styles.statValue}>
-                {filteredReadings.length > 0
-                  ? formatTimestamp(filteredReadings[filteredReadings.length - 1].timestamp)
-                  : 'N/A'
-                }
-              </p>
             </div>
             <div style={styles.statCard}>
               <h4>🏢 Estaciones Activas</h4>
@@ -171,20 +216,120 @@ const ReportsPage: React.FC = () => {
         {/* Tabla de datos */}
         {!loading && !error && (
           <div style={styles.tableSection}>
-            <h4>🔍 Filtros de Búsqueda detallada: ({filteredReadings.length} registros)</h4>
-          <div style={styles.filtersGrid}>
-            <div style={styles.filterGroup}>
-              <label>Estación:</label>
-              <select
-                value={filters.estacion}
-                onChange={(e) => handleFilterChange('estacion', e.target.value)}
-                style={styles.filterInput}
+            <h4>🔍 Búsqueda detallada: ({filteredReadings.length} registros)
+              {(filters.estacion || filters.fechaInicio || filters.fechaFin) && (
+                <span style={styles.activeFiltersInfo}>
+                  {filters.estacion && ` | Estación: ${filters.estacion}`}
+                  {filters.fechaInicio && ` | Desde: ${filters.fechaInicio}`}
+                  {filters.fechaFin && ` | Hasta: ${filters.fechaFin}`}
+                </span>
+              )}
+            </h4>
+            
+            {/* Filtros rápidos de fecha */}
+            <div style={styles.quickFilters}>
+              <span style={styles.quickFiltersLabel}>📅 Filtros rápidos:</span>
+              <button 
+                onClick={() => setQuickDateFilter(1)} 
+                style={styles.quickFilterButton}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#00ACC1'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#00BCD4'}
               >
-                <option value="">Todas las estaciones</option>
-                {getUniqueStations().map(station => (
-                  <option key={station} value={station}>{station}</option>
-                ))}
-              </select>
+                Último día
+              </button>
+              <button 
+                onClick={() => setQuickDateFilter(7)} 
+                style={styles.quickFilterButton}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#00ACC1'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#00BCD4'}
+              >
+                Última semana
+              </button>
+              <button 
+                onClick={() => setQuickDateFilter(30)} 
+                style={styles.quickFilterButton}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#00ACC1'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#00BCD4'}
+              >
+                Último mes
+              </button>
+              <button 
+                onClick={() => setQuickDateFilter(90)} 
+                style={styles.quickFilterButton}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#00ACC1'}
+                onMouseLeave={(e) => e.currentTarget.style.background = '#00BCD4'}
+              >
+                Últimos 3 meses
+              </button>
+            </div>
+            
+            <div style={styles.filtersGrid}>
+              <div style={styles.filterGroup}>
+                <label>Estación:</label>
+                <select
+                  value={filters.estacion}
+                  onChange={(e) => handleFilterChange('estacion', e.target.value)}
+                  style={styles.filterInput}
+                >
+                  <option value="">Todas las estaciones</option>
+                  {getUniqueStations().map(station => (
+                    <option key={station} value={station}>{station}</option>
+                  ))}
+                </select>
+                {getUniqueStations().length > 0 && (
+                  <small style={styles.dateHint}>
+                    {getUniqueStations().length} estaciones disponibles
+                  </small>
+                )}
+              </div>
+            
+              <div style={styles.filterGroup}>
+                <label>📅 Fecha desde:</label>
+                <input
+                  type="date"
+                  value={filters.fechaInicio}
+                  onChange={(e) => handleFilterChange('fechaInicio', e.target.value)}
+                  style={styles.filterInput}
+                  min={getDateRange()?.min}
+                  max={getDateRange()?.max}
+                />
+                {getDateRange() && (
+                  <small style={styles.dateHint}>
+                    Disponible desde: {getDateRange()?.min}
+                  </small>
+                )}
+              </div>
+              
+              <div style={styles.filterGroup}>
+                <label>📅 Fecha hasta:</label>
+                <input
+                  type="date"
+                  value={filters.fechaFin}
+                  onChange={(e) => handleFilterChange('fechaFin', e.target.value)}
+                  style={styles.filterInput}
+                  min={getDateRange()?.min}
+                  max={getDateRange()?.max}
+                />
+                {getDateRange() && (
+                  <small style={styles.dateHint}>
+                    Disponible hasta: {getDateRange()?.max}
+                  </small>
+                )}
+              </div>
+            
+            <div style={styles.filterGroup}>
+              <button
+                onClick={clearFilters}
+                style={styles.clearButton}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#dc3545';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#6c757d';
+                }}
+              >
+                🗑️ Limpiar filtros
+              </button>
             </div>
           </div>
             <div style={styles.tableContainer}>
@@ -262,8 +407,8 @@ const styles = {
 
   filtersGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-    gap: '15px',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '20px',
     alignItems: 'end',
   },
 
@@ -278,7 +423,62 @@ const styles = {
     borderRadius: '6px',
     fontSize: '14px',
     marginTop: '5px',
-    width: '25%',
+    width: '100%',
+  },
+
+  clearButton: {
+    padding: '10px 16px',
+    backgroundColor: '#6c757d',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    transition: 'all 0.3s ease',
+    width: '100%',
+    height: 'fit-content',
+  },
+
+  quickFilters: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginBottom: '20px',
+    padding: '15px',
+    background: '#f8f9fa',
+    borderRadius: '8px',
+    border: '1px solid #e9ecef',
+    flexWrap: 'wrap' as const,
+  },
+
+  quickFiltersLabel: {
+    fontWeight: 'bold' as const,
+    color: '#495057',
+    marginRight: '10px',
+  },
+
+  quickFilterButton: {
+    padding: '6px 12px',
+    backgroundColor: '#00BCD4',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    transition: 'all 0.3s ease',
+  },
+
+  dateHint: {
+    color: '#6c757d',
+    fontSize: '11px',
+    marginTop: '4px',
+    display: 'block',
+  },
+
+  activeFiltersInfo: {
+    fontSize: '14px',
+    color: '#28a745',
+    fontWeight: 'normal' as const,
   },
 
   filterActions: {
