@@ -76,8 +76,6 @@ const ReportsPage: React.FC = () => {
   return (
     <ContentSection title="📊 Reportes y Análisis de Datos">
       <div style={styles.container}>
-        
-
         {/* Estado de carga y errores */}
         {loading && (
           <div style={styles.loadingMessage}>
@@ -102,6 +100,15 @@ const ReportsPage: React.FC = () => {
               <p style={styles.statValue}>{filteredReadings.length}</p>
             </div>
             <div style={styles.statCard}>
+              <h4>⏱️ Última Lectura</h4>
+              <p style={styles.statValue}>
+                {filteredReadings.length > 0
+                  ? formatTimestamp(filteredReadings[filteredReadings.length - 1].timestamp)
+                  : 'N/A'
+                }
+              </p>
+            </div>
+            <div style={styles.statCard}>
               <h4>🏢 Estaciones Activas</h4>
               <p style={styles.statValue}>{getUniqueStations().length}</p>
             </div>
@@ -123,6 +130,42 @@ const ReportsPage: React.FC = () => {
                 }%
               </p>
             </div>
+              <div style={styles.statCard}>
+                <h4>📈 Presión Promedio</h4>
+                <p style={styles.statValue}>
+                  {filteredReadings.length > 0
+                    ? (filteredReadings.reduce((sum, r) => sum + (r.json.presion || 0), 0) / filteredReadings.length).toFixed(1)
+                    : '0'
+                  } hPa
+                </p>
+              </div>
+              <div style={styles.statCard}>
+                <h4>💨 Gas Promedio</h4>
+                <p style={styles.statValue}>
+                  {filteredReadings.length > 0
+                    ? (filteredReadings.reduce((sum, r) => sum + (r.json.gas || 0), 0) / filteredReadings.length).toFixed(3)
+                    : '0'
+                  }
+                </p>
+              </div>
+              <div style={styles.statCard}>
+                <h4>☀️ Radiación Promedio</h4>
+                <p style={styles.statValue}>
+                  {filteredReadings.length > 0
+                    ? (filteredReadings.reduce((sum, r) => sum + (r.json.radiacion || 0), 0) / filteredReadings.length).toFixed(1)
+                    : '0'
+                  }
+                </p>
+              </div>
+              <div style={styles.statCard}>
+                <h4>🌪️ Viento Promedio</h4>
+                <p style={styles.statValue}>
+                  {filteredReadings.length > 0
+                    ? (filteredReadings.reduce((sum, r) => sum + (r.json.viento || 0), 0) / filteredReadings.length).toFixed(1)
+                    : '0'
+                  } m/s
+                </p>
+              </div>
           </div>
         )}
         {/* Tabla de datos */}
