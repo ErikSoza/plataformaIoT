@@ -37,6 +37,10 @@ const ReportsPage: React.FC = () => {
   });
   const [selectedVariable, setSelectedVariable] = useState<string>('temperatura');
   const [selectedSensor, setSelectedSensor] = useState<string>(''); // '' significa 'todos los sensores'
+  
+  // Estados para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Cargar datos de lecturas al montar el componente
   useEffect(() => {
@@ -104,7 +108,38 @@ const ReportsPage: React.FC = () => {
       fechaInicio: '',
       fechaFin: '',
     });
+    setCurrentPage(1); // Reset página al limpiar filtros
   };
+
+  // Funciones de paginación
+  const getTotalPages = () => Math.ceil(filteredReadings.length / itemsPerPage);
+  
+  const getCurrentPageData = () => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return filteredReadings.slice(startIndex, endIndex);
+  };
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToNextPage = () => {
+    if (currentPage < getTotalPages()) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  // Reset página cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filteredReadings.length]);
 
   const formatTimestamp = (timestamp: string) => {
     return new Date(timestamp).toLocaleString('es-CL', {
@@ -219,7 +254,7 @@ const ReportsPage: React.FC = () => {
   };
 
   return (
-    <ContentSection title="📊 Reportes y Análisis de Datos Resumido">
+    <ContentSection title="📊 Reportes y Análisis de Datos">
       <div style={styles.container}>
         {/* Estado de carga y errores */}
         {loading && (
@@ -487,7 +522,7 @@ const ReportsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredReadings.map((reading) => (
+                  {getCurrentPageData().map((reading) => (
                     <tr key={reading.id} style={styles.tableRow}>
                       <td style={styles.tableCell}>{reading.id}</td>
                       <td style={styles.tableCell}>{reading.estacion_nombre || 'N/A'}</td>
@@ -504,6 +539,117 @@ const ReportsPage: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+
+              {/* Controles de paginación */}
+              {filteredReadings.length > 0 && (
+                <div style={styles.paginationSection}>
+                  {/* Selector de elementos por página */}
+                  <div style={styles.itemsPerPageSelector}>
+                    <label style={styles.paginationLabel}>Elementos por página:</label>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      style={styles.paginationSelect}
+                    >
+                      <option value={5}>5</option>
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+
+                  {/* Info de paginación */}
+                  <div style={styles.paginationInfo}>
+                    Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredReadings.length)} de {filteredReadings.length} registros
+                  </div>
+
+                  {/* Controles de navegación */}
+                  <div style={styles.paginationControls}>
+                    <button
+                      onClick={goToPreviousPage}
+                      disabled={currentPage === 1}
+                      style={{
+                        ...styles.paginationButton,
+                        ...(currentPage === 1 ? styles.paginationButtonDisabled : {})
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentPage !== 1) {
+                          e.currentTarget.style.background = '#00ACC1';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentPage !== 1) {
+                          e.currentTarget.style.background = '#00BCD4';
+                        }
+                      }}
+                    >
+                      ← Anterior
+                    </button>
+
+                    <div style={styles.pageNumbers}>
+                      {Array.from({ length: getTotalPages() }, (_, i) => i + 1)
+                        .filter(page => {
+                          // Mostrar solo algunas páginas alrededor de la actual
+                          const range = 2;
+                          return page === 1 || 
+                                 page === getTotalPages() || 
+                                 (page >= currentPage - range && page <= currentPage + range);
+                        })
+                        .map((page, index, array) => (
+                          <React.Fragment key={page}>
+                            {index > 0 && array[index - 1] !== page - 1 && (
+                              <span style={styles.pageEllipsis}>...</span>
+                            )}
+                            <button
+                              onClick={() => goToPage(page)}
+                              style={{
+                                ...styles.pageNumberButton,
+                                ...(page === currentPage ? styles.pageNumberButtonActive : {})
+                              }}
+                              onMouseEnter={(e) => {
+                                if (page !== currentPage) {
+                                  e.currentTarget.style.background = '#e9ecef';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (page !== currentPage) {
+                                  e.currentTarget.style.background = 'white';
+                                }
+                              }}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        ))}
+                    </div>
+
+                    <button
+                      onClick={goToNextPage}
+                      disabled={currentPage === getTotalPages()}
+                      style={{
+                        ...styles.paginationButton,
+                        ...(currentPage === getTotalPages() ? styles.paginationButtonDisabled : {})
+                      }}
+                      onMouseEnter={(e) => {
+                        if (currentPage !== getTotalPages()) {
+                          e.currentTarget.style.background = '#00ACC1';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (currentPage !== getTotalPages()) {
+                          e.currentTarget.style.background = '#00BCD4';
+                        }
+                      }}
+                    >
+                      Siguiente →
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {filteredReadings.length === 0 && !loading && (
                 <div style={styles.noDataMessage}>
@@ -774,7 +920,97 @@ const styles = {
     border: '1px solid #e9ecef',
     height: '400px',
     position: 'relative' as const,
+  },
 
+  // Estilos para paginación
+  paginationSection: {
+    padding: '20px',
+    background: '#f8f9fa',
+    borderRadius: '8px',
+    marginTop: '15px',
+    border: '1px solid #e9ecef',
+  },
+
+  itemsPerPageSelector: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginBottom: '15px',
+  },
+
+  paginationLabel: {
+    fontWeight: 'bold' as const,
+    color: '#495057',
+    fontSize: '14px',
+  },
+
+  paginationSelect: {
+    padding: '6px 12px',
+    border: '1px solid #ddd',
+    borderRadius: '4px',
+    fontSize: '14px',
+    backgroundColor: 'white',
+  },
+
+  paginationInfo: {
+    textAlign: 'center' as const,
+    marginBottom: '15px',
+    color: '#6c757d',
+    fontSize: '14px',
+  },
+
+  paginationControls: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '15px',
+  },
+
+  paginationButton: {
+    padding: '8px 16px',
+    backgroundColor: '#00BCD4',
+    color: 'white',
+    border: 'none',
+    borderRadius: '6px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    transition: 'all 0.3s ease',
+  },
+
+  paginationButtonDisabled: {
+    backgroundColor: '#ccc',
+    cursor: 'not-allowed',
+    color: '#666',
+  },
+
+  pageNumbers: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+  },
+
+  pageNumberButton: {
+    padding: '8px 12px',
+    backgroundColor: 'white',
+    color: '#495057',
+    border: '1px solid #dee2e6',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    transition: 'all 0.3s ease',
+    minWidth: '40px',
+  },
+
+  pageNumberButtonActive: {
+    backgroundColor: '#00BCD4',
+    color: 'white',
+    borderColor: '#00BCD4',
+  },
+
+  pageEllipsis: {
+    padding: '8px 4px',
+    color: '#6c757d',
+    fontSize: '14px',
   },
 };
 
