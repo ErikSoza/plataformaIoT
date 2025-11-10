@@ -36,6 +36,7 @@ const ReportsPage: React.FC = () => {
     fechaFin: '',
   });
   const [selectedVariable, setSelectedVariable] = useState<string>('temperatura');
+  const [selectedSensor, setSelectedSensor] = useState<string>(''); // '' significa 'todos los sensores'
 
   // Cargar datos de lecturas al montar el componente
   useEffect(() => {
@@ -160,15 +161,21 @@ const ReportsPage: React.FC = () => {
     { key: 'viento', label: '🌪️ Viento (m/s)', color: '#9966FF' },
     { key: 'bateria', label: '🔋 Batería (%)', color: '#FF6B6B' },
   ];
-
+  
   // Preparar datos para el gráfico
   const getChartData = () => {
-    const sortedReadings = [...readings].sort((a, b) => 
+    // Filtrar lecturas por sensor seleccionado
+    let dataToUse = readings;
+    if (selectedSensor) {
+      dataToUse = readings.filter(reading => reading.estacion_nombre === selectedSensor);
+    }
+
+    const sortedReadings = [...dataToUse].sort((a, b) => 
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
 
     const selectedVar = variableOptions.find(v => v.key === selectedVariable);
-    
+
     return {
       labels: sortedReadings.map(reading => 
         new Date(reading.timestamp).toLocaleDateString('es-CL', {
@@ -180,7 +187,7 @@ const ReportsPage: React.FC = () => {
       ),
       datasets: [
         {
-          label: selectedVar?.label || 'Variable',
+          label: `${selectedVar?.label || 'Variable'}${selectedSensor ? ` - ${selectedSensor}` : ' - Todos los sensores'}`,
           data: sortedReadings.map(reading => reading.json[selectedVariable as keyof typeof reading.json]),
           borderColor: selectedVar?.color || '#FF6384',
           backgroundColor: selectedVar?.color + '20' || '#FF638420',
@@ -201,7 +208,7 @@ const ReportsPage: React.FC = () => {
       },
       title: {
         display: true,
-        text: `Evolución temporal de ${variableOptions.find(v => v.key === selectedVariable)?.label || 'Variable'}`,
+        text: `Evolución temporal de ${variableOptions.find(v => v.key === selectedVariable)?.label || 'Variable'}${selectedSensor ? ` - ${selectedSensor}` : ' - Todos los sensores'}`,
       },
     },
     scales: {
@@ -314,6 +321,23 @@ const ReportsPage: React.FC = () => {
                 {variableOptions.map(option => (
                   <option key={option.key} value={option.key}>
                     {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Selector de sensor/estación */}
+            <div style={styles.variableSelector}>
+              <label style={styles.variableSelectorLabel}>Seleccionar sensor/estación:</label>
+              <select
+                value={selectedSensor}
+                onChange={(e) => setSelectedSensor(e.target.value)}
+                style={styles.variableSelectorInput}
+              >
+                <option value="">🌐 Todos los sensores</option>
+                {getUniqueStations().map(station => (
+                  <option key={station} value={station}>
+                    🏢 {station}
                   </option>
                 ))}
               </select>
@@ -721,14 +745,11 @@ const styles = {
   },
 
   variableSelector: {
-    display: 'flex',
+    display: '',
     alignItems: 'center',
-    gap: '15px',
-    marginBottom: '20px',
-    padding: '15px',
-    background: '#f8f9fa',
-    borderRadius: '8px',
-    border: '1px solid #e9ecef',
+    gap: '10px',
+    marginBottom: '10px',
+    padding: '10px',
   },
 
   variableSelectorLabel: {
@@ -753,6 +774,7 @@ const styles = {
     border: '1px solid #e9ecef',
     height: '400px',
     position: 'relative' as const,
+
   },
 };
 
