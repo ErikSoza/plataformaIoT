@@ -881,7 +881,7 @@ const styles = {
   },
 
   // Estilos para el gráfico
-  chartSection: {
+  chartSection: { 
     background: 'white',
     padding: '20px',
     borderRadius: '12px',
@@ -891,11 +891,12 @@ const styles = {
   },
 
   variableSelector: {
-    display: '',
+    display: 'flex',
     alignItems: 'center',
     gap: '10px',
     marginBottom: '10px',
     padding: '10px',
+    flexWrap: 'wrap' as const,
   },
 
   variableSelectorLabel: {
@@ -920,6 +921,9 @@ const styles = {
     border: '1px solid #e9ecef',
     height: '400px',
     position: 'relative' as const,
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // Estilos para paginación
