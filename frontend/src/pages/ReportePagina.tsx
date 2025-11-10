@@ -2,6 +2,28 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ContentSection } from '../components/layout';
 import { readingService } from '../services/api';
 import { Lectura } from '../types';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Registrar componentes de Chart.js
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const ReportsPage: React.FC = () => {
   const [readings, setReadings] = useState<Lectura[]>([]);
@@ -13,6 +35,7 @@ const ReportsPage: React.FC = () => {
     fechaInicio: '',
     fechaFin: '',
   });
+  const [selectedVariable, setSelectedVariable] = useState<string>('temperatura');
 
   // Cargar datos de lecturas al montar el componente
   useEffect(() => {
@@ -127,6 +150,67 @@ const ReportsPage: React.FC = () => {
     return stations;
   };
 
+  // Configuración de variables para el gráfico
+  const variableOptions = [
+    { key: 'temperatura', label: '🌡️ Temperatura (°C)', color: '#FF6384' },
+    { key: 'humedad', label: '💧 Humedad (%)', color: '#36A2EB' },
+    { key: 'presion', label: '📈 Presión (hPa)', color: '#FFCE56' },
+    { key: 'gas', label: '💨 Gas', color: '#4BC0C0' },
+    { key: 'radiacion', label: '☀️ Radiación', color: '#FF9F40' },
+    { key: 'viento', label: '🌪️ Viento (m/s)', color: '#9966FF' },
+    { key: 'bateria', label: '🔋 Batería (%)', color: '#FF6B6B' },
+  ];
+
+  // Preparar datos para el gráfico
+  const getChartData = () => {
+    const sortedReadings = [...readings].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    const selectedVar = variableOptions.find(v => v.key === selectedVariable);
+    
+    return {
+      labels: sortedReadings.map(reading => 
+        new Date(reading.timestamp).toLocaleDateString('es-CL', {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+      ),
+      datasets: [
+        {
+          label: selectedVar?.label || 'Variable',
+          data: sortedReadings.map(reading => reading.json[selectedVariable as keyof typeof reading.json]),
+          borderColor: selectedVar?.color || '#FF6384',
+          backgroundColor: selectedVar?.color + '20' || '#FF638420',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.1,
+        },
+      ],
+    };
+  };
+
+  // Opciones del gráfico
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: true,
+        text: `Evolución temporal de ${variableOptions.find(v => v.key === selectedVariable)?.label || 'Variable'}`,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: false,
+      },
+    },
+  };
+
   return (
     <ContentSection title="📊 Reportes y Análisis de Datos Resumido">
       <div style={styles.container}>
@@ -213,6 +297,35 @@ const ReportsPage: React.FC = () => {
               </div>
           </div>
         )}
+
+        {/* Sección de Gráfico */}
+        {!loading && !error && readings.length > 0 && (
+          <div style={styles.chartSection}>
+            <h4>📊 Análisis Gráfico Temporal</h4>
+            
+            {/* Selector de variable */}
+            <div style={styles.variableSelector}>
+              <label style={styles.variableSelectorLabel}>Seleccionar variable a visualizar:</label>
+              <select
+                value={selectedVariable}
+                onChange={(e) => setSelectedVariable(e.target.value)}
+                style={styles.variableSelectorInput}
+              >
+                {variableOptions.map(option => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Gráfico */}
+            <div style={styles.chartContainer}>
+              <Line data={getChartData()} options={chartOptions} />
+            </div>
+          </div>
+        )}
+
         {/* Tabla de datos */}
         {!loading && !error && (
           <div style={styles.tableSection}>
@@ -595,6 +708,51 @@ const styles = {
     padding: '40px',
     color: '#6c757d',
     fontSize: '16px',
+  },
+
+  // Estilos para el gráfico
+  chartSection: {
+    background: 'white',
+    padding: '20px',
+    borderRadius: '12px',
+    marginBottom: '20px',
+    border: '1px solid #e9ecef',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+  },
+
+  variableSelector: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '15px',
+    marginBottom: '20px',
+    padding: '15px',
+    background: '#f8f9fa',
+    borderRadius: '8px',
+    border: '1px solid #e9ecef',
+  },
+
+  variableSelectorLabel: {
+    fontWeight: 'bold' as const,
+    color: '#495057',
+    minWidth: 'fit-content',
+  },
+
+  variableSelectorInput: {
+    padding: '8px 12px',
+    border: '1px solid #ddd',
+    borderRadius: '6px',
+    fontSize: '14px',
+    minWidth: '250px',
+    backgroundColor: 'white',
+  },
+
+  chartContainer: {
+    background: 'white',
+    padding: '20px',
+    borderRadius: '8px',
+    border: '1px solid #e9ecef',
+    height: '400px',
+    position: 'relative' as const,
   },
 };
 
