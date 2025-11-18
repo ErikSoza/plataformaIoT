@@ -207,27 +207,43 @@ La aplicación estará disponible en: `http://localhost:3001`
 
 ### Base URL: `http://localhost:3000/api`
 
+#### 🏢 Estaciones Meteorológicas
 | Método | Endpoint | Descripción | Parámetros |
 |--------|----------|-------------|------------|
-| `GET` | `/stations` | Lista todas las estaciones | - |
-| `GET` | `/stations/:id` | Obtiene estación específica | `id`: ID de estación |
-| `POST` | `/stations` | Crea nueva estación | Body: Datos de estación |
-| `PUT` | `/stations/:id` | Actualiza estación | `id`: ID, Body: Datos |
-| `DELETE` | `/stations/:id` | Elimina estación | `id`: ID de estación |
-| `GET` | `/readings` | Lista todas las lecturas | `?estacion=id&limit=100` |
-| `GET` | `/readings/:id` | Obtiene lectura específica | `id`: ID de lectura |
-| `POST` | `/readings` | Crea nueva lectura | Body: Datos de lectura |
+| `GET` | `/estaciones` | Lista todas las estaciones | - |
+| `GET` | `/estaciones/:id` | Obtiene estación específica | `id`: ID de estación |
+| `POST` | `/estaciones` | Crea nueva estación | Body: Datos de estación |
+| `PUT` | `/estaciones/:id` | Actualiza estación | `id`: ID, Body: Datos |
+| `DELETE` | `/estaciones/:id` | Elimina estación | `id`: ID de estación |
+
+#### 📊 Lecturas de Sensores
+| Método | Endpoint | Descripción | Parámetros |
+|--------|----------|-------------|------------|
+| `GET` | `/lecturas` | Lista todas las lecturas | `?limit=100&offset=0` |
+| `GET` | `/lecturas/:id` | Obtiene lectura específica | `id`: ID de lectura |
+| `GET` | `/lecturas/reports` | Lecturas para reportes | - |
+| `GET` | `/lecturas/latest` | Últimas lecturas de todas las estaciones | - |
+| `GET` | `/estaciones/:stationId/lecturas` | Lecturas de una estación específica | `stationId`: ID de estación |
+| `GET` | `/estaciones/:stationId/lecturas/latest` | Última lectura de una estación | `stationId`: ID de estación |
+| `POST` | `/lecturas` | Crea nueva lectura | Body: Datos de lectura |
+
 
 ### Ejemplos de Uso
 
 #### Obtener todas las estaciones
 ```bash
-curl "http://localhost:3000/api/stations"
+curl "http://localhost:3000/api/estaciones"
 ```
+
+#### Obtener última lectura de una estación
+```bash
+curl "http://localhost:3000/api/estaciones/1/lecturas/latest"
+```
+
 
 #### Crear nueva lectura
 ```bash
-curl -X POST "http://localhost:3000/api/readings" \
+curl -X POST "http://localhost:3000/api/lecturas" \
   -H "Content-Type: application/json" \
   -d '{
     "id_estacion": 1,
