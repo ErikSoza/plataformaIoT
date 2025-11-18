@@ -436,117 +436,7 @@ Table 'plataformaiot.estaciones' doesn't exist
 mysql -u root -p plataformaiot < backend/init.sql
 ```
 
----
-
-## 🚀 Deployment en Producción
-
-### Configuración del Backend
-1. **Variables de entorno**:
-   ```env
-   NODE_ENV=production
-   DB_HOST=tu_servidor_mysql.com
-   PORT=80
-   ```
-
-2. **PM2 para manejo de procesos**:
-   ```bash
-   npm install -g pm2
-   pm2 start app.js --name "plataforma-iot-backend"
-   pm2 startup
-   pm2 save
-   ```
-
-### Build del Frontend
-```bash
-npm run build
-# Servir archivos estáticos con nginx o servidor web
 ```
-
-### Configuración Nginx (Opcional)
-```nginx
-server {
-    listen 80;
-    server_name tu-dominio.com;
-    
-    location / {
-        root /path/to/frontend/build;
-        try_files $uri $uri/ /index.html;
-    }
-    
-    location /api {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
----
-
-## 📈 Roadmap y Mejoras Futuras
-
-### Fase 1: Funcionalidades Core ✅
-- [x] Mapas interactivos con Leaflet
-- [x] Dashboard de monitoreo en tiempo real
-- [x] API REST completa
-- [x] Gestión de estaciones meteorológicas
-- [x] Reportes y gráficos históricos
-
-### Fase 2: Mejoras de UX/UI 🔄
-- [ ] Tema oscuro/claro
-- [ ] Notificaciones push
-- [ ] Mejoras de performance
-- [ ] Versión mobile app (React Native)
-- [ ] Exportación avanzada (Excel, PDF)
-
-### Fase 3: IoT Avanzado 🔮
-- [ ] WebSocket para datos en tiempo real
-- [ ] Sistema de alertas automáticas
-- [ ] Machine Learning para predicciones
-- [ ] Integración con APIs meteorológicas
-- [ ] Dashboard para administradores
-
-### Fase 4: Escalabilidad 🚀
-- [ ] Microservicios con Docker
-- [ ] Base de datos distribuida
-- [ ] CDN para archivos estáticos
-- [ ] Monitoreo y logs centralizados
-- [ ] Tests automatizados (CI/CD)
-
----
-
-## 🤝 Contribución
-
-### Cómo Contribuir
-1. **Fork** el proyecto
-2. **Crea** una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. **Commit** tus cambios (`git commit -m 'Agregar nueva funcionalidad'`)
-4. **Push** a la rama (`git push origin feature/nueva-funcionalidad`)
-5. **Abre** un Pull Request
-
-### Estándares de Código
-- **TypeScript** para todo el código frontend
-- **ESLint + Prettier** para formateo consistente
-- **Conventional Commits** para mensajes de commit
-- **Jest** para tests unitarios
-- **Documentación** para nuevas APIs
-
-### Issues y Bugs
-- Usar templates de GitHub Issues
-- Incluir pasos para reproducir
-- Especificar versiones de navegador/Node.js
-- Screenshots cuando sea relevante
-
----
-
-## 📄 Licencia
-
-Este proyecto está licenciado bajo la **MIT License**. Ver el archivo [LICENSE](LICENSE) para detalles.
-
----
-
 ## 👥 Equipo de Desarrollo
 
 ### Desarrollador Principal
@@ -558,18 +448,6 @@ Este proyecto está licenciado bajo la **MIT License**. Ver el archivo [LICENSE]
 
 ---
 
-## 📞 Soporte y Contacto
-
-### Soporte Técnico
-- **Email**: erik.soza@utalca.cl
-- **GitHub Issues**: [Reportar Bug](https://github.com/ErikSoza/plataformaIoT/issues)
-- **Documentación**: [Wiki del Proyecto](https://github.com/ErikSoza/plataformaIoT/wiki)
-
-### Información Institucional
-- **Universidad de Talca**: [www.utalca.cl](https://www.utalca.cl)
-- **Campus Curicó**: [Extension Curicó](https://www.utalca.cl/campus/curico/)
-
----
 
 ## 📊 Estadísticas del Proyecto
 
@@ -581,8 +459,6 @@ Este proyecto está licenciado bajo la **MIT License**. Ver el archivo [LICENSE]
 ---
 
 <div align="center">
-
-**🌡️ Desarrollado con ❤️ para la Universidad de Talca**
 
 *Sistema de Monitoreo IoT - Campus Curicó*
 
