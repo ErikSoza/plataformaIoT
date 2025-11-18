@@ -1,46 +1,573 @@
-# Getting Started with Create React App
+# 🌡️ Plataforma IoT de Monitoreo Meteorológico - UTalca
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+<div align="center">
 
-## Available Scripts
+![Plataforma IoT](https://img.shields.io/badge/Plataforma-IoT-blue)
+![React](https://img.shields.io/badge/React-19.2.0-61DAFB?logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-4.9.5-3178C6?logo=typescript)
+![Node.js](https://img.shields.io/badge/Node.js-Latest-339933?logo=node.js)
+![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?logo=mysql)
+![Leaflet](https://img.shields.io/badge/Leaflet-1.9.4-199900?logo=leaflet)
 
-In the project directory, you can run:
+**Sistema de monitoreo en tiempo real de estaciones meteorológicas IoT para el Campus Universidad de Talca**
 
-### `npm start`
+*Visualización interactiva con mapas de calor, análisis de datos históricos y gestión centralizada de dispositivos*
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+</div>
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+---
 
-### `npm test`
+## 📋 Descripción del Proyecto
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+La **Plataforma IoT de Monitoreo Meteorológico** es una aplicación web completa desarrollada para el Campus de la Universidad de Talca en Curicó. El sistema permite el monitoreo en tiempo real de múltiples estaciones meteorológicas distribuidas geográficamente, proporcionando visualización interactiva a través de mapas de calor, análisis estadístico y reportes históricos.
 
-### `npm run build`
+### 🎯 Características Principales
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **🗺️ Mapas Interactivos**: Visualización geoespacial con Leaflet y capas de calor
+- **📊 Dashboard en Tiempo Real**: Monitoreo live de 8 estaciones meteorológicas
+- **📈 Análisis Histórico**: Gráficos temporales y reportes exportables
+- **🔧 Gestión de Dispositivos**: Control centralizado del estado de estaciones
+- **⚡ Datos en Tiempo Real**: Actualización automática cada 30 segundos
+- **📱 Diseño Responsivo**: Compatible con dispositivos móviles y desktop
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 🌟 Tecnologías Utilizadas
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+#### Frontend
+- **React 19.2.0** con **TypeScript 4.9.5**
+- **React Router DOM 7.9.5** para navegación SPA
+- **Leaflet 1.9.4** + **React-Leaflet 5.0.0** para mapas interactivos
+- **Chart.js 4.5.1** + **React-ChartJS-2** para visualizaciones
+- **Axios 1.12.2** para comunicación HTTP
+- **React Scripts 5.0.1** como build tool
 
-### `npm run eject`
+#### Backend
+- **Node.js** con **Express.js 5.1.0**
+- **MySQL 8.0+** como base de datos principal
+- **mysql2 3.15.2** driver con soporte para Promises
+- **CORS 2.8.5** para comunicación cross-origin
+- **dotenv 17.2.3** para variables de entorno
+- **Nodemon 3.1.10** para desarrollo
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+---
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## 🏗️ Arquitectura del Sistema
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+### Estructura del Proyecto
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+```
+plataformaIoT/
+├── 📁 frontend/                    # Aplicación React + TypeScript
+│   ├── 📁 public/                  # Archivos estáticos
+│   └── 📁 src/
+│       ├── 📁 components/layout/   # Componentes de UI
+│       │   ├── UtalcaHeader.tsx    # Header institucional
+│       │   ├── MainLayout.tsx      # Layout principal
+│       │   ├── MapaCalor.tsx       # Mapa de calor con Leaflet
+│       │   ├── StatsGrid.tsx       # Grid de estadísticas
+│       │   └── ListaDispositivos.tsx # Lista de estaciones
+│       ├── 📁 pages/              # Páginas principales
+│       │   ├── Home.tsx           # Dashboard principal
+│       │   ├── MonitoreoPagina.tsx # Vista de monitoreo
+│       │   ├── DispositivosPagina.tsx # Gestión dispositivos
+│       │   └── ReportePagina.tsx   # Análisis y reportes
+│       ├── 📁 services/           # Servicios API
+│       ├── 📁 types/              # Definiciones TypeScript
+│       └── 📁 data/               # Datos de ejemplo
+├── 📁 backend/                    # API REST con Node.js
+│   ├── 📁 src/
+│   │   ├── 📁 controllers/        # Lógica de negocio
+│   │   ├── 📁 models/            # Modelos de datos
+│   │   ├── 📁 routes/            # Definición de rutas API
+│   │   └── 📁 db/                # Configuración de BD
+│   ├── init.sql                  # Script de inicialización
+│   └── package.json              # Dependencias del backend
+└── README.md                     # Este archivo
+```
 
-## Learn More
+### Modelo de Datos
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+#### 🏢 Estaciones Meteorológicas
+```typescript
+interface DeviceData {
+  id: number;                    // Identificador único
+  nombre: string;                // Nombre descriptivo
+  tipo: string;                  // "Sensor Ambiental IoT"
+  estado: 'Activo' | 'Inactivo' | 'Mantenimiento' | 'Error';
+  ultima_actualizacion: string;  // Timestamp última lectura
+  localizacion: string;          // Descripción ubicación
+  latitud: number;               // Coordenada GPS
+  longitud: number;              // Coordenada GPS
+  temperatura?: number;          // °C
+  humedad?: number;              // % humedad relativa
+  bateria?: number;              // % nivel batería
+}
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+#### 📊 Lecturas de Sensores
+```typescript
+interface Lectura {
+  id: number;
+  id_estacion: number;
+  timestamp: string;
+  json: {
+    temperatura: number;
+    humedad: number;
+    presion?: number;
+    gas?: number;
+    radiacion?: number;
+    viento?: number;
+    bateria: number;
+  };
+}
+```
+
+---
+
+## 🚀 Instalación y Configuración
+
+### Prerequisitos
+
+- **Node.js** 16+ [Descargar aquí](https://nodejs.org/)
+- **MySQL Server** 8.0+ [Descargar aquí](https://dev.mysql.com/downloads/)
+- **Git** [Descargar aquí](https://git-scm.com/downloads)
+
+### 1. Clonar el Repositorio
+
+```bash
+git clone https://github.com/ErikSoza/plataformaIoT.git
+cd plataformaIoT
+```
+
+### 2. Configuración del Backend
+
+#### Instalar Dependencias
+```bash
+cd backend
+npm install
+```
+
+#### Configurar Base de Datos
+
+1. **Crear la base de datos**:
+   ```bash
+   mysql -u root -p < init.sql
+   ```
+
+2. **Configurar variables de entorno**:
+   Crear archivo `.env` en `/backend/`:
+   ```env
+   # Configuración de Base de Datos
+   DB_HOST=localhost
+   DB_USER=tu_usuario_mysql
+   DB_PASSWORD=tu_contraseña_mysql
+   DB_NAME=plataformaiot
+   DB_PORT=3306
+
+   # Configuración del Servidor
+   PORT=3000
+   ```
+
+#### Ejecutar el Servidor
+```bash
+# Modo desarrollo (con auto-recarga)
+npm run dev
+
+# Modo producción
+npm start
+```
+
+El backend estará disponible en: `http://localhost:3000`
+
+### 3. Configuración del Frontend
+
+#### Instalar Dependencias
+```bash
+cd frontend
+npm install
+```
+
+#### Configurar Variables de Entorno (Opcional)
+Crear archivo `.env.local` en `/frontend/`:
+```env
+REACT_APP_API_URL=http://localhost:3000/api
+REACT_APP_MAP_CENTER_LAT=-35.0025
+REACT_APP_MAP_CENTER_LNG=-71.2295
+```
+
+#### Ejecutar la Aplicación
+```bash
+npm start
+```
+
+La aplicación estará disponible en: `http://localhost:3001`
+
+---
+
+## 📡 API Endpoints
+
+### Base URL: `http://localhost:3000/api`
+
+| Método | Endpoint | Descripción | Parámetros |
+|--------|----------|-------------|------------|
+| `GET` | `/stations` | Lista todas las estaciones | - |
+| `GET` | `/stations/:id` | Obtiene estación específica | `id`: ID de estación |
+| `POST` | `/stations` | Crea nueva estación | Body: Datos de estación |
+| `PUT` | `/stations/:id` | Actualiza estación | `id`: ID, Body: Datos |
+| `DELETE` | `/stations/:id` | Elimina estación | `id`: ID de estación |
+| `GET` | `/readings` | Lista todas las lecturas | `?estacion=id&limit=100` |
+| `GET` | `/readings/:id` | Obtiene lectura específica | `id`: ID de lectura |
+| `POST` | `/readings` | Crea nueva lectura | Body: Datos de lectura |
+
+### Ejemplos de Uso
+
+#### Obtener todas las estaciones
+```bash
+curl "http://localhost:3000/api/stations"
+```
+
+#### Crear nueva lectura
+```bash
+curl -X POST "http://localhost:3000/api/readings" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "id_estacion": 1,
+    "json": {
+      "temperatura": 25.5,
+      "humedad": 60,
+      "bateria": 85
+    }
+  }'
+```
+
+---
+
+## 🖥️ Guía de Uso
+
+### Dashboard Principal
+1. **Vista General**: Estadísticas en tiempo real de todas las estaciones
+2. **Navegación**: 4 pestañas principales (Monitoreo, Dispositivos, Reportes, Configuración)
+
+### 🗺️ Módulo de Monitoreo
+- **Mapa Interactivo**: Visualización de estaciones con marcadores
+- **Mapa de Calor**: Representación térmica de temperatura/humedad
+- **Estadísticas Live**: Actualización automática cada 30 segundos
+- **Filtros**: Por estado, rango de fechas, tipo de sensor
+
+### 🔧 Gestión de Dispositivos
+- **Lista Completa**: Todas las estaciones con estado actual
+- **Detalles**: Información técnica, ubicación, histórico
+- **Gestión**: Activar/desactivar, cambiar estado, editar información
+- **Búsqueda**: Filtros por nombre, ubicación, estado
+
+### 📊 Módulo de Reportes
+- **Análisis Temporal**: Gráficos de evolución por variable
+- **Exportación**: CSV, PDF de datos históricos
+- **Filtros Avanzados**: Por estación, rango de fechas, variables
+- **Estadísticas**: Promedios, máximos, mínimos por período
+
+### ⚙️ Configuración
+- **Parámetros del Sistema**: Intervalos de actualización
+- **Gestión de Usuarios**: Permisos y roles (futuro)
+- **Alertas**: Configuración de umbrales y notificaciones
+
+---
+
+## 🧪 Datos de Ejemplo
+
+El sistema incluye 8 estaciones pre-configuradas en el Campus UTalca:
+
+| ID | Nombre | Ubicación | Coordenadas | Estado |
+|----|--------|-----------|-------------|--------|
+| 1 | Centro Extensión Curicó | Campus Principal | -34.985, -71.241 | Activo |
+| 2 | Facultad Ingeniería | Área Académica | -35.002, -71.230 | Activo |
+| 3 | Biblioteca Central | Zona Estudiantil | -35.003, -71.229 | Mantenimiento |
+| 4 | Edificio Mecánica | Laboratorios | -35.002, -71.229 | Activo |
+| 5 | Cerro Condel | Área Elevada | -34.978, -71.226 | Activo |
+| 6 | Lab. Química | Área Especializada | -35.002, -71.229 | Activo |
+| 7 | Auditorio Principal | Zona Events | -35.003, -71.230 | Activo |
+| 8 | Cafetería Central | Área Social | -35.002, -71.229 | Activo |
+
+---
+
+## 🔧 Desarrollo
+
+### Scripts Disponibles
+
+#### Frontend
+```bash
+npm start          # Servidor de desarrollo (puerto 3001)
+npm test           # Ejecutar tests unitarios
+npm run build      # Build para producción
+npm run eject      # Exponer configuración (irreversible)
+```
+
+#### Backend
+```bash
+npm run dev        # Servidor con auto-recarga (nodemon)
+npm start          # Servidor de producción
+npm test           # Tests (por implementar)
+```
+
+### Estructura de Componentes React
+
+```typescript
+// Componente principal con estado global
+const Home: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<TabType>('monitoreo');
+  const [deviceData, setDeviceData] = useState<DeviceData[]>([]);
+  const [stats, setStats] = useState<StatCardData[]>([]);
+  
+  // Actualización automática cada 30 segundos
+  useEffect(() => {
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <MainLayout>
+      <UtalcaHeader />
+      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <ContentSection title={getTabTitle(activeTab)}>
+        {renderTabContent()}
+      </ContentSection>
+    </MainLayout>
+  );
+};
+```
+
+### Configuración de Mapas Leaflet
+
+```typescript
+const MapaCalor: React.FC = ({ deviceData }) => {
+  const position: LatLngTuple = [-35.0025, -71.2295]; // Centro UTalca
+  
+  const heatmapData = deviceData
+    .filter(device => device.temperatura)
+    .map(device => [
+      device.coordinates[0],
+      device.coordinates[1],
+      device.temperatura! / 50 // Intensidad normalizada
+    ]);
+
+  return (
+    <MapContainer center={position} zoom={16} style={{ height: '500px' }}>
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <HeatmapLayer points={heatmapData} />
+      {/* Marcadores de estaciones */}
+    </MapContainer>
+  );
+};
+```
+
+---
+
+## 🐛 Solución de Problemas
+
+### Backend
+
+#### Error de Conexión a MySQL
+```bash
+Error: ER_ACCESS_DENIED_ERROR: Access denied for user 'root'@'localhost'
+```
+**Solución**:
+1. Verificar credenciales en `.env`
+2. Verificar que MySQL esté ejecutándose
+3. Confirmar permisos del usuario
+
+#### Puerto en Uso
+```bash
+Error: listen EADDRINUSE: address already in use :::3000
+```
+**Solución**:
+```bash
+# Cambiar puerto en .env
+PORT=3001
+
+# O matar proceso en puerto 3000 (Windows)
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+```
+
+### Frontend
+
+#### Problemas con Dependencias
+```bash
+npm ERR! peer dep missing: react@">=16.8.0"
+```
+**Solución**:
+```bash
+rm -rf node_modules package-lock.json
+npm install
+```
+
+#### Errores de TypeScript
+```bash
+Module '"@types/leaflet"' has no exported member 'HeatLatLngTuple'
+```
+**Solución**:
+```bash
+npm install --save-dev @types/leaflet.heat@latest
+```
+
+### Base de Datos
+
+#### Tablas No Encontradas
+```sql
+Table 'plataformaiot.estaciones' doesn't exist
+```
+**Solución**:
+```bash
+mysql -u root -p plataformaiot < backend/init.sql
+```
+
+---
+
+## 🚀 Deployment en Producción
+
+### Configuración del Backend
+1. **Variables de entorno**:
+   ```env
+   NODE_ENV=production
+   DB_HOST=tu_servidor_mysql.com
+   PORT=80
+   ```
+
+2. **PM2 para manejo de procesos**:
+   ```bash
+   npm install -g pm2
+   pm2 start app.js --name "plataforma-iot-backend"
+   pm2 startup
+   pm2 save
+   ```
+
+### Build del Frontend
+```bash
+npm run build
+# Servir archivos estáticos con nginx o servidor web
+```
+
+### Configuración Nginx (Opcional)
+```nginx
+server {
+    listen 80;
+    server_name tu-dominio.com;
+    
+    location / {
+        root /path/to/frontend/build;
+        try_files $uri $uri/ /index.html;
+    }
+    
+    location /api {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+---
+
+## 📈 Roadmap y Mejoras Futuras
+
+### Fase 1: Funcionalidades Core ✅
+- [x] Mapas interactivos con Leaflet
+- [x] Dashboard de monitoreo en tiempo real
+- [x] API REST completa
+- [x] Gestión de estaciones meteorológicas
+- [x] Reportes y gráficos históricos
+
+### Fase 2: Mejoras de UX/UI 🔄
+- [ ] Tema oscuro/claro
+- [ ] Notificaciones push
+- [ ] Mejoras de performance
+- [ ] Versión mobile app (React Native)
+- [ ] Exportación avanzada (Excel, PDF)
+
+### Fase 3: IoT Avanzado 🔮
+- [ ] WebSocket para datos en tiempo real
+- [ ] Sistema de alertas automáticas
+- [ ] Machine Learning para predicciones
+- [ ] Integración con APIs meteorológicas
+- [ ] Dashboard para administradores
+
+### Fase 4: Escalabilidad 🚀
+- [ ] Microservicios con Docker
+- [ ] Base de datos distribuida
+- [ ] CDN para archivos estáticos
+- [ ] Monitoreo y logs centralizados
+- [ ] Tests automatizados (CI/CD)
+
+---
+
+## 🤝 Contribución
+
+### Cómo Contribuir
+1. **Fork** el proyecto
+2. **Crea** una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. **Commit** tus cambios (`git commit -m 'Agregar nueva funcionalidad'`)
+4. **Push** a la rama (`git push origin feature/nueva-funcionalidad`)
+5. **Abre** un Pull Request
+
+### Estándares de Código
+- **TypeScript** para todo el código frontend
+- **ESLint + Prettier** para formateo consistente
+- **Conventional Commits** para mensajes de commit
+- **Jest** para tests unitarios
+- **Documentación** para nuevas APIs
+
+### Issues y Bugs
+- Usar templates de GitHub Issues
+- Incluir pasos para reproducir
+- Especificar versiones de navegador/Node.js
+- Screenshots cuando sea relevante
+
+---
+
+## 📄 Licencia
+
+Este proyecto está licenciado bajo la **MIT License**. Ver el archivo [LICENSE](LICENSE) para detalles.
+
+---
+
+## 👥 Equipo de Desarrollo
+
+### Desarrollador Principal
+- **Erik Soza** - *Full Stack Developer* - [@ErikSoza](https://github.com/ErikSoza)
+
+### Universidad de Talca
+- **Campus Curicó** - *Institución Patrocinadora*
+- **Facultad de Ingeniería** - *Departamento Técnico*
+
+---
+
+## 📞 Soporte y Contacto
+
+### Soporte Técnico
+- **Email**: erik.soza@utalca.cl
+- **GitHub Issues**: [Reportar Bug](https://github.com/ErikSoza/plataformaIoT/issues)
+- **Documentación**: [Wiki del Proyecto](https://github.com/ErikSoza/plataformaIoT/wiki)
+
+### Información Institucional
+- **Universidad de Talca**: [www.utalca.cl](https://www.utalca.cl)
+- **Campus Curicó**: [Extension Curicó](https://www.utalca.cl/campus/curico/)
+
+---
+
+## 📊 Estadísticas del Proyecto
+
+![GitHub repo size](https://img.shields.io/github/repo-size/ErikSoza/plataformaIoT)
+![GitHub last commit](https://img.shields.io/github/last-commit/ErikSoza/plataformaIoT)
+![GitHub issues](https://img.shields.io/github/issues/ErikSoza/plataformaIoT)
+![GitHub pull requests](https://img.shields.io/github/issues-pr/ErikSoza/plataformaIoT)
+
+---
+
+<div align="center">
+
+**🌡️ Desarrollado con ❤️ para la Universidad de Talca**
+
+*Sistema de Monitoreo IoT - Campus Curicó*
+
+</div>
