@@ -1,17 +1,19 @@
 -- ==========================================================
--- 🌤️ Proyecto: Estaciones Meteorológicas IoT
+-- 🌤️ INIT SCRIPT: PLATAFORMA IoT (Versión Segura/Producción)
 -- ==========================================================
 
--- Crear base de datos si no existe
+-- 1. CREACIÓN DE BASE DE DATOS (Solo si no existe)
 CREATE DATABASE IF NOT EXISTS plataformaiot
-  CHARACTER SET utf8mb4
+  CHARACTER SET utf8mb4 
   COLLATE utf8mb4_unicode_ci;
 
 USE plataformaiot;
 
 -- ==========================================================
--- Tabla: Usuarios
+-- 2. TABLAS MAESTRAS (Orden: Usuarios -> Estaciones -> Dispositivos)
 -- ==========================================================
+
+-- Tabla: USUARIOS
 CREATE TABLE IF NOT EXISTS usuarios (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(100) NOT NULL,
@@ -19,46 +21,59 @@ CREATE TABLE IF NOT EXISTS usuarios (
   contrasena VARCHAR(255) NOT NULL,
   rol ENUM('admin', 'usuario') DEFAULT 'usuario',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ==========================================================
--- Tabla: Estaciones
--- ==========================================================
+-- Tabla: ESTACIONES (Ubicaciones Lógicas)
 CREATE TABLE IF NOT EXISTS estaciones (
   id INT AUTO_INCREMENT PRIMARY KEY,
   id_usuario INT NULL,
   nombre VARCHAR(100) NOT NULL,
-  localizacion VARCHAR(255),
+  ubicacion VARCHAR(255),
   latitud DECIMAL(10,6),
   longitud DECIMAL(10,6),
-  estado VARCHAR(50) DEFAULT 'Activo',
-  bateria DECIMAL(5,2),
-  ultima_actualizacion DATETIME DEFAULT CURRENT_TIMESTAMP,
+  descripcion TEXT,
+  estado VARCHAR(50) DEFAULT 'Activa',
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_estacion_usuario
     FOREIGN KEY (id_usuario) REFERENCES usuarios(id)
     ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ==========================================================
--- Tabla: Lecturas
--- ==========================================================
--- Cada fila representa una lectura completa enviada por una estación.
--- El campo 'json' almacena todos los valores de sensores (temperatura, humedad, etc.)
-CREATE TABLE IF NOT EXISTS lecturas (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  id_estacion INT NOT NULL,
-  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-  json JSON NOT NULL,
-  CONSTRAINT fk_lectura_estacion
+-- Tabla: DISPOSITIVOS (Hardware / Edges)
+CREATE TABLE IF NOT EXISTS dispositivos (
+  device_id VARCHAR(50) PRIMARY KEY,
+  modelo VARCHAR(50) DEFAULT 'TTGO T3 v1.6',
+  estado ENUM('disponible', 'asignado', 'mantenimiento') DEFAULT 'disponible',
+  bateria DECIMAL(5,2),
+  ultima_conexion DATETIME,
+  id_estacion INT UNIQUE NULL, 
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_dispositivo_estacion
     FOREIGN KEY (id_estacion) REFERENCES estaciones(id)
-    ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================================
--- Tabla: Alertas
+-- 3. TABLAS DE DATOS (Orden: Lecturas, Alertas)
 -- ==========================================================
--- Registra eventos o notificaciones de cada estación
+
+-- Tabla: LECTURAS
+CREATE TABLE IF NOT EXISTS lecturas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    device_id VARCHAR(50) NOT NULL, 
+    fecha_registro DATETIME,
+    raw_timestamp BIGINT,
+    temperatura DECIMAL(5, 2),
+    humedad DECIMAL(5, 2),
+    presion_at DECIMAL(6, 1),
+    velocidad_viento DECIMAL(5, 2),
+    prediccion_temp DECIMAL(5, 2),
+    CONSTRAINT fk_lectura_dispositivo
+        FOREIGN KEY (device_id) REFERENCES dispositivos(device_id)
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tabla: ALERTAS
 CREATE TABLE IF NOT EXISTS alertas (
   id INT AUTO_INCREMENT PRIMARY KEY,
   id_estacion INT NOT NULL,
@@ -68,17 +83,23 @@ CREATE TABLE IF NOT EXISTS alertas (
   CONSTRAINT fk_alerta_estacion
     FOREIGN KEY (id_estacion) REFERENCES estaciones(id)
     ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ==========================================================
--- Datos de ejemplo opcionales
+-- 4. CARGA DE DATOS SEGURA (SEEDERS)
 -- ==========================================================
-INSERT INTO usuarios (nombre, email, contrasena, rol)
-VALUES ('Admin Principal', 'admin@utalca.cl', 'hash123', 'admin')
-ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
 
-INSERT INTO estaciones (id_usuario, nombre, localizacion, latitud, longitud, estado, bateria)
-VALUES 
-(NULL, 'Sensor Facultad Ingeniería', 'Campus Curicó', -35.0017581, -71.2297514, 'Activo', 92),
-(NULL, 'Sensor Biblioteca Central', 'Campus Curicó', -35.0029305, -71.2292251, 'Mantenimiento', 23)
-ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+-- Usamos INSERT IGNORE para que no falle si los datos ya existen.
+
+-- Admin Default
+INSERT IGNORE INTO usuarios (id, nombre, email, contrasena, rol) VALUES 
+(1, 'Administrador', 'admin@utalca.cl', 'admin123', 'admin');
+
+-- Estaciones Base
+INSERT IGNORE INTO estaciones (id, nombre, latitud, longitud, ubicacion) VALUES 
+(1, 'Campus Los Niches', -35.001, -71.229, 'Entrada Principal'),
+(2, 'Campus Curicó', -34.985, -71.235, 'Edificio Ingeniería');
+
+-- (Opcional) Hardware de prueba si lo necesitas
+INSERT IGNORE INTO dispositivos (device_id, estado, id_estacion, modelo) VALUES 
+('UTALCA_GENERICO', 'disponible', NULL, 'ESP32 DevKit');
