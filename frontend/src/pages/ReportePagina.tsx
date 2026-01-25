@@ -42,6 +42,18 @@ const ReportsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
+  // Función auxiliar para normalizar datos numéricos
+  const normalizeReadingData = (reading: any): Lectura => {
+    return {
+      ...reading,
+      temperatura: reading.temperatura ? Number(reading.temperatura) : null,
+      humedad: reading.humedad ? Number(reading.humedad) : null,
+      presion_at: reading.presion_at ? Number(reading.presion_at) : null,
+      velocidad_viento: reading.velocidad_viento ? Number(reading.velocidad_viento) : null,
+      prediccion_temp: reading.prediccion_temp ? Number(reading.prediccion_temp) : null,
+    };
+  };
+
   // Cargar datos de lecturas al montar el componente
   useEffect(() => {
     loadReadings();
@@ -52,7 +64,9 @@ const ReportsPage: React.FC = () => {
       setLoading(true);
       setError(null);
       const data = await readingService.getAll();
-      setReadings(data);
+      // Normalizar los datos para asegurar que los valores numéricos sean números
+      const normalizedData = data.map(normalizeReadingData);
+      setReadings(normalizedData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar lecturas');
       console.error('Error cargando lecturas:', err);
@@ -75,7 +89,7 @@ const ReportsPage: React.FC = () => {
     if (filters.fechaInicio) {
       const fechaInicio = new Date(filters.fechaInicio);
       filtered = filtered.filter(reading => {
-        const fechaReading = new Date(reading.timestamp);
+        const fechaReading = new Date(reading.fecha_registro);
         return fechaReading >= fechaInicio;
       });
     }
@@ -85,7 +99,7 @@ const ReportsPage: React.FC = () => {
       const fechaFin = new Date(filters.fechaFin);
       fechaFin.setHours(23, 59, 59, 999); //23:59:59 para incluir todo el día
       filtered = filtered.filter(reading => {
-        const fechaReading = new Date(reading.timestamp);
+        const fechaReading = new Date(reading.fecha_registro);
         return fechaReading <= fechaFin;
       });
     }
@@ -141,8 +155,8 @@ const ReportsPage: React.FC = () => {
     setCurrentPage(1);
   }, [filteredReadings.length]);
 
-  const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString('es-CL', {
+  const formatTimestamp = (fecha_registro: string) => {
+    return new Date(fecha_registro).toLocaleString('es-CL', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -155,7 +169,7 @@ const ReportsPage: React.FC = () => {
   const getDateRange = () => {
     if (readings.length === 0) return null;
     
-    const dates = readings.map(r => new Date(r.timestamp));
+    const dates = readings.map(r => new Date(r.fecha_registro));
     const minDate = new Date(Math.min(...dates.map(d => d.getTime())));
     const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
     
@@ -191,10 +205,8 @@ const ReportsPage: React.FC = () => {
     { key: 'temperatura', label: '🌡️ Temperatura (°C)', color: '#FF6384' },
     { key: 'humedad', label: '💧 Humedad (%)', color: '#36A2EB' },
     { key: 'presion', label: '📈 Presión (hPa)', color: '#FFCE56' },
-    { key: 'gas', label: '💨 Gas', color: '#4BC0C0' },
-    { key: 'radiacion', label: '☀️ Radiación', color: '#FF9F40' },
     { key: 'viento', label: '🌪️ Viento (m/s)', color: '#9966FF' },
-    { key: 'bateria', label: '🔋 Batería (%)', color: '#FF6B6B' },
+    { key: 'prediccion_temp', label: '🔮 Predicción Temp (°C)', color: '#FF9F40' },
   ];
   
   // Preparar datos para el gráfico
@@ -206,14 +218,26 @@ const ReportsPage: React.FC = () => {
     }
 
     const sortedReadings = [...dataToUse].sort((a, b) => 
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      new Date(a.fecha_registro).getTime() - new Date(b.fecha_registro).getTime()
     );
 
     const selectedVar = variableOptions.find(v => v.key === selectedVariable);
 
+    // Función para obtener el valor de la variable seleccionada
+    const getValue = (reading: Lectura, variable: string) => {
+      switch (variable) {
+        case 'temperatura': return reading.temperatura;
+        case 'humedad': return reading.humedad;
+        case 'presion': return reading.presion_at;
+        case 'viento': return reading.velocidad_viento;
+        case 'prediccion_temp': return reading.prediccion_temp;
+        default: return 0;
+      }
+    };
+
     return {
       labels: sortedReadings.map(reading => 
-        new Date(reading.timestamp).toLocaleDateString('es-CL', {
+        new Date(reading.fecha_registro).toLocaleDateString('es-CL', {
           day: '2-digit',
           month: '2-digit',
           hour: '2-digit',
@@ -223,7 +247,7 @@ const ReportsPage: React.FC = () => {
       datasets: [
         {
           label: `${selectedVar?.label || 'Variable'}${selectedSensor ? ` - ${selectedSensor}` : ' - Todos los sensores'}`,
-          data: sortedReadings.map(reading => reading.json[selectedVariable as keyof typeof reading.json]),
+          data: sortedReadings.map(reading => getValue(reading, selectedVariable)),
           borderColor: selectedVar?.color || '#FF6384',
           backgroundColor: selectedVar?.color + '20' || '#FF638420',
           borderWidth: 2,
@@ -287,7 +311,7 @@ const ReportsPage: React.FC = () => {
               <h4>🌡️ Temp. Promedio</h4>
               <p style={styles.statValue}>
                 {filteredReadings.length > 0
-                  ? (filteredReadings.reduce((sum, r) => sum + (r.json.temperatura || 0), 0) / filteredReadings.length).toFixed(1)
+                  ? (filteredReadings.reduce((sum, r) => sum + (typeof r.temperatura === 'number' ? r.temperatura : 0), 0) / filteredReadings.length).toFixed(1)
                   : '0'
                 }°C
               </p>
@@ -296,7 +320,7 @@ const ReportsPage: React.FC = () => {
               <h4>💧 Humedad Promedio</h4>
               <p style={styles.statValue}>
                 {filteredReadings.length > 0
-                  ? (filteredReadings.reduce((sum, r) => sum + (r.json.humedad || 0), 0) / filteredReadings.length).toFixed(1)
+                  ? (filteredReadings.reduce((sum, r) => sum + (typeof r.humedad === 'number' ? r.humedad : 0), 0) / filteredReadings.length).toFixed(1)
                   : '0'
                 }%
               </p>
@@ -305,34 +329,16 @@ const ReportsPage: React.FC = () => {
                 <h4>📈 Presión Promedio</h4>
                 <p style={styles.statValue}>
                   {filteredReadings.length > 0
-                    ? (filteredReadings.reduce((sum, r) => sum + (r.json.presion || 0), 0) / filteredReadings.length).toFixed(1)
+                    ? (filteredReadings.reduce((sum, r) => sum + (typeof r.presion_at === 'number' ? r.presion_at : 0), 0) / filteredReadings.length).toFixed(1)
                     : '0'
                   } hPa
-                </p>
-              </div>
-              <div style={styles.statCard}>
-                <h4>💨 Gas Promedio</h4>
-                <p style={styles.statValue}>
-                  {filteredReadings.length > 0
-                    ? (filteredReadings.reduce((sum, r) => sum + (r.json.gas || 0), 0) / filteredReadings.length).toFixed(3)
-                    : '0'
-                  }
-                </p>
-              </div>
-              <div style={styles.statCard}>
-                <h4>☀️ Radiación Promedio</h4>
-                <p style={styles.statValue}>
-                  {filteredReadings.length > 0
-                    ? (filteredReadings.reduce((sum, r) => sum + (r.json.radiacion || 0), 0) / filteredReadings.length).toFixed(1)
-                    : '0'
-                  }
                 </p>
               </div>
               <div style={styles.statCard}>
                 <h4>🌪️ Viento Promedio</h4>
                 <p style={styles.statValue}>
                   {filteredReadings.length > 0
-                    ? (filteredReadings.reduce((sum, r) => sum + (r.json.viento || 0), 0) / filteredReadings.length).toFixed(1)
+                    ? (filteredReadings.reduce((sum, r) => sum + (typeof r.velocidad_viento === 'number' ? r.velocidad_viento : 0), 0) / filteredReadings.length).toFixed(1)
                     : '0'
                   } m/s
                 </p>
@@ -515,10 +521,8 @@ const ReportsPage: React.FC = () => {
                     <th>Temp (°C)</th>
                     <th>Humedad (%)</th>
                     <th>Presión (hPa)</th>
-                    <th>Gas</th>
-                    <th>Radiación</th>
                     <th>Viento (m/s)</th>
-                    <th>Batería (%)</th>
+                    <th>Predicción Temp (°C)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -526,15 +530,13 @@ const ReportsPage: React.FC = () => {
                     <tr key={reading.id} style={styles.tableRow}>
                       <td style={styles.tableCell}>{reading.id}</td>
                       <td style={styles.tableCell}>{reading.estacion_nombre || 'N/A'}</td>
-                      <td style={styles.tableCell}>{reading.localizacion || 'N/A'}</td>
-                      <td style={styles.tableCell}>{formatTimestamp(reading.timestamp)}</td>
-                      <td style={styles.tableCell}>{reading.json.temperatura?.toFixed(1) || 'N/A'}</td>
-                      <td style={styles.tableCell}>{reading.json.humedad?.toFixed(1) || 'N/A'}</td>
-                      <td style={styles.tableCell}>{reading.json.presion?.toFixed(1) || 'N/A'}</td>
-                      <td style={styles.tableCell}>{reading.json.gas?.toFixed(3) || 'N/A'}</td>
-                      <td style={styles.tableCell}>{reading.json.radiacion || 'N/A'}</td>
-                      <td style={styles.tableCell}>{reading.json.viento?.toFixed(1) || 'N/A'}</td>
-                      <td style={styles.tableCell}>{reading.json.bateria?.toFixed(0) || 'N/A'}</td>
+                      <td style={styles.tableCell}>{reading.ubicacion || 'N/A'}</td>
+                      <td style={styles.tableCell}>{formatTimestamp(reading.fecha_registro)}</td>
+                      <td style={styles.tableCell}>{typeof reading.temperatura === 'number' ? reading.temperatura.toFixed(1) : 'N/A'}</td>
+                      <td style={styles.tableCell}>{typeof reading.humedad === 'number' ? reading.humedad.toFixed(1) : 'N/A'}</td>
+                      <td style={styles.tableCell}>{typeof reading.presion_at === 'number' ? reading.presion_at.toFixed(1) : 'N/A'}</td>
+                      <td style={styles.tableCell}>{typeof reading.velocidad_viento === 'number' ? reading.velocidad_viento.toFixed(1) : 'N/A'}</td>
+                      <td style={styles.tableCell}>{typeof reading.prediccion_temp === 'number' ? reading.prediccion_temp.toFixed(1) : 'N/A'}</td>
                     </tr>
                   ))}
                 </tbody>

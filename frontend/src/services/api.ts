@@ -88,14 +88,102 @@ export const stationService = {
 
 
 
+// ==================== DISPOSITIVOS ====================
+
+export const deviceService = {
+  // Obtener todos los dispositivos
+  getAll: async () => {
+    try {
+      console.log('🔄 Obteniendo dispositivos de:', `${API_BASE_URL}/dispositivos`);
+      const response = await api.get('/dispositivos');
+      console.log('✅ Dispositivos obtenidos:', response.data.length || 0);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error al obtener dispositivos:', error.response?.data || error.message);
+      throw new Error(`Error al obtener dispositivos: ${error.response?.data?.error || error.message}`);
+    }
+  },
+
+  // Obtener dispositivos disponibles
+  getAvailable: async () => {
+    try {
+      console.log('🔄 Obteniendo dispositivos disponibles');
+      const response = await api.get('/dispositivos/disponibles');
+      console.log('✅ Dispositivos disponibles obtenidos:', response.data.length || 0);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error al obtener dispositivos disponibles:', error.response?.data || error.message);
+      throw new Error(`Error al obtener dispositivos disponibles: ${error.response?.data?.error || error.message}`);
+    }
+  },
+
+  // Obtener dispositivo de una estación
+  getByStationId: async (stationId: number) => {
+    try {
+      const response = await api.get(`/dispositivos/estacion/${stationId}`);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        return null; // No hay dispositivo asignado
+      }
+      throw new Error(`Error al obtener dispositivo de la estación: ${error.response?.data?.error || error.message}`);
+    }
+  },
+
+  // Asignar dispositivo a estación
+  assign: async (deviceId: string, stationId: number) => {
+    try {
+      console.log(`🔄 Asignando dispositivo ${deviceId} a estación ${stationId}`);
+      const response = await api.post('/dispositivos/asignar', { 
+        deviceId, 
+        stationId 
+      });
+      console.log('✅ Dispositivo asignado exitosamente');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error al asignar dispositivo:', error.response?.data || error.message);
+      throw new Error(`Error al asignar dispositivo: ${error.response?.data?.error || error.message}`);
+    }
+  },
+
+  // Liberar dispositivo
+  release: async (deviceId: string) => {
+    try {
+      console.log(`🔄 Liberando dispositivo ${deviceId}`);
+      const response = await api.put(`/dispositivos/${deviceId}/liberar`);
+      console.log('✅ Dispositivo liberado exitosamente');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error al liberar dispositivo:', error.response?.data || error.message);
+      throw new Error(`Error al liberar dispositivo: ${error.response?.data?.error || error.message}`);
+    }
+  },
+};
+
+
 // ==================== LECTURAS ====================
+
+// Función auxiliar para normalizar datos de lecturas
+const normalizeReadingData = (reading: any) => {
+  return {
+    ...reading,
+    temperatura: reading.temperatura ? Number(reading.temperatura) : null,
+    humedad: reading.humedad ? Number(reading.humedad) : null,
+    presion_at: reading.presion_at ? Number(reading.presion_at) : null,
+    velocidad_viento: reading.velocidad_viento ? Number(reading.velocidad_viento) : null,
+    prediccion_temp: reading.prediccion_temp ? Number(reading.prediccion_temp) : null,
+    raw_timestamp: reading.raw_timestamp ? Number(reading.raw_timestamp) : null,
+  };
+};
 
 export const readingService = {
   // Obtener todas las lecturas
   getAll: async () => {
     try {
       const response = await api.get('/lecturas');
-      return response.data;
+      // Normalizar datos para asegurar que valores numéricos sean números
+      const normalizedData = response.data.map(normalizeReadingData);
+      return normalizedData;
     } catch (error) {
       throw new Error('Error al obtener las lecturas');
     }
@@ -105,7 +193,8 @@ export const readingService = {
   getByStation: async (stationId: number) => {
     try {
       const response = await api.get(`/estaciones/${stationId}/lecturas`);
-      return response.data;
+      const normalizedData = Array.isArray(response.data) ? response.data.map(normalizeReadingData) : [];
+      return normalizedData;
     } catch (error) {
       throw new Error(`Error al obtener las lecturas de la estación ${stationId}`);
     }
@@ -115,7 +204,7 @@ export const readingService = {
   getLatestByStation: async (stationId: number) => {
     try {
       const response = await api.get(`/estaciones/${stationId}/lecturas/latest`);
-      return response.data;
+      return response.data ? normalizeReadingData(response.data) : null;
     } catch (error) {
       throw new Error(`Error al obtener la última lectura de la estación ${stationId}`);
     }
@@ -125,7 +214,8 @@ export const readingService = {
   getLatestAll: async () => {
     try {
       const response = await api.get('/lecturas/latest');
-      return response.data;
+      const normalizedData = Array.isArray(response.data) ? response.data.map(normalizeReadingData) : [];
+      return normalizedData;
     } catch (error) {
       throw new Error('Error al obtener las últimas lecturas de todas las estaciones');
     }
@@ -135,7 +225,7 @@ export const readingService = {
   getById: async (id: number) => {
     try {
       const response = await api.get(`/lecturas/${id}`);
-      return response.data;
+      return response.data ? normalizeReadingData(response.data) : null;
     } catch (error) {
       throw new Error(`Error al obtener la lectura ${id}`);
     }

@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import {UtalcaHeader, TabNavigation, MainLayout, TabItem, DeviceData} from '../components/layout';
 
 // Importar páginas separadas
-import { MonitoringPage, DevicesPage, ReportsPage, SettingsPage } from './index';
+import { MonitoringPage, DevicesPage, ReportsPage, SettingsPage, StationManagementPage } from './index';
 
 // Importar hook unificado para datos de la API
 import { useDeviceData } from '../hooks/useDeviceData';
@@ -57,6 +57,7 @@ const Home: React.FC = () => {
   const tabs: TabItem[] = [
     { id: 'monitoring', label: 'MONITOREO', active: activeTab === 'monitoring' },
     { id: 'devices', label: 'DISPOSITIVOS', active: activeTab === 'devices' },
+    { id: 'stations', label: 'ESTACIONES', active: activeTab === 'stations' },
     { id: 'reports', label: 'REPORTES', active: activeTab === 'reports' },
     { id: 'settings', label: 'CONFIGURACIÓN', active: activeTab === 'settings' },
   ];
@@ -106,6 +107,9 @@ const Home: React.FC = () => {
             onDeviceSelect={handleDeviceSelect}
           />
         );
+
+      case 'stations':
+        return <StationManagementPage />;
 
       case 'reports':
         return <ReportsPage />;

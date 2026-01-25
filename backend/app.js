@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import cors from 'cors';
 import stationRouters from './src/routes/stationRouters.js';
 import readingRoutes from './src/routes/readingRoutes.js';
+import deviceRoutes from './src/routes/deviceRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -19,6 +20,7 @@ app.use(express.json());
 // Rutas API
 app.use('/api', stationRouters);
 app.use('/api', readingRoutes);
+app.use('/api', deviceRoutes);
 
 // Ruta base
 app.get('/', (req, res) => {

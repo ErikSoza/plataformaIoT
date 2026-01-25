@@ -13,31 +13,48 @@ export interface Estacion {
   id: number;
   id_usuario?: number;
   nombre: string;
-  localizacion?: string;
+  ubicacion?: string;
   latitud?: number;
   longitud?: number;
+  descripcion?: string;
   estado: string;
-  bateria?: number;
-  ultima_actualizacion: string;
   created_at: string;
+  // Campos del JOIN con dispositivos
+  device_id?: string;
+  modelo?: string;
+  estado_dispositivo?: string;
+  bateria?: number;
+  ultima_conexion?: string;
+}
+
+export interface Dispositivo {
+  device_id: string;
+  modelo: string;
+  estado: 'disponible' | 'asignado' | 'mantenimiento';
+  bateria?: number;
+  ultima_conexion?: string;
+  id_estacion?: number;
+  created_at: string;
+  // Campos del JOIN con estaciones
+  nombre_estacion?: string;
+  ubicacion_estacion?: string;
 }
 
 export interface Lectura {
   id: number;
-  id_estacion: number;
-  timestamp: string;
-  json: {
-    temperatura: number;
-    humedad: number;
-    presion: number;
-    gas: number;
-    radiacion: number;
-    viento: number;
-    bateria: number;
-  };
+  device_id: string;
+  fecha_registro: string;
+  raw_timestamp?: number;
+  temperatura?: number;
+  humedad?: number;
+  presion_at?: number;
+  velocidad_viento?: number;
+  prediccion_temp?: number;
   // Campos adicionales de JOIN
   estacion_nombre?: string;
-  localizacion?: string;
+  ubicacion?: string;
+  estacion_id?: number;
+  modelo?: string;
 }
 
 // Tipo para los datos que envía el ESP32
@@ -133,24 +150,21 @@ export const transformEstacionToDevice = (estacion: EstacionCompleta): DeviceDat
 
   // Extraer datos de la última lectura si existe
   const latestReading = estacion.latestReading;
-  const sensorData = latestReading?.json;
 
   return {
     id: estacion.id,
     name: estacion.nombre,
     type: 'Sensor Ambiental IoT',
     status: mapStatus(estacion.estado),
-    lastUpdate: latestReading?.timestamp || estacion.ultima_actualizacion,
-    location: estacion.localizacion || 'Sin ubicación',
+    lastUpdate: latestReading?.fecha_registro || estacion.created_at,
+    location: estacion.ubicacion || 'Sin ubicación',
     coordinates: estacion.latitud && estacion.longitud 
       ? [estacion.latitud, estacion.longitud] 
       : [0, 0],
-    temperature: sensorData?.temperatura,
-    humidity: sensorData?.humedad,
-    battery: sensorData?.bateria || estacion.bateria,
-    pressure: sensorData?.presion,
-    gas: sensorData?.gas,
-    radiation: sensorData?.radiacion,
+    temperature: latestReading?.temperatura,
+    humidity: latestReading?.humedad,
+    battery: estacion.bateria,
+    pressure: latestReading?.presion_at,
   };
 };
 
@@ -166,10 +180,10 @@ export const transformEstacionesToDevices = (
 
 export interface NuevaEstacionForm {
   nombre: string;
-  localizacion: string;
+  ubicacion: string;
   latitud: number;
   longitud: number;
-  id_usuario?: number;
+  descripcion?: string;
 }
 
 export interface NuevaLecturaForm {
