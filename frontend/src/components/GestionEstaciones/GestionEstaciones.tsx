@@ -13,12 +13,23 @@ const GestionEstaciones: React.FC = () => {
   
   // Estados del modal
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedStationId, setSelectedStationId] = useState<number | null>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+  const [estacionAEditar, setEstacionAEditar] = useState<Estacion | null>(null);
 
   // Estado del formulario de nueva estación
   const [nuevaEstacion, setNuevaEstacion] = useState<NuevaEstacionForm>({
+    nombre: '',
+    ubicacion: '',
+    latitud: 0,
+    longitud: 0,
+    descripcion: ''
+  });
+
+  // Estado del formulario de edición de estación
+  const [editarEstacion, setEditarEstacion] = useState<NuevaEstacionForm>({
     nombre: '',
     ubicacion: '',
     latitud: 0,
@@ -131,6 +142,62 @@ const GestionEstaciones: React.FC = () => {
     }
   };
 
+  // ====== EDITAR ESTACIÓN ======
+  const abrirModalEditar = (estacion: Estacion) => {
+    setEstacionAEditar(estacion);
+    setEditarEstacion({
+      nombre: estacion.nombre,
+      ubicacion: estacion.ubicacion || '',
+      latitud: estacion.latitud || 0,
+      longitud: estacion.longitud || 0,
+      descripcion: estacion.descripcion || ''
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditarEstacion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!estacionAEditar) return;
+
+    limpiarMensajes();
+    
+    try {
+      setLoading(true);
+      await stationService.update(estacionAEditar.id, editarEstacion);
+      setSuccess('Estación actualizada exitosamente');
+      setShowEditModal(false);
+      setEstacionAEditar(null);
+      await cargarEstaciones();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ====== ELIMINAR ESTACIÓN ======
+  const handleEliminarEstacion = async (estacionId: number, nombreEstacion: string) => {
+    const confirmacion = window.confirm(
+      `¿Estás seguro de que quieres eliminar la estación "${nombreEstacion}"?\n\nEsta acción no se puede deshacer.`
+    );
+    
+    if (!confirmacion) return;
+
+    limpiarMensajes();
+    
+    try {
+      setLoading(true);
+      await stationService.delete(estacionId);
+      setSuccess('Estación eliminada exitosamente');
+      await cargarEstaciones();
+      await cargarDispositivosDisponibles();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="gestion-estaciones">
       <div className="header-section">
@@ -165,8 +232,8 @@ const GestionEstaciones: React.FC = () => {
               key={estacion.id}
               estacion={estacion}
               onAsignarDispositivo={abrirModalAsignar}
-              onLiberarDispositivo={handleLiberarDispositivo}
-            />
+              onLiberarDispositivo={handleLiberarDispositivo}              onEditarEstacion={abrirModalEditar}
+              onEliminarEstacion={handleEliminarEstacion}            />
           ))
         )}
       </div>
@@ -193,6 +260,18 @@ const GestionEstaciones: React.FC = () => {
           loading={loading}
         />
       )}
+
+      {/* Modal Editar Estación */}
+      {showEditModal && estacionAEditar && (
+        <ModalEditarEstacion
+          estacion={estacionAEditar}
+          editarEstacion={editarEstacion}
+          setEditarEstacion={setEditarEstacion}
+          onSubmit={handleEditarEstacion}
+          onClose={() => setShowEditModal(false)}
+          loading={loading}
+        />
+      )}
     </div>
   );
 };
@@ -202,12 +281,16 @@ interface EstacionCardProps {
   estacion: Estacion;
   onAsignarDispositivo: (stationId: number) => void;
   onLiberarDispositivo: (deviceId: string) => void;
+  onEditarEstacion: (estacion: Estacion) => void;
+  onEliminarEstacion: (estacionId: number, nombreEstacion: string) => void;
 }
 
 const EstacionCard: React.FC<EstacionCardProps> = ({ 
   estacion, 
   onAsignarDispositivo, 
-  onLiberarDispositivo 
+  onLiberarDispositivo,
+  onEditarEstacion,
+  onEliminarEstacion
 }) => {
   const tieneDispositivo = estacion.device_id;
 
@@ -215,9 +298,27 @@ const EstacionCard: React.FC<EstacionCardProps> = ({
     <div className="estacion-card">
       <div className="card-header">
         <h3>{estacion.nombre}</h3>
-        <span className={`status-badge ${estacion.estado.toLowerCase()}`}>
-          {estacion.estado}
-        </span>
+        <div className="header-actions">
+          <span className={`status-badge ${estacion.estado.toLowerCase()}`}>
+            {estacion.estado}
+          </span>
+          <div className="action-buttons">
+            <button 
+              className="btn btn-edit btn-sm"
+              onClick={() => onEditarEstacion(estacion)}
+              title="Editar estación"
+            >
+              ✏️
+            </button>
+            <button 
+              className="btn btn-delete btn-sm"
+              onClick={() => onEliminarEstacion(estacion.id, estacion.nombre)}
+              title="Eliminar estación"
+            >
+              🗑️
+            </button>
+          </div>
+        </div>
       </div>
       
       <div className="card-body">
@@ -432,6 +533,103 @@ const ModalAsignarDispositivo: React.FC<ModalAsignarDispositivoProps> = ({
           </button>
         </div>
       </div>
+    </div>
+  </div>
+);
+
+// ====== COMPONENTE: MODAL EDITAR ESTACIÓN ======
+interface ModalEditarEstacionProps {
+  estacion: Estacion;
+  editarEstacion: NuevaEstacionForm;
+  setEditarEstacion: React.Dispatch<React.SetStateAction<NuevaEstacionForm>>;
+  onSubmit: (e: React.FormEvent) => Promise<void>;
+  onClose: () => void;
+  loading: boolean;
+}
+
+const ModalEditarEstacion: React.FC<ModalEditarEstacionProps> = ({
+  estacion,
+  editarEstacion,
+  setEditarEstacion,
+  onSubmit,
+  onClose,
+  loading
+}) => (
+  <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-header">
+        <h3>✏️ Editar Estación: {estacion.nombre}</h3>
+        <button className="close-btn" onClick={onClose}>✕</button>
+      </div>
+      
+      <form onSubmit={onSubmit} className="modal-body">
+        <div className="form-group">
+          <label>Nombre de la Estación *</label>
+          <input
+            type="text"
+            value={editarEstacion.nombre}
+            onChange={(e) => setEditarEstacion({ ...editarEstacion, nombre: e.target.value })}
+            required
+            placeholder="Ej: Campus Los Niches"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label>Ubicación *</label>
+          <input
+            type="text"
+            value={editarEstacion.ubicacion}
+            onChange={(e) => setEditarEstacion({ ...editarEstacion, ubicacion: e.target.value })}
+            required
+            placeholder="Ej: Edificio Central, Piso 2"
+          />
+        </div>
+        
+        <div className="form-row">
+          <div className="form-group">
+            <label>Latitud *</label>
+            <input
+              type="number"
+              step="any"
+              value={editarEstacion.latitud}
+              onChange={(e) => setEditarEstacion({ ...editarEstacion, latitud: parseFloat(e.target.value) || 0 })}
+              required
+              placeholder="-35.001"
+            />
+          </div>
+          
+          <div className="form-group">
+            <label>Longitud *</label>
+            <input
+              type="number"
+              step="any"
+              value={editarEstacion.longitud}
+              onChange={(e) => setEditarEstacion({ ...editarEstacion, longitud: parseFloat(e.target.value) || 0 })}
+              required
+              placeholder="-71.229"
+            />
+          </div>
+        </div>
+        
+        <div className="form-group">
+          <label>Descripción</label>
+          <textarea
+            value={editarEstacion.descripcion}
+            onChange={(e) => setEditarEstacion({ ...editarEstacion, descripcion: e.target.value })}
+            placeholder="Descripción opcional de la estación..."
+            rows={3}
+          />
+        </div>
+        
+        <div className="modal-footer">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>
+            Cancelar
+          </button>
+          <button type="submit" className="btn btn-primary" disabled={loading}>
+            {loading ? 'Guardando...' : 'Guardar Cambios'}
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 );
