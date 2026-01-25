@@ -170,9 +170,16 @@ const normalizeReadingData = (reading: any) => {
     temperatura: reading.temperatura ? Number(reading.temperatura) : null,
     humedad: reading.humedad ? Number(reading.humedad) : null,
     presion_at: reading.presion_at ? Number(reading.presion_at) : null,
+    // Mapear presion_at a pressure para compatibilidad con frontend
+    pressure: reading.presion_at ? Number(reading.presion_at) : null,
     velocidad_viento: reading.velocidad_viento ? Number(reading.velocidad_viento) : null,
+    // Mapear velocidad_viento a wind para compatibilidad con frontend
+    wind: reading.velocidad_viento ? Number(reading.velocidad_viento) : null,
     prediccion_temp: reading.prediccion_temp ? Number(reading.prediccion_temp) : null,
     raw_timestamp: reading.raw_timestamp ? Number(reading.raw_timestamp) : null,
+    // Estos campos no existen en la nueva estructura de BD
+    gas: undefined,
+    radiation: undefined,
   };
 };
 

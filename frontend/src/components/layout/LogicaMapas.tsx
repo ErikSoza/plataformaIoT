@@ -37,30 +37,21 @@ const MetricaVariables = {
     color: '#9C27B0',
     gradient: ['#800026', '#bd0026', '#e31a1c', '#fc4e2a', '#feb24c']
   },
-  gas: {
-    id: 'gas',
-    name: 'Calidad del Aire',
-    icon: '🌪️',
-    unit: 'ppm',
-    description: 'Calidad del aire y gases',
-    color: '#4CAF50',
-    gradient: ['#00ff00', '#80ff00', '#ffff00', '#ff8000', '#ff0000']
-  },
-  radiation: {
-    id: 'radiation',
-    name: 'Radiación Solar',
-    icon: '☀️',
-    unit: 'W/m²',
-    description: 'Radiación solar',
-    color: '#FF9800',
-    gradient: ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#f03b20']
+  wind: {
+    id: 'wind',
+    name: 'Velocidad del Viento',
+    icon: '💨',
+    unit: 'm/s',
+    description: 'Velocidad del viento',
+    color: '#607D8B',
+    gradient: ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20', '#bd0026']
   }
 } as const;
 
 // Componente de selector dinámico de métricas
 interface MetricSelectorProps {
-  selectedMetric: 'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation';
-  onMetricChange: (metric: 'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation') => void;
+  selectedMetric: 'temperature' | 'humidity' | 'pressure' | 'wind';
+  onMetricChange: (metric: 'temperature' | 'humidity' | 'pressure' | 'wind') => void;
 }
 
 const MetricSelector: React.FC<MetricSelectorProps> = ({ selectedMetric, onMetricChange }) => {
@@ -274,7 +265,7 @@ interface UnifiedMapProps {
   // Nuevas props para controlar funcionalidades
   showHeatmapControls?: boolean;
   defaultHeatmapVisible?: boolean;
-  defaultHeatmapMetric?: 'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation';
+  defaultHeatmapMetric?: 'temperature' | 'humidity' | 'pressure' | 'wind';
 }
 
 // Componente para manejar el cambio de centro del mapa
@@ -302,7 +293,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   defaultHeatmapMetric = 'temperature'
 }) => {
   const [showHeatmap] = useState(defaultHeatmapVisible);
-  const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation'>(defaultHeatmapMetric);
+  const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'pressure' | 'wind'>(defaultHeatmapMetric);
 
   // Centro por defecto (Campus UTalca)
   const defaultCenter: [number, number] = [-35.0020711, -71.2288796];
@@ -461,15 +452,13 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                     {heatmapMetric === 'temperature' && '0°C'}
                     {heatmapMetric === 'humidity' && '0%'}
                     {heatmapMetric === 'pressure' && '1000 hPa'}
-                    {heatmapMetric === 'gas' && '0 ppm'}
-                    {heatmapMetric === 'radiation' && '0 W/m²'}
+                    {heatmapMetric === 'wind' && '0 m/s'}
                   </span>
                   <span>
                     {heatmapMetric === 'temperature' && '40°C'}
                     {heatmapMetric === 'humidity' && '100%'}
                     {heatmapMetric === 'pressure' && '1020 hPa'}
-                    {heatmapMetric === 'gas' && '0.1 ppm'}
-                    {heatmapMetric === 'radiation' && '1000 W/m²'}
+                    {heatmapMetric === 'wind' && '20 m/s'}
                   </span>
                 </div>
               </div>

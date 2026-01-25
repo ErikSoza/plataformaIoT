@@ -14,8 +14,7 @@ export const deviceData: DeviceData[] = [
     humidity: 65,
     battery: 87,
     pressure: 1013.2,
-    gas: 0.045,
-    radiation: 650
+    wind: 5.2
   },
   {
     id: 2,
@@ -29,8 +28,7 @@ export const deviceData: DeviceData[] = [
     humidity: 45,
     battery: 92,
     pressure: 1015.8,
-    gas: 0.032,
-    radiation: 820
+    wind: 3.7
   },
   {
     id: 3,
@@ -44,8 +42,7 @@ export const deviceData: DeviceData[] = [
     humidity: 82,
     battery: 23,
     pressure: 1009.5,
-    gas: 0.058,
-    radiation: 420
+    wind: 6.9
   },
   {
     id: 4,
@@ -59,8 +56,7 @@ export const deviceData: DeviceData[] = [
     humidity: 52,
     battery: 65,
     pressure: 1011.7,
-    gas: 0.039,
-    radiation: 750
+    wind: 4.1
   },
   {
     id: 5,
@@ -74,8 +70,7 @@ export const deviceData: DeviceData[] = [
     humidity: 78,
     battery: 76,
     pressure: 1008.3,
-    gas: 0.025,
-    radiation: 520
+    wind: 7.8
   },
   {
     id: 6,
@@ -89,8 +84,7 @@ export const deviceData: DeviceData[] = [
     humidity: 38,
     battery: 88,
     pressure: 1016.9,
-    gas: 0.067,
-    radiation: 920
+    wind: 2.3
   },
   {
     id: 7,
@@ -104,8 +98,7 @@ export const deviceData: DeviceData[] = [
     humidity: 60,
     battery: 45,
     pressure: 1010.4,
-    gas: 0.041,
-    radiation: 580
+    wind: 8.6
   },
   {
     id: 8,
@@ -119,8 +112,7 @@ export const deviceData: DeviceData[] = [
     humidity: 55,
     battery: 71,
     pressure: 1012.6,
-    gas: 0.048,
-    radiation: 690
+    wind: 1.9
   }
 ];
 

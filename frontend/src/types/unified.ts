@@ -29,27 +29,32 @@ export interface Station {
   temperature?: number;
   humidity?: number;
   pressure?: number;
-  gas?: number;
-  radiation?: number;
+  gas?: number | null; // Campo obsoleto - no existe en BD actual
+  radiation?: number | null; // Campo obsoleto - no existe en BD actual
   wind?: number;
 }
 
 export interface Reading {
   id: number;
-  id_estacion: number;
-  timestamp: string;
-  json: {
-    temperatura: number;
-    humedad: number;
-    presion: number;
-    gas: number;
-    radiacion: number;
-    viento: number;
-    bateria: number;
-  };
+  device_id: string;
+  fecha_registro: string;
+  raw_timestamp?: number;
+  temperatura?: number;
+  humedad?: number;
+  presion_at?: number;
+  velocidad_viento?: number;
+  prediccion_temp?: number;
+  // Campos mapeados para compatibilidad
+  pressure?: number; // alias de presion_at
+  wind?: number; // alias de velocidad_viento
+  gas?: number | null; // no existe en BD actual
+  radiation?: number | null; // no existe en BD actual
   // Campos adicionales de JOIN
+  device_id_dispositivo?: string;
+  modelo?: string;
   estacion_nombre?: string;
-  localizacion?: string;
+  ubicacion?: string;
+  estacion_id?: number;
 }
 
 export interface Usuario {
@@ -167,18 +172,15 @@ export const normalizeStationData = (rawStation: any): Station => {
   station.status = mapStatus(rawStation.estado, rawStation.estado_dispositivo);
 
   // Extraer métricas de la última lectura si existe
-  if (rawStation.latestReading?.json) {
-    const sensorData = rawStation.latestReading.json;
-    station.temperature = sensorData.temperatura;
-    station.humidity = sensorData.humedad;
-    station.pressure = sensorData.presion;
-    station.gas = sensorData.gas;
-    station.radiation = sensorData.radiacion;
-    station.wind = sensorData.viento;
-    // Usar batería de la lectura o de la estación
-    if (!station.bateria && sensorData.bateria) {
-      station.bateria = sensorData.bateria;
-    }
+  if (rawStation.latestReading) {
+    const reading = rawStation.latestReading;
+    station.temperature = reading.temperatura;
+    station.humidity = reading.humedad;
+    station.pressure = reading.presion_at || reading.pressure;
+    station.wind = reading.velocidad_viento || reading.wind;
+    // Estos campos no existen en la nueva estructura de BD
+    station.gas = undefined;
+    station.radiation = undefined;
   }
 
   return station;
@@ -224,8 +226,6 @@ export interface NuevaLecturaForm {
     temperatura: number;
     humedad: number;
     presion: number;
-    gas: number;
-    radiacion: number;
     viento: number;
     bateria: number;
   };
@@ -242,8 +242,6 @@ export const validateMetricValue = (value: number, metric: string): boolean => {
     temperatura: { min: -50, max: 60 },
     humedad: { min: 0, max: 100 },
     presion: { min: 950, max: 1050 },
-    gas: { min: 0, max: 1 },
-    radiacion: { min: 0, max: 2000 },
     viento: { min: 0, max: 100 },
     bateria: { min: 0, max: 100 },
   } as const;

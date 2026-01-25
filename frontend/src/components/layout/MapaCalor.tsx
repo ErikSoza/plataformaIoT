@@ -15,7 +15,7 @@ declare module 'leaflet' {
 
 interface HeatMapLayerProps {
   devices: DeviceData[];
-  metric: 'temperature' | 'humidity' | 'pressure' | 'gas' | 'radiation';
+  metric: 'temperature' | 'humidity' | 'pressure' | 'wind';
   visible: boolean;
 }
 
@@ -52,13 +52,9 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
               // Normalizar presión (1000 hPa = 0, 1020 hPa = 1)
               intensity = Math.max(0, Math.min(1, (device.pressure! - 1000) / 20));
               break;
-            case 'gas':
-              // Normalizar calidad del aire (0 = 0, 0.1 = 1)
-              intensity = Math.max(0, Math.min(1, device.gas! / 0.1));
-              break;
-            case 'radiation':
-              // Normalizar radiación (0 W/m² = 0, 1000 W/m² = 1)
-              intensity = Math.max(0, Math.min(1, device.radiation! / 1000));
+            case 'wind':
+              // Normalizar velocidad del viento (0 m/s = 0, 20 m/s = 1)
+              intensity = Math.max(0, Math.min(1, device.wind! / 20));
               break;
           }
 
@@ -110,28 +106,16 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
                   '1.0': '#feb24c'
                 }
               };
-            case 'gas':
+            case 'wind':
               return {
                 ...baseOptions,
                 gradient: {
-                  '0.0': '#00ff00',
-                  '0.2': '#80ff00',
-                  '0.4': '#ffff00',
-                  '0.6': '#ff8000',
-                  '0.8': '#ff4000',
-                  '1.0': '#ff0000'
-                }
-              };
-            case 'radiation':
-              return {
-                ...baseOptions,
-                gradient: {
-                  '0.0': '#ffffcc',
-                  '0.2': '#ffeda0',
-                  '0.4': '#fed976',
-                  '0.6': '#feb24c',
-                  '0.8': '#fd8d3c',
-                  '1.0': '#f03b20'
+                  '0.0': '#ffffb2',
+                  '0.2': '#fecc5c',
+                  '0.4': '#fd8d3c',
+                  '0.6': '#f03b20',
+                  '0.8': '#bd0026',
+                  '1.0': '#800026'
                 }
               };
             

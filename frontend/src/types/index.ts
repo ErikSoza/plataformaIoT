@@ -65,8 +65,6 @@ export interface ESP32Data {
     temperatura: number;
     humedad: number;
     presion: number;
-    gas: number;
-    radiacion: number;
     viento: number;
     bateria: number;
   };
@@ -102,8 +100,7 @@ export interface DeviceData {
   humidity?: number;
   battery?: number;
   pressure?: number;
-  gas?: number;
-  radiation?: number;
+  wind?: number;
 }
 
 export interface StatCardData {
@@ -165,6 +162,7 @@ export const transformEstacionToDevice = (estacion: EstacionCompleta): DeviceDat
     humidity: latestReading?.humedad,
     battery: estacion.bateria,
     pressure: latestReading?.presion_at,
+    wind: latestReading?.velocidad_viento,
   };
 };
 
@@ -193,8 +191,6 @@ export interface NuevaLecturaForm {
     temperatura: number;
     humedad: number;
     presion: number;
-    gas: number;
-    radiacion: number;
     viento: number;
     bateria: number;
   };
