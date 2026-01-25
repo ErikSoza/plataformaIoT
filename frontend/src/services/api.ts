@@ -177,9 +177,9 @@ const normalizeReadingData = (reading: any) => {
     wind: reading.velocidad_viento ? Number(reading.velocidad_viento) : null,
     prediccion_temp: reading.prediccion_temp ? Number(reading.prediccion_temp) : null,
     raw_timestamp: reading.raw_timestamp ? Number(reading.raw_timestamp) : null,
-    // Estos campos no existen en la nueva estructura de BD
-    gas: undefined,
-    radiation: undefined,
+    // TODO: Implementar en dispositivo - valores temporales por ahora
+    gas: 0.040, // Valor temporal representativo
+    radiation: 650, // Valor temporal representativo
   };
 };
 

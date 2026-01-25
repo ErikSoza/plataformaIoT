@@ -118,6 +118,8 @@ export const useDeviceData = (options: UseDeviceDataOptions = {}): UseDeviceData
       const avgHumidity = calculateAverage('humidity');
       const avgPressure = calculateAverage('pressure');
       const avgWind = calculateAverage('wind');
+      const avgGas = calculateAverage('gas');
+      const avgRadiation = calculateAverage('radiation');
 
       // Intentar obtener estadísticas globales adicionales de la API
       let globalStats: any = {};
@@ -155,6 +157,16 @@ export const useDeviceData = (options: UseDeviceDataOptions = {}): UseDeviceData
           title: 'Velocidad del Viento',
           value: avgWind > 0 ? `${avgWind.toFixed(1)} m/s` : 'N/A',
           icon: '💨',
+        },
+        {
+          title: 'Calidad del Aire',
+          value: avgGas > 0 ? `${avgGas.toFixed(3)}` : 'N/A (Temp)',
+          icon: '🌪️',
+        },
+        {
+          title: 'Radiación Solar',
+          value: avgRadiation > 0 ? `${avgRadiation.toFixed(0)} W/m²` : 'N/A (Temp)',
+          icon: '☀️',
         },
       ];
 

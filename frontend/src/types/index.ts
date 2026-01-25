@@ -67,6 +67,8 @@ export interface ESP32Data {
     presion: number;
     viento: number;
     bateria: number;
+    gas?: number; // TODO: Implementar
+    radiacion?: number; // TODO: Implementar
   };
 }
 
@@ -101,6 +103,8 @@ export interface DeviceData {
   battery?: number;
   pressure?: number;
   wind?: number;
+  gas?: number; // TODO: Implementar en dispositivo
+  radiation?: number; // TODO: Implementar en dispositivo
 }
 
 export interface StatCardData {
@@ -163,6 +167,8 @@ export const transformEstacionToDevice = (estacion: EstacionCompleta): DeviceDat
     battery: estacion.bateria,
     pressure: latestReading?.presion_at,
     wind: latestReading?.velocidad_viento,
+    gas: 0.040, // TODO: Implementar en dispositivo
+    radiation: 650, // TODO: Implementar en dispositivo
   };
 };
 
@@ -193,5 +199,7 @@ export interface NuevaLecturaForm {
     presion: number;
     viento: number;
     bateria: number;
+    gas?: number; // TODO: Implementar en dispositivo
+    radiacion?: number; // TODO: Implementar en dispositivo
   };
 }

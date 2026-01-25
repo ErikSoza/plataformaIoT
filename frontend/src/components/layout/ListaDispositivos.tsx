@@ -12,7 +12,9 @@ export interface DeviceData {
   humidity?: number;    // Todos los sensores miden humedad
   battery?: number;     // Todos los sensores tienen batería
   pressure?: number;    // Todos los sensores miden presión
-  wind?: number;        // Todos los sensores miden velocidad del viento 
+  wind?: number;        // Todos los sensores miden velocidad del viento
+  gas?: number;         // TODO: Implementar en dispositivo
+  radiation?: number;   // TODO: Implementar en dispositivo 
 }
 
 interface DeviceListProps {

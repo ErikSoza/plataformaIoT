@@ -178,9 +178,9 @@ export const normalizeStationData = (rawStation: any): Station => {
     station.humidity = reading.humedad;
     station.pressure = reading.presion_at || reading.pressure;
     station.wind = reading.velocidad_viento || reading.wind;
-    // Estos campos no existen en la nueva estructura de BD
-    station.gas = undefined;
-    station.radiation = undefined;
+    // TODO: Implementar en dispositivo - valores temporales por ahora
+    station.gas = 0.040; // Valor temporal representativo
+    station.radiation = 650; // Valor temporal representativo
   }
 
   return station;
@@ -228,6 +228,8 @@ export interface NuevaLecturaForm {
     presion: number;
     viento: number;
     bateria: number;
+    gas?: number; // TODO: Implementar en dispositivo
+    radiacion?: number; // TODO: Implementar en dispositivo
   };
 }
 
@@ -244,6 +246,8 @@ export const validateMetricValue = (value: number, metric: string): boolean => {
     presion: { min: 950, max: 1050 },
     viento: { min: 0, max: 100 },
     bateria: { min: 0, max: 100 },
+    gas: { min: 0, max: 1 }, // TODO: Ajustar cuando se implemente
+    radiacion: { min: 0, max: 2000 }, // TODO: Ajustar cuando se implemente
   } as const;
 
   const range = ranges[metric as keyof typeof ranges];

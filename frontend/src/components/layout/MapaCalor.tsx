@@ -15,7 +15,7 @@ declare module 'leaflet' {
 
 interface HeatMapLayerProps {
   devices: DeviceData[];
-  metric: 'temperature' | 'humidity' | 'pressure' | 'wind';
+  metric: 'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation';
   visible: boolean;
 }
 
@@ -27,10 +27,22 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
 
     if (visible) {
       // Filtrar dispositivos que tienen datos para la métrica seleccionada
+      console.log(`🗺️ MapaCalor: Evaluando ${devices.length} dispositivos para métrica ${metric}`);
+      
       const validDevices = devices.filter(device => {
         const value = device[metric];
-        return value !== undefined && value !== null && !isNaN(Number(value));
+        const isValid = value !== undefined && value !== null && !isNaN(Number(value)) && Number(value) > 0;
+        
+        if (!isValid) {
+          console.log(`❌ Dispositivo ${device.name}: ${metric} = ${value} (inválido)`);
+        } else {
+          console.log(`✅ Dispositivo ${device.name}: ${metric} = ${value} (válido)`);
+        }
+        
+        return isValid;
       });
+      
+      console.log(`🔍 MapaCalor: ${validDevices.length} dispositivos válidos de ${devices.length} total`);
       
       if (validDevices.length > 0) {
         // Preparar datos para el mapa de calor
@@ -55,6 +67,14 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
             case 'wind':
               // Normalizar velocidad del viento (0 m/s = 0, 20 m/s = 1)
               intensity = Math.max(0, Math.min(1, device.wind! / 20));
+              break;
+            case 'gas':
+              // Normalizar calidad del aire (0 = 0, 0.1 = 1)
+              intensity = Math.max(0, Math.min(1, device.gas! / 0.1));
+              break;
+            case 'radiation':
+              // Normalizar radiación (0 W/m² = 0, 1000 W/m² = 1)
+              intensity = Math.max(0, Math.min(1, device.radiation! / 1000));
               break;
           }
 
@@ -116,6 +136,30 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
                   '0.6': '#f03b20',
                   '0.8': '#bd0026',
                   '1.0': '#800026'
+                }
+              };
+            case 'gas':
+              return {
+                ...baseOptions,
+                gradient: {
+                  '0.0': '#00ff00',
+                  '0.2': '#80ff00',
+                  '0.4': '#ffff00',
+                  '0.6': '#ff8000',
+                  '0.8': '#ff4000',
+                  '1.0': '#ff0000'
+                }
+              };
+            case 'radiation':
+              return {
+                ...baseOptions,
+                gradient: {
+                  '0.0': '#ffffcc',
+                  '0.2': '#ffeda0',
+                  '0.4': '#fed976',
+                  '0.6': '#feb24c',
+                  '0.8': '#fd8d3c',
+                  '1.0': '#f03b20'
                 }
               };
             
