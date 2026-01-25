@@ -50,6 +50,11 @@ export interface Lectura {
   presion_at?: number;
   velocidad_viento?: number;
   prediccion_temp?: number;
+  // Mapeo de compatibilidad
+  pressure?: number;
+  wind?: number;
+  gas?: number | null;
+  radiation?: number | null;
   // Campos adicionales de JOIN
   estacion_nombre?: string;
   ubicacion?: string;
