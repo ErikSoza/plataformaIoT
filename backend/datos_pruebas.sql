@@ -9,9 +9,9 @@ INSERT INTO usuarios (nombre, email, contrasena, rol) VALUES
 ('Administrador', 'admin@utalca.cl', 'admin123', 'admin');
 
 -- Estaciones (Lugares)
-INSERT INTO estaciones (nombre, latitud, longitud, ubicacion) VALUES 
-('Campus Los Niches', -35.001, -71.229, 'Entrada Principal'),
-('Campus Curicó', -34.985, -71.235, 'Edificio Ingeniería');
+INSERT INTO estaciones (nombre, latitud, longitud, ubicacion, estado) VALUES 
+('Campus Los Niches', -35.001, -71.229, 'Entrada Principal', 'Activa'),
+('Campus Curicó', -34.985, -71.235, 'Edificio Ingeniería', 'Activa');
 
 -- Dispositivos (Sensores IoT)
 INSERT INTO dispositivos (device_id, modelo, estado, id_estacion, bateria, ultima_conexion) VALUES 

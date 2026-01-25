@@ -3,6 +3,25 @@ import { stationService, deviceService } from '../../services/api';
 import { Estacion, Dispositivo, NuevaEstacionForm } from '../../types';
 import './GestionEstaciones.css';
 
+// Estados disponibles para las estaciones (mapeo frontend -> backend)
+const ESTADOS_DISPONIBLES = [
+  { value: 'Activa', label: 'Activo', icon: '🟢' },
+  { value: 'Inactiva', label: 'Inactivo', icon: '🔴' },
+  { value: 'Mantenimiento', label: 'Mantenimiento', icon: '🟡' },
+  { value: 'Error', label: 'Error', icon: '🔴' }
+];
+
+// Función para mapear estado de backend a frontend para visualización
+const mapEstadoParaVisualizacion = (estadoBackend: string) => {
+  switch (estadoBackend?.toLowerCase()) {
+    case 'activa': return 'Activo';
+    case 'inactiva': return 'Inactivo';
+    case 'mantenimiento': return 'Mantenimiento';
+    case 'error': return 'Error';
+    default: return estadoBackend || 'Desconocido';
+  }
+};
+
 // Componente principal
 const GestionEstaciones: React.FC = () => {
   const [estaciones, setEstaciones] = useState<Estacion[]>([]);
@@ -25,7 +44,8 @@ const GestionEstaciones: React.FC = () => {
     ubicacion: '',
     latitud: 0,
     longitud: 0,
-    descripcion: ''
+    descripcion: '',
+    estado: 'Activa' // Estado por defecto del backend
   });
 
   // Estado del formulario de edición de estación
@@ -34,7 +54,8 @@ const GestionEstaciones: React.FC = () => {
     ubicacion: '',
     latitud: 0,
     longitud: 0,
-    descripcion: ''
+    descripcion: '',
+    estado: 'Activa'
   });
 
   // Cargar datos iniciales
@@ -84,7 +105,8 @@ const GestionEstaciones: React.FC = () => {
         ubicacion: '',
         latitud: 0,
         longitud: 0,
-        descripcion: ''
+        descripcion: '',
+        estado: 'Activa'
       });
       await cargarEstaciones();
     } catch (err: any) {
@@ -150,7 +172,8 @@ const GestionEstaciones: React.FC = () => {
       ubicacion: estacion.ubicacion || '',
       latitud: estacion.latitud || 0,
       longitud: estacion.longitud || 0,
-      descripcion: estacion.descripcion || ''
+      descripcion: estacion.descripcion || '',
+      estado: estacion.estado || 'Activa' // Usar estado del backend directamente
     });
     setShowEditModal(true);
   };
@@ -232,8 +255,11 @@ const GestionEstaciones: React.FC = () => {
               key={estacion.id}
               estacion={estacion}
               onAsignarDispositivo={abrirModalAsignar}
-              onLiberarDispositivo={handleLiberarDispositivo}              onEditarEstacion={abrirModalEditar}
-              onEliminarEstacion={handleEliminarEstacion}            />
+              onLiberarDispositivo={handleLiberarDispositivo}
+              onEditarEstacion={abrirModalEditar}
+              onEliminarEstacion={handleEliminarEstacion}
+              estadosDisponibles={ESTADOS_DISPONIBLES}
+            />
           ))
         )}
       </div>
@@ -283,6 +309,7 @@ interface EstacionCardProps {
   onLiberarDispositivo: (deviceId: string) => void;
   onEditarEstacion: (estacion: Estacion) => void;
   onEliminarEstacion: (estacionId: number, nombreEstacion: string) => void;
+  estadosDisponibles: Array<{ value: string; label: string; icon: string }>;
 }
 
 const EstacionCard: React.FC<EstacionCardProps> = ({ 
@@ -290,7 +317,8 @@ const EstacionCard: React.FC<EstacionCardProps> = ({
   onAsignarDispositivo, 
   onLiberarDispositivo,
   onEditarEstacion,
-  onEliminarEstacion
+  onEliminarEstacion,
+  estadosDisponibles
 }) => {
   const tieneDispositivo = estacion.device_id;
 
@@ -299,8 +327,8 @@ const EstacionCard: React.FC<EstacionCardProps> = ({
       <div className="card-header">
         <h3>{estacion.nombre}</h3>
         <div className="header-actions">
-          <span className={`status-badge ${estacion.estado.toLowerCase()}`}>
-            {estacion.estado}
+          <span className={`status-badge ${estacion.estado?.toLowerCase()}`}>
+            {ESTADOS_DISPONIBLES.find(e => e.value === estacion.estado)?.icon || '⚪'} {mapEstadoParaVisualizacion(estacion.estado)}
           </span>
           <div className="action-buttons">
             <button 
@@ -445,6 +473,22 @@ const ModalCrearEstacion: React.FC<ModalCrearEstacionProps> = ({
               placeholder="-71.229"
             />
           </div>
+        </div>
+        
+        <div className="form-group">
+          <label>Estado Inicial *</label>
+          <select
+            value={nuevaEstacion.estado}
+            onChange={(e) => setNuevaEstacion({ ...nuevaEstacion, estado: e.target.value })}
+            required
+            className="form-select"
+          >
+            {ESTADOS_DISPONIBLES.map((estado) => (
+              <option key={estado.value} value={estado.value}>
+                {estado.icon} {estado.label}
+              </option>
+            ))}
+          </select>
         </div>
         
         <div className="form-group">
@@ -609,6 +653,22 @@ const ModalEditarEstacion: React.FC<ModalEditarEstacionProps> = ({
               placeholder="-71.229"
             />
           </div>
+        </div>
+        
+        <div className="form-group">
+          <label>Estado de la Estación *</label>
+          <select
+            value={editarEstacion.estado}
+            onChange={(e) => setEditarEstacion({ ...editarEstacion, estado: e.target.value })}
+            required
+            className="form-select"
+          >
+            {ESTADOS_DISPONIBLES.map((estado) => (
+              <option key={estado.value} value={estado.value}>
+                {estado.icon} {estado.label}
+              </option>
+            ))}
+          </select>
         </div>
         
         <div className="form-group">

@@ -193,6 +193,7 @@ export interface NuevaEstacionForm {
   latitud: number;
   longitud: number;
   descripcion?: string;
+  estado?: string;
 }
 
 export interface NuevaLecturaForm {

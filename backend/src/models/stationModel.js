@@ -25,11 +25,12 @@ export const addStation = async (station) => {
         latitud,
         longitud,
         ubicacion,
-        descripcion
+        descripcion,
+        estado = 'Activa' // Valor por defecto
     } = station;
     const [result] = await pool.query(
-        'INSERT INTO estaciones (nombre, latitud, longitud, ubicacion, descripcion) VALUES (?, ?, ?, ?, ?)',
-        [nombre, latitud, longitud, ubicacion, descripcion || null]
+        'INSERT INTO estaciones (nombre, latitud, longitud, ubicacion, descripcion, estado) VALUES (?, ?, ?, ?, ?, ?)',
+        [nombre, latitud, longitud, ubicacion, descripcion || null, estado]
     );
     return result.insertId;
 };
@@ -40,11 +41,12 @@ export const updateStation = async (id, station) => {
         latitud,
         longitud,
         ubicacion,
-        descripcion
+        descripcion,
+        estado
     } = station;
     const [result] = await pool.query(
-        'UPDATE estaciones SET nombre = ?, latitud = ?, longitud = ?, ubicacion = ?, descripcion = ? WHERE id = ?',
-        [nombre, latitud, longitud, ubicacion, descripcion, id]
+        'UPDATE estaciones SET nombre = ?, latitud = ?, longitud = ?, ubicacion = ?, descripcion = ?, estado = ? WHERE id = ?',
+        [nombre, latitud, longitud, ubicacion, descripcion, estado, id]
     );
     return result.affectedRows;
 };
