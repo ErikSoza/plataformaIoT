@@ -101,5 +101,7 @@ INSERT IGNORE INTO estaciones (id, nombre, latitud, longitud, ubicacion) VALUES
 (2, 'Campus Curicó', -34.985, -71.235, 'Edificio Ingeniería');
 
 -- (Opcional) Hardware de prueba si lo necesitas
-INSERT IGNORE INTO dispositivos (device_id, estado, id_estacion, modelo) VALUES 
-('UTALCA_GENERICO', 'disponible', NULL, 'ESP32 DevKit');
+INSERT IGNORE INTO dispositivos (device_id, estado, id_estacion, modelo, bateria, ultima_conexion) VALUES 
+('UTALCA_GENERICO', 'disponible', NULL, 'ESP32 DevKit', NULL, NULL),
+('UTALCA_01', 'asignado', 1, 'ESP32 TTGO T3 v1.6', 85.3, '2026-01-15 12:00:00'),
+('UTALCA_02', 'asignado', 2, 'ESP32 TTGO T3 v1.6', 92.7, '2026-01-15 12:00:00');

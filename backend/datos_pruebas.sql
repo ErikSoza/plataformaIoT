@@ -13,6 +13,11 @@ INSERT INTO estaciones (nombre, latitud, longitud, ubicacion) VALUES
 ('Campus Los Niches', -35.001, -71.229, 'Entrada Principal'),
 ('Campus Curicó', -34.985, -71.235, 'Edificio Ingeniería');
 
+-- Dispositivos (Sensores IoT)
+INSERT INTO dispositivos (device_id, modelo, estado, id_estacion, bateria, ultima_conexion) VALUES 
+('UTALCA_01', 'ESP32 TTGO T3 v1.6', 'asignado', 1, 85.3, '2026-01-15 12:00:00'),
+('UTALCA_02', 'ESP32 TTGO T3 v1.6', 'asignado', 2, 92.7, '2026-01-15 12:00:00');
+
 
 -- ==========================================================
 -- 9. CARGA DE DATOS DE EJEMPLO (LECTURAS)

@@ -153,15 +153,18 @@ export const normalizeStationData = (rawStation: any): Station => {
   };
 
   // Mapear estado a valores válidos del componente
-  const mapStatus = (estado: string): Station['status'] => {
-    const normalizedStatus = estado.toLowerCase();
-    if (normalizedStatus.includes('activo')) return 'Activo';
-    if (normalizedStatus.includes('inactivo')) return 'Inactivo';
+  const mapStatus = (estacionEstado: string, dispositivoEstado?: string): Station['status'] => {
+    // Priorizar el estado del dispositivo si existe, sino usar el estado de la estación
+    const estadoAUsar = dispositivoEstado || estacionEstado || 'error';
+    const normalizedStatus = estadoAUsar.toLowerCase();
+    
+    if (normalizedStatus.includes('activ') || normalizedStatus.includes('asignado')) return 'Activo';
+    if (normalizedStatus.includes('inactiv') || normalizedStatus.includes('disponible')) return 'Inactivo';
     if (normalizedStatus.includes('mantenimiento')) return 'Mantenimiento';
     return 'Error';
   };
   
-  station.status = mapStatus(rawStation.estado);
+  station.status = mapStatus(rawStation.estado, rawStation.estado_dispositivo);
 
   // Extraer métricas de la última lectura si existe
   if (rawStation.latestReading?.json) {
