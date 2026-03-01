@@ -286,16 +286,19 @@ interface UnifiedMapProps {
   defaultHeatmapMetric?: 'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation';
 }
 
-// Componente para manejar el cambio de centro del mapa
-const MapController: React.FC<{ center: [number, number] }> = ({ center }) => {
+// Componente para manejar el cambio de centro del mapa SOLO cuando el usuario selecciona un dispositivo
+const MapController: React.FC<{ center: [number, number]; shouldCenter: boolean }> = ({ center, shouldCenter }) => {
   const map = useMap();
   
   useEffect(() => {
-    map.flyTo(center, 16, {
-      animate: true,
-      duration: 1.5
-    });
-  }, [center, map]);
+    // Solo centrar el mapa si shouldCenter es true (selección manual de dispositivo)
+    if (shouldCenter) {
+      map.flyTo(center, 16, {
+        animate: true,
+        duration: 1.5
+      });
+    }
+  }, [center, map, shouldCenter]);
   
   return null;
 };
@@ -313,10 +316,23 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   const [showHeatmap, setShowHeatmap] = useState(defaultHeatmapVisible);
   const [showTemperatureLabels, setShowTemperatureLabels] = useState(true); // Nuevo estado para etiquetas
   const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation'>(defaultHeatmapMetric);
+  const [shouldCenterMap, setShouldCenterMap] = useState(false); // Nuevo estado para controlar cuándo centrar el mapa
 
   // Centro por defecto (Campus UTalca)
   const defaultCenter: [number, number] = [-35.0020711, -71.2288796];
   const mapCenter = selectedDevice ? selectedDevice.coordinates : defaultCenter;
+
+  // Solo activar el centrado cuando hay un selectedDevice nuevo
+  useEffect(() => {
+    if (selectedDevice) {
+      setShouldCenterMap(true);
+      // Desactivar después de un breve momento para permitir la animación
+      const timeout = setTimeout(() => setShouldCenterMap(false), 2000);
+      return () => clearTimeout(timeout);
+    } else {
+      setShouldCenterMap(false);
+    }
+  }, [selectedDevice]); // Usar selectedDevice completo para satisfacer react-hooks/exhaustive-deps
 
   const getMarkerColor = (device: DeviceData, isSelected: boolean) => {
     if (isSelected) return '#FF6B35'; // Naranja para seleccionado
@@ -552,7 +568,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={true}
         >
-          <MapController center={mapCenter} />
+          <MapController center={mapCenter} shouldCenter={shouldCenterMap} />
           
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
