@@ -290,6 +290,8 @@ interface UnifiedMapProps {
   autoRefresh?: boolean; // Si debe refrescar automáticamente
   refreshInterval?: number; // Intervalo en milisegundos (default: 30000 = 30 segundos)
   onDataRefresh?: () => void; // Función callback para refrescar los datos desde el componente padre
+  // Nueva prop para detectar cambios automáticamente
+  enableAutoDetection?: boolean; // Si debe detectar cambios automáticamente
 }
 
 // Componente para manejar el cambio de centro del mapa SOLO cuando el usuario selecciona un dispositivo
@@ -321,7 +323,8 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   enableRedirection = false, // Por defecto NO redirige, solo centra el mapa
   autoRefresh = false, // Por defecto NO refresca automáticamente
   refreshInterval = 30000, // 30 segundos por defecto
-  onDataRefresh
+  onDataRefresh,
+  enableAutoDetection = true // Por defecto SÍ detecta cambios automáticamente
 }) => {
   const [showHeatmap, setShowHeatmap] = useState(defaultHeatmapVisible);
   const [showTemperatureLabels, setShowTemperatureLabels] = useState(true); // Nuevo estado para etiquetas
@@ -329,6 +332,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   const [shouldCenterMap, setShouldCenterMap] = useState(false); // Nuevo estado para controlar cuándo centrar el mapa
   const [internalSelectedDevice, setInternalSelectedDevice] = useState<DeviceData | undefined>(selectedDevice); // Estado interno para manejar la selección
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date()); // Estado para trackear la última actualización
+  const [previousDevicesLength, setPreviousDevicesLength] = useState<number>(devices.length); // Para detectar cambios en dispositivos
 
   // Centro por defecto (Campus UTalca)
   const defaultCenter: [number, number] = [-35.0020711, -71.2288796];
@@ -363,6 +367,85 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
       }
     };
   }, [autoRefresh, refreshInterval, onDataRefresh]);
+
+  // Detectar cambios automáticamente cuando cambia el número de dispositivos
+  useEffect(() => {
+    if (enableAutoDetection && onDataRefresh && devices.length !== previousDevicesLength) {
+      // Solo refrescar si el número de dispositivos cambió y no es la carga inicial
+      if (previousDevicesLength !== 0) {
+        console.log('🔄 Detectado cambio en dispositivos - Actualizando automáticamente');
+        onDataRefresh();
+        setLastRefresh(new Date());
+      }
+      setPreviousDevicesLength(devices.length);
+    }
+  }, [devices.length, previousDevicesLength, enableAutoDetection, onDataRefresh]);
+
+  // Detectar cuando la página vuelve a estar visible (para refrescar datos al volver)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      const isVisible = !document.hidden;
+      
+      // Si la página vuelve a estar visible y han pasado más de 30 segundos, refrescar
+      if (isVisible && enableAutoDetection && onDataRefresh) {
+        const timeSinceLastRefresh = Date.now() - lastRefresh.getTime();
+        if (timeSinceLastRefresh > 30000) { // 30 segundos
+          console.log('📱 Página visible - Actualizando datos automáticamente');
+          onDataRefresh();
+          setLastRefresh(new Date());
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [enableAutoDetection, onDataRefresh, lastRefresh]);
+
+  // Detectar cambios en localStorage/sessionStorage (para cambios entre pestañas)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      // Si detectamos cambios en almacenamiento relacionados con estaciones/dispositivos
+      if (enableAutoDetection && onDataRefresh && 
+          (e.key?.includes('device') || e.key?.includes('station') || e.key?.includes('estacion'))) {
+        console.log('💾 Detectado cambio en almacenamiento - Actualizando datos');
+        setTimeout(() => {
+          onDataRefresh();
+          setLastRefresh(new Date());
+        }, 500); // Reducido a 500ms para respuesta más rápida
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [enableAutoDetection, onDataRefresh]);
+
+  // Detectar cambios más frecuentemente cuando enableAutoDetection está activo
+  useEffect(() => {
+    let quickCheckInterval: ReturnType<typeof setInterval>;
+    
+    if (enableAutoDetection && onDataRefresh) {
+      quickCheckInterval = setInterval(() => {
+        // Check rápido cada 5 segundos cuando está activa la detección automática
+        const timeSinceLastRefresh = Date.now() - lastRefresh.getTime();
+        if (timeSinceLastRefresh > 5000) { // Si han pasado más de 5 segundos
+          onDataRefresh();
+          setLastRefresh(new Date());
+        }
+      }, 5000); // Cada 5 segundos
+    }
+    
+    return () => {
+      if (quickCheckInterval) {
+        clearInterval(quickCheckInterval);
+      }
+    };
+  }, [enableAutoDetection, onDataRefresh, lastRefresh]);
 
   // Manejar click en dispositivo internamente
   const handleDeviceClick = (device: DeviceData) => {
@@ -567,11 +650,21 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
               <div style={{ fontSize: '0.75rem', color: '#6c757d' }}>
                 <span>Última actualización:</span><br />
                 <span>{formatLastUpdate(lastRefresh)}</span>
-                {autoRefresh && (
-                  <span style={{ color: '#28a745', marginLeft: '8px' }}>
-                    • Auto-actualización activa
-                  </span>
-                )}
+                <div style={{ marginTop: '4px' }}>
+                  {autoRefresh && (
+                    <span style={{ color: '#28a745' }}>
+                      🔄 Auto-actualización cada {refreshInterval/1000}s
+                    </span>
+                  )}
+                  {enableAutoDetection && (
+                    <span style={{ 
+                      color: '#007bff', 
+                      marginLeft: autoRefresh ? '8px' : '0px' 
+                    }}>
+                      ⚡ Detección cada 5s
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}
