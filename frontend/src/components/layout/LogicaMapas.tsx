@@ -310,7 +310,8 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   defaultHeatmapVisible = false,
   defaultHeatmapMetric = 'temperature'
 }) => {
-  const [showHeatmap] = useState(defaultHeatmapVisible);
+  const [showHeatmap, setShowHeatmap] = useState(defaultHeatmapVisible);
+  const [showTemperatureLabels, setShowTemperatureLabels] = useState(true); // Nuevo estado para etiquetas
   const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation'>(defaultHeatmapMetric);
 
   // Centro por defecto (Campus UTalca)
@@ -397,6 +398,60 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
         }}>
           <div style={{ marginBottom: '10px' }}>
             <strong style={{ color: '#00BCD4' }}>🗺️ Mapa de Calor</strong>
+          </div>
+
+          {/* Controles de activación */}
+          <div style={{ marginBottom: '15px' }}>
+            {/* Toggle Mapa de Calor */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px',
+              marginBottom: '8px' 
+            }}>
+              <input 
+                type="checkbox" 
+                id="heatmap-toggle"
+                checked={showHeatmap} 
+                onChange={(e) => setShowHeatmap(e.target.checked)}
+                style={{
+                  accentColor: '#00BCD4',
+                  transform: 'scale(1.2)'
+                }}
+              />
+              <label htmlFor="heatmap-toggle" style={{ 
+                fontSize: '0.9rem', 
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                Mostrar mapa de calor
+              </label>
+            </div>
+            
+            {/* Toggle Etiquetas de Temperatura */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px' 
+            }}>
+              <input 
+                type="checkbox" 
+                id="labels-toggle"
+                checked={showTemperatureLabels} 
+                onChange={(e) => setShowTemperatureLabels(e.target.checked)}
+                style={{
+                  accentColor: '#FF6B35',
+                  transform: 'scale(1.2)'
+                }}
+              />
+              <label htmlFor="labels-toggle" style={{ 
+                fontSize: '0.9rem', 
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}>
+                Mostrar valores sobre el mapa
+              </label>
+            </div>
           </div>
 
           {/* Fecha del mapa de calor*/}
@@ -510,6 +565,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
               devices={devices} 
               metric={heatmapMetric} 
               visible={showHeatmap}
+              showLabels={showTemperatureLabels}
             />
           )}
           {/* Marcadores para todos los dispositivos */}

@@ -5,6 +5,8 @@ import { DeviceData } from './ListaDispositivos';
 
 // Importar leaflet.heat
 import 'leaflet.heat';
+// Importar estilos CSS
+import './MapaCalor.css';
 
 // Extender la interfaz de Leaflet para incluir el plugin de heatmap
 declare module 'leaflet' {
@@ -13,13 +15,144 @@ declare module 'leaflet' {
   }
 }
 
-interface HeatMapLayerProps {
+// Componente para etiquetas de temperatura fijas
+interface TemperatureLabelProps {
   devices: DeviceData[];
   metric: 'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation';
   visible: boolean;
 }
 
-const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible }) => {
+const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, visible }) => {
+  const map = useMap();
+
+  // Función para obtener el color de fondo basado en el valor y métrica
+  const getValueColor = (value: number, metric: string) => {
+    switch (metric) {
+      case 'temperature':
+        if (value <= 15) return { bg: 'rgba(0, 123, 255, 0.95)', border: '#007bff', class: 'temperature-label-low' };
+        if (value >= 30) return { bg: 'rgba(220, 53, 69, 0.95)', border: '#dc3545', class: 'temperature-label-high' };
+        return { bg: 'rgba(40, 167, 69, 0.95)', border: '#28a745', class: 'temperature-label-medium' };
+      
+      case 'humidity':
+        if (value <= 30) return { bg: 'rgba(255, 193, 7, 0.95)', border: '#ffc107', class: 'temperature-label-low' };
+        if (value >= 80) return { bg: 'rgba(0, 123, 255, 0.95)', border: '#007bff', class: 'temperature-label-high' };
+        return { bg: 'rgba(40, 167, 69, 0.95)', border: '#28a745', class: 'temperature-label-medium' };
+      
+      case 'pressure':
+        if (value <= 1005) return { bg: 'rgba(220, 53, 69, 0.95)', border: '#dc3545', class: 'temperature-label-low' };
+        if (value >= 1015) return { bg: 'rgba(0, 123, 255, 0.95)', border: '#007bff', class: 'temperature-label-high' };
+        return { bg: 'rgba(40, 167, 69, 0.95)', border: '#28a745', class: 'temperature-label-medium' };
+      
+      default:
+        return { bg: 'rgba(255, 255, 255, 0.95)', border: '#00BCD4', class: '' };
+    }
+  };
+
+  useEffect(() => {
+    let labelMarkers: L.Marker[] = [];
+
+    if (visible) {
+      // Filtrar dispositivos que tienen datos para la métrica seleccionada
+      const validDevices = devices.filter(device => {
+        const value = device[metric];
+        return value !== undefined && value !== null && !isNaN(Number(value)) && Number(value) > 0;
+      });
+
+      // Crear marcadores de etiquetas para cada dispositivo válido
+      validDevices.forEach(device => {
+        const [lat, lng] = device.coordinates;
+        const value = device[metric];
+        
+        // Formatear el valor según la métrica
+        let displayValue = '';
+        let unitSymbol = '';
+        
+        switch (metric) {
+          case 'temperature':
+            displayValue = Math.round(value!).toString();
+            unitSymbol = '°C';
+            break;
+          case 'humidity':
+            displayValue = Math.round(value!).toString();
+            unitSymbol = '%';
+            break;
+          case 'pressure':
+            displayValue = Math.round(value!).toString();
+            unitSymbol = ' hPa';
+            break;
+          case 'wind':
+            displayValue = value!.toFixed(1);
+            unitSymbol = ' m/s';
+            break;
+          case 'gas':
+            displayValue = value!.toFixed(2);
+            unitSymbol = ' ppm';
+            break;
+          case 'radiation':
+            displayValue = Math.round(value!).toString();
+            unitSymbol = ' W/m²';
+            break;
+        }
+
+        // Obtener colores dinámicos
+        const colorInfo = getValueColor(value!, metric);
+        
+        // Crear ícono personalizado con el valor de la métrica
+        const labelIcon = L.divIcon({
+          className: `temperature-label-icon ${colorInfo.class}`,
+          html: `
+            <div style="
+              background: ${colorInfo.bg};
+              color: white;
+              padding: 4px 8px;
+              border-radius: 12px;
+              font-weight: bold;
+              font-size: 13px;
+              text-align: center;
+              white-space: nowrap;
+              border: 2px solid ${colorInfo.border};
+              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+              min-width: 45px;
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              backdrop-filter: blur(8px);
+              text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+            ">
+              ${displayValue}${unitSymbol}
+            </div>
+          `,
+          iconSize: [60, 24],
+          iconAnchor: [30, 12]
+        });
+
+        // Crear el marcador y agregarlo al mapa
+        const labelMarker = L.marker([lat, lng], { icon: labelIcon });
+        labelMarker.addTo(map);
+        labelMarkers.push(labelMarker);
+      });
+    }
+
+    // Cleanup: remover las etiquetas cuando el componente se desmonte o cambie
+    return () => {
+      labelMarkers.forEach(marker => {
+        if (map.hasLayer(marker)) {
+          map.removeLayer(marker);
+        }
+      });
+      labelMarkers = [];
+    };
+  }, [map, devices, metric, visible]);
+
+  return null;
+};
+
+interface HeatMapLayerProps {
+  devices: DeviceData[];
+  metric: 'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation';
+  visible: boolean;
+  showLabels?: boolean; // Nueva prop para controlar la visibilidad de las etiquetas
+}
+
+const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible, showLabels = true }) => {
   const map = useMap();
 
   useEffect(() => {
@@ -182,7 +315,12 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible })
     };
   }, [map, devices, metric, visible]);
 
-  return null;
+  // Renderizar las etiquetas de temperatura junto con el mapa de calor
+  return (
+    <>
+      <TemperatureLabels devices={devices} metric={metric} visible={visible && showLabels} />
+    </>
+  );
 };
 
 export default HeatMapLayer;
