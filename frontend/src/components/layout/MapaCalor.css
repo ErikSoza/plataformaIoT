@@ -63,3 +63,13 @@
   color: white !important;
   border-color: rgba(40, 167, 69, 1) !important;
 }
+
+/* Estilos para círculos de temperatura fijos */
+.leaflet-interactive {
+  transition: all 0.3s ease !important;
+}
+
+/* Mejorar la visualización de círculos en el mapa */
+.leaflet-zoom-animated {
+  transition: transform 0.25s cubic-bezier(0,0,0.25,1) !important;
+}

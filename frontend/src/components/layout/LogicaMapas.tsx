@@ -424,7 +424,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                 fontWeight: '500',
                 cursor: 'pointer'
               }}>
-                Mostrar mapa de calor
+                Mostrar círculos de temperatura
               </label>
             </div>
             

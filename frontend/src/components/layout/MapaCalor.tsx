@@ -15,6 +15,112 @@ declare module 'leaflet' {
   }
 }
 
+// Componente para círculos de temperatura fijos (reemplaza el heatmap tradicional)
+interface FixedTemperatureCirclesProps {
+  devices: DeviceData[];
+  metric: 'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation';
+  visible: boolean;
+}
+
+const FixedTemperatureCircles: React.FC<FixedTemperatureCirclesProps> = ({ devices, metric, visible }) => {
+  const map = useMap();
+
+  // Función para obtener color fijo basado en el valor y métrica
+  const getFixedColor = (value: number, metric: string) => {
+    switch (metric) {
+      case 'temperature':
+        if (value <= 10) return '#0066cc'; // Azul muy frío
+        if (value <= 15) return '#0099ff'; // Azul frío
+        if (value <= 20) return '#33cc33'; // Verde fresco
+        if (value <= 25) return '#66ff66'; // Verde cálido
+        if (value <= 30) return '#ffff00'; // Amarillo
+        if (value <= 35) return '#ff9900'; // Naranja
+        return '#ff0000'; // Rojo caliente
+      
+      case 'humidity':
+        if (value <= 20) return '#ffff99'; // Amarillo seco
+        if (value <= 40) return '#99ff99'; // Verde seco
+        if (value <= 60) return '#66ccff'; // Azul medio
+        if (value <= 80) return '#0099ff'; // Azul húmedo
+        return '#0066cc'; // Azul muy húmedo
+      
+      case 'pressure':
+        if (value <= 1000) return '#ff0000'; // Rojo baja presión
+        if (value <= 1005) return '#ff6600'; // Naranja
+        if (value <= 1010) return '#ffff00'; // Amarillo
+        if (value <= 1015) return '#66ff66'; // Verde
+        return '#0066ff'; // Azul alta presión
+      
+      case 'wind':
+        if (value <= 2) return '#99ff99'; // Verde suave
+        if (value <= 5) return '#ffff66'; // Amarillo moderado
+        if (value <= 10) return '#ff9966'; // Naranja fuerte
+        return '#ff6666'; // Rojo muy fuerte
+      
+      case 'gas':
+        if (value <= 0.02) return '#00ff00'; // Verde buena calidad
+        if (value <= 0.05) return '#66ff66'; // Verde claro
+        if (value <= 0.08) return '#ffff00'; // Amarillo moderado
+        return '#ff0000'; // Rojo mala calidad
+      
+      case 'radiation':
+        if (value <= 200) return '#66ccff'; // Azul baja
+        if (value <= 400) return '#99ff99'; // Verde baja-media
+        if (value <= 600) return '#ffff66'; // Amarillo media
+        if (value <= 800) return '#ff9966'; // Naranja alta
+        return '#ff6666'; // Rojo muy alta
+      
+      default:
+        return '#666666';
+    }
+  };
+
+  useEffect(() => {
+    let circleMarkers: L.CircleMarker[] = [];
+
+    if (visible) {
+      // Filtrar dispositivos que tienen datos para la métrica seleccionada
+      const validDevices = devices.filter(device => {
+        const value = device[metric];
+        return value !== undefined && value !== null && !isNaN(Number(value)) && Number(value) > 0;
+      });
+
+      // Crear círculos fijos para cada dispositivo válido
+      validDevices.forEach(device => {
+        const [lat, lng] = device.coordinates;
+        const value = device[metric]!;
+        const color = getFixedColor(value, metric);
+        
+        // Crear círculo con color fijo
+        const circle = L.circleMarker([lat, lng], {
+          radius: 80, // Radio fijo en píxeles
+          fillColor: color,
+          color: color,
+          weight: 2,
+          opacity: 0.8,
+          fillOpacity: 0.4,
+          // Importante: no usar pane 'overlayPane' para evitar interferencia con zoom
+        });
+        
+        circle.addTo(map);
+        circleMarkers.push(circle);
+      });
+    }
+
+    // Cleanup: remover los círculos cuando el componente se desmonte o cambie
+    return () => {
+      circleMarkers.forEach(circle => {
+        if (map.hasLayer(circle)) {
+          map.removeLayer(circle);
+        }
+      });
+      circleMarkers = [];
+    };
+  }, [map, devices, metric, visible]);
+
+  return null;
+};
+
 // Componente para etiquetas de temperatura fijas
 interface TemperatureLabelProps {
   devices: DeviceData[];
@@ -153,171 +259,13 @@ interface HeatMapLayerProps {
 }
 
 const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible, showLabels = true }) => {
-  const map = useMap();
-
-  useEffect(() => {
-    let heatLayer: any = null;
-
-    if (visible) {
-      // Filtrar dispositivos que tienen datos para la métrica seleccionada
-      console.log(`🗺️ MapaCalor: Evaluando ${devices.length} dispositivos para métrica ${metric}`);
-      
-      const validDevices = devices.filter(device => {
-        const value = device[metric];
-        const isValid = value !== undefined && value !== null && !isNaN(Number(value)) && Number(value) > 0;
-        
-        if (!isValid) {
-          console.log(`❌ Dispositivo ${device.name}: ${metric} = ${value} (inválido)`);
-        } else {
-          console.log(`✅ Dispositivo ${device.name}: ${metric} = ${value} (válido)`);
-        }
-        
-        return isValid;
-      });
-      
-      console.log(`🔍 MapaCalor: ${validDevices.length} dispositivos válidos de ${devices.length} total`);
-      
-      if (validDevices.length > 0) {
-        // Preparar datos para el mapa de calor
-        const heatData: Array<[number, number, number]> = validDevices.map(device => {
-          const [lat, lng] = device.coordinates;
-          let intensity = 0;
-
-          // Normalizar los valores según la métrica
-          switch (metric) {
-            case 'temperature':
-              // Normalizar temperatura (0°C = 0, 40°C = 1)
-              intensity = Math.max(0, Math.min(1, (device.temperature! - 0) / 40));
-              break;
-            case 'humidity':
-              // Normalizar humedad (0% = 0, 100% = 1)
-              intensity = Math.max(0, Math.min(1, device.humidity! / 100));
-              break;
-            case 'pressure':
-              // Normalizar presión (1000 hPa = 0, 1020 hPa = 1)
-              intensity = Math.max(0, Math.min(1, (device.pressure! - 1000) / 20));
-              break;
-            case 'wind':
-              // Normalizar velocidad del viento (0 m/s = 0, 20 m/s = 1)
-              intensity = Math.max(0, Math.min(1, device.wind! / 20));
-              break;
-            case 'gas':
-              // Normalizar calidad del aire (0 = 0, 0.1 = 1)
-              intensity = Math.max(0, Math.min(1, device.gas! / 0.1));
-              break;
-            case 'radiation':
-              // Normalizar radiación (0 W/m² = 0, 1000 W/m² = 1)
-              intensity = Math.max(0, Math.min(1, device.radiation! / 1000));
-              break;
-          }
-
-          return [lat, lng, intensity] as [number, number, number];
-        });
-
-        // Configurar opciones del mapa de calor según la métrica
-        const getHeatmapOptions = () => {
-          const baseOptions = {
-            radius: 50,
-            blur: 25, 
-            maxZoom: 17, 
-          };
-
-          switch (metric) {
-            case 'temperature':
-              return {
-                ...baseOptions,
-                gradient: {
-                  '0.0': 'blue',
-                  '0.2': 'cyan',
-                  '0.4': 'lime',
-                  '0.6': 'yellow',
-                  '0.8': 'orange',
-                  '1.0': 'red'
-                }
-              };
-            case 'humidity':
-              return {
-                ...baseOptions,
-                gradient: {
-                  '0.0': '#f7fbff',
-                  '0.2': '#deebf7',
-                  '0.4': '#c6dbef',
-                  '0.6': '#9ecae1',
-                  '0.8': '#6baed6',
-                  '1.0': '#08519c'
-                }
-              };
-            case 'pressure':
-              return {
-                ...baseOptions,
-                gradient: {
-                  '0.0': '#800026',
-                  '0.2': '#bd0026',
-                  '0.4': '#e31a1c',
-                  '0.6': '#fc4e2a',
-                  '0.8': '#fd8d3c',
-                  '1.0': '#feb24c'
-                }
-              };
-            case 'wind':
-              return {
-                ...baseOptions,
-                gradient: {
-                  '0.0': '#ffffb2',
-                  '0.2': '#fecc5c',
-                  '0.4': '#fd8d3c',
-                  '0.6': '#f03b20',
-                  '0.8': '#bd0026',
-                  '1.0': '#800026'
-                }
-              };
-            case 'gas':
-              return {
-                ...baseOptions,
-                gradient: {
-                  '0.0': '#00ff00',
-                  '0.2': '#80ff00',
-                  '0.4': '#ffff00',
-                  '0.6': '#ff8000',
-                  '0.8': '#ff4000',
-                  '1.0': '#ff0000'
-                }
-              };
-            case 'radiation':
-              return {
-                ...baseOptions,
-                gradient: {
-                  '0.0': '#ffffcc',
-                  '0.2': '#ffeda0',
-                  '0.4': '#fed976',
-                  '0.6': '#feb24c',
-                  '0.8': '#fd8d3c',
-                  '1.0': '#f03b20'
-                }
-              };
-            
-            default:
-              return baseOptions;
-          }
-        };
-
-        // Crear y agregar capa de mapa de calor
-        heatLayer = (L as any).heatLayer(heatData, getHeatmapOptions());
-        map.addLayer(heatLayer);
-      }
-    }
-
-    // Cleanup: remover la capa cuando el componente se desmonte o cambie
-    return () => {
-      if (heatLayer && map.hasLayer(heatLayer)) {
-        map.removeLayer(heatLayer);
-      }
-    };
-  }, [map, devices, metric, visible]);
-
-  // Renderizar las etiquetas de temperatura junto con el mapa de calor
+  // Nota: Ya no usamos el heatmap tradicional de leaflet.heat porque cambia con el zoom
+  // En su lugar usamos círculos fijos que mantienen su color constante
+  
+  // Renderizar los círculos de temperatura fijos y las etiquetas
   return (
     <>
+      <FixedTemperatureCircles devices={devices} metric={metric} visible={visible} />
       <TemperatureLabels devices={devices} metric={metric} visible={visible && showLabels} />
     </>
   );
