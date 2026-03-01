@@ -284,6 +284,8 @@ interface UnifiedMapProps {
   showHeatmapControls?: boolean;
   defaultHeatmapVisible?: boolean;
   defaultHeatmapMetric?: 'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation';
+  // Nueva prop para controlar si se ejecuta la redirección o solo el centrado
+  enableRedirection?: boolean;
 }
 
 // Componente para manejar el cambio de centro del mapa SOLO cuando el usuario selecciona un dispositivo
@@ -311,28 +313,46 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   height = '500px',  
   showHeatmapControls = true,
   defaultHeatmapVisible = false,
-  defaultHeatmapMetric = 'temperature'
+  defaultHeatmapMetric = 'temperature',
+  enableRedirection = false // Por defecto NO redirige, solo centra el mapa
 }) => {
   const [showHeatmap, setShowHeatmap] = useState(defaultHeatmapVisible);
   const [showTemperatureLabels, setShowTemperatureLabels] = useState(true); // Nuevo estado para etiquetas
   const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation'>(defaultHeatmapMetric);
   const [shouldCenterMap, setShouldCenterMap] = useState(false); // Nuevo estado para controlar cuándo centrar el mapa
+  const [internalSelectedDevice, setInternalSelectedDevice] = useState<DeviceData | undefined>(selectedDevice); // Estado interno para manejar la selección
 
   // Centro por defecto (Campus UTalca)
   const defaultCenter: [number, number] = [-35.0020711, -71.2288796];
-  const mapCenter = selectedDevice ? selectedDevice.coordinates : defaultCenter;
+  
+  // Usar el dispositivo seleccionado interno o el externo
+  const currentSelectedDevice = internalSelectedDevice || selectedDevice;
+  const mapCenter = currentSelectedDevice ? currentSelectedDevice.coordinates : defaultCenter;
 
-  // Solo activar el centrado cuando hay un selectedDevice nuevo
+  // Manejar click en dispositivo internamente
+  const handleDeviceClick = (device: DeviceData) => {
+    setInternalSelectedDevice(device);
+    setShouldCenterMap(true);
+    
+    // Desactivar el centrado después de la animación
+    setTimeout(() => setShouldCenterMap(false), 2000);
+    
+    // Solo llamar la función del padre si la redirección está habilitada
+    if (enableRedirection && onDeviceMarkerClick) {
+      onDeviceMarkerClick(device);
+    }
+  };
+
+  // Solo activar el centrado cuando hay un selectedDevice nuevo desde el exterior
   useEffect(() => {
-    if (selectedDevice) {
+    if (selectedDevice && selectedDevice.id !== internalSelectedDevice?.id) {
+      setInternalSelectedDevice(selectedDevice);
       setShouldCenterMap(true);
       // Desactivar después de un breve momento para permitir la animación
       const timeout = setTimeout(() => setShouldCenterMap(false), 2000);
       return () => clearTimeout(timeout);
-    } else {
-      setShouldCenterMap(false);
     }
-  }, [selectedDevice]); // Usar selectedDevice completo para satisfacer react-hooks/exhaustive-deps
+  }, [selectedDevice, internalSelectedDevice?.id]); // Usar selectedDevice completo para satisfacer react-hooks/exhaustive-deps
 
   const getMarkerColor = (device: DeviceData, isSelected: boolean) => {
     if (isSelected) return '#FF6B35'; // Naranja para seleccionado
@@ -586,7 +606,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
           )}
           {/* Marcadores para todos los dispositivos */}
           {devices.map((device) => {
-            const isSelected = selectedDevice?.id === device.id;
+            const isSelected = currentSelectedDevice?.id === device.id;
             const markerColor = getMarkerColor(device, isSelected);
             
             return (
@@ -595,7 +615,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                 position={device.coordinates}
                 icon={createCustomIcon(markerColor, isSelected)}
                 eventHandlers={{
-                  click: () => onDeviceMarkerClick?.(device),
+                  click: () => handleDeviceClick(device),
                 }}
               >
                 <Popup>
