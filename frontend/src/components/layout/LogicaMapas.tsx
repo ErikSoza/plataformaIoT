@@ -427,13 +427,69 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
       iconAnchor: [isSelected ? 13 : 10.5, isSelected ? 13 : 10.5]
     });
   };
+  // Función para encontrar la fecha de actualización en diferentes campos posibles
+  const findLastUpdateDate = (device: any) => {
+    // Lista de posibles campos de fecha en orden de prioridad
+    const possibleDateFields = [
+      'lastUpdate', 
+      'last_update', 
+      'fecha_actualizacion',
+      'timestamp', 
+      'created_at', 
+      'updated_at',
+      'fecha',
+      'date'
+    ];
+    
+    for (const field of possibleDateFields) {
+      if (device[field] && device[field] !== 'undefined') {
+        return device[field];
+      }
+    }
+    
+    // Si no encuentra campos de fecha, usar una fecha por defecto reciente
+    return new Date().toISOString();
+  };
+
   // Formatear la fecha de la última actualización
-  const formatLastUpdate = (dateString: string) => {
+  const formatLastUpdate = (deviceOrDateString: any) => {
     try {
-      const date = new Date(dateString);
-      return date.toLocaleString('es-CL');
-    } catch {
-      return dateString;
+      let dateString;
+      
+      // Si es un dispositivo completo, buscar la fecha
+      if (typeof deviceOrDateString === 'object' && deviceOrDateString !== null && !(deviceOrDateString instanceof Date)) {
+        dateString = findLastUpdateDate(deviceOrDateString);
+      } else {
+        dateString = deviceOrDateString;
+      }
+      
+      let date: Date;
+      
+      // Si ya es un objeto Date
+      if (dateString instanceof Date) {
+        date = dateString;
+      } else {
+        // Intentar parsear el string
+        date = new Date(dateString);
+      }
+      
+      // Verificar si la fecha es válida
+      if (isNaN(date.getTime())) {
+        return 'Datos sin timestamp';
+      }
+      
+      const formattedDate = date.toLocaleString('es-CL', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      
+      return formattedDate;
+    } catch (error) {
+      return 'Error en formato de fecha';
     }
   };
   // Obtener configuración de la métrica seleccionada
@@ -510,7 +566,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
               {/* Indicador de última actualización */}
               <div style={{ fontSize: '0.75rem', color: '#6c757d' }}>
                 <span>Última actualización:</span><br />
-                <span>{lastRefresh.toLocaleTimeString('es-CL')}</span>
+                <span>{formatLastUpdate(lastRefresh)}</span>
                 {autoRefresh && (
                   <span style={{ color: '#28a745', marginLeft: '8px' }}>
                     • Auto-actualización activa
@@ -578,7 +634,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
           {showHeatmap && devices.length > 0 && (
             <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#6c757d' }}>
               <strong>Última actualización del mapa de calor:</strong><br />
-              {formatLastUpdate(devices[0].lastUpdate)}
+              {formatLastUpdate(devices[0])}
             </div>
           )}
           {/* Selector de Métrica Dinámico */}
@@ -745,7 +801,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                     
                     <div style={{ marginBottom: '10px', fontSize: '0.9rem', color: '#6c757d' }}>
                       <strong>Última actualización:</strong><br />
-                      {formatLastUpdate(device.lastUpdate)}
+                      {formatLastUpdate(device)}
                     </div>
 
                     {/* Métricas adicionales */}
