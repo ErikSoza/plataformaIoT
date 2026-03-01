@@ -286,6 +286,10 @@ interface UnifiedMapProps {
   defaultHeatmapMetric?: 'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation';
   // Nueva prop para controlar si se ejecuta la redirección o solo el centrado
   enableRedirection?: boolean;
+  // Nuevas props para actualización automática
+  autoRefresh?: boolean; // Si debe refrescar automáticamente
+  refreshInterval?: number; // Intervalo en milisegundos (default: 30000 = 30 segundos)
+  onDataRefresh?: () => void; // Función callback para refrescar los datos desde el componente padre
 }
 
 // Componente para manejar el cambio de centro del mapa SOLO cuando el usuario selecciona un dispositivo
@@ -314,13 +318,17 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   showHeatmapControls = true,
   defaultHeatmapVisible = false,
   defaultHeatmapMetric = 'temperature',
-  enableRedirection = false // Por defecto NO redirige, solo centra el mapa
+  enableRedirection = false, // Por defecto NO redirige, solo centra el mapa
+  autoRefresh = false, // Por defecto NO refresca automáticamente
+  refreshInterval = 30000, // 30 segundos por defecto
+  onDataRefresh
 }) => {
   const [showHeatmap, setShowHeatmap] = useState(defaultHeatmapVisible);
   const [showTemperatureLabels, setShowTemperatureLabels] = useState(true); // Nuevo estado para etiquetas
   const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation'>(defaultHeatmapMetric);
   const [shouldCenterMap, setShouldCenterMap] = useState(false); // Nuevo estado para controlar cuándo centrar el mapa
   const [internalSelectedDevice, setInternalSelectedDevice] = useState<DeviceData | undefined>(selectedDevice); // Estado interno para manejar la selección
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date()); // Estado para trackear la última actualización
 
   // Centro por defecto (Campus UTalca)
   const defaultCenter: [number, number] = [-35.0020711, -71.2288796];
@@ -328,6 +336,33 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   // Usar el dispositivo seleccionado interno o el externo
   const currentSelectedDevice = internalSelectedDevice || selectedDevice;
   const mapCenter = currentSelectedDevice ? currentSelectedDevice.coordinates : defaultCenter;
+
+  // Función para refrescar los datos manualmente
+  const handleManualRefresh = () => {
+    if (onDataRefresh) {
+      onDataRefresh();
+      setLastRefresh(new Date());
+    }
+  };
+
+  // Auto-refresh usando useEffect con setInterval
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval>;
+    
+    if (autoRefresh && onDataRefresh) {
+      intervalId = setInterval(() => {
+        onDataRefresh();
+        setLastRefresh(new Date());
+      }, refreshInterval);
+    }
+    
+    // Cleanup function
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [autoRefresh, refreshInterval, onDataRefresh]);
 
   // Manejar click en dispositivo internamente
   const handleDeviceClick = (device: DeviceData) => {
@@ -435,6 +470,55 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
           <div style={{ marginBottom: '10px' }}>
             <strong style={{ color: '#00BCD4' }}>🗺️ Mapa de Calor</strong>
           </div>
+
+          {/* Control de actualización manual */}
+          {onDataRefresh && (
+            <div style={{ 
+              marginBottom: '15px',
+              borderBottom: '1px solid #e9ecef',
+              paddingBottom: '10px'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                marginBottom: '8px'
+              }}>
+                <span style={{ fontSize: '0.9rem', fontWeight: '500' }}>
+                  🔄 Actualización de datos
+                </span>
+                <button
+                  onClick={handleManualRefresh}
+                  style={{
+                    background: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                  title="Actualizar datos manualmente"
+                >
+                  🔄 Actualizar
+                </button>
+              </div>
+              
+              {/* Indicador de última actualización */}
+              <div style={{ fontSize: '0.75rem', color: '#6c757d' }}>
+                <span>Última actualización:</span><br />
+                <span>{lastRefresh.toLocaleTimeString('es-CL')}</span>
+                {autoRefresh && (
+                  <span style={{ color: '#28a745', marginLeft: '8px' }}>
+                    • Auto-actualización activa
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Controles de activación */}
           <div style={{ marginBottom: '15px' }}>
