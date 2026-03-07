@@ -3,7 +3,8 @@ import {
     getDeviceByStationId,
     assignDeviceToStation,
     releaseDeviceFromStation,
-    getAllDevicesWithStation
+    getAllDevicesWithStation,
+    deleteDevice
 } from '../models/deviceModel.js';
 
 // Obtener todos los dispositivos disponibles
@@ -101,5 +102,30 @@ export const getAllDevices = async (req, res) => {
     } catch (error) {
         console.error('Error al obtener dispositivos:', error);
         res.status(500).json({ error: 'Error al obtener dispositivos' });
+    }
+};
+
+// Eliminar dispositivo
+export const removeDevice = async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+        
+        if (!deviceId) {
+            return res.status(400).json({ error: 'deviceId es requerido' });
+        }
+
+        const result = await deleteDevice(deviceId);
+        
+        if (result === 0) {
+            return res.status(404).json({ error: 'Dispositivo no encontrado' });
+        }
+
+        res.json({ 
+            message: 'Dispositivo eliminado correctamente',
+            deviceId
+        });
+    } catch (error) {
+        console.error('Error al eliminar dispositivo:', error);
+        res.status(500).json({ error: 'Error al eliminar dispositivo' });
     }
 };

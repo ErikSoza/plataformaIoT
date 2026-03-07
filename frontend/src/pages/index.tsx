@@ -5,4 +5,5 @@ export { default as ReportsPage } from './ReportePagina';
 export { default as SettingsPage } from './ConfiguracionPagina';
 export { default as LoginPage } from './Login';
 export { default as StationManagementPage } from './GestionEstacionesPagina';
+export { default as DeviceManagementPage } from './GestionDispositivosPagina';
 

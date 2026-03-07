@@ -35,6 +35,15 @@ export const releaseDeviceFromStation = async (deviceId) => {
     return result.affectedRows;
 };
 
+// Eliminar dispositivo
+export const deleteDevice = async (deviceId) => {
+    const [result] = await pool.query(
+        'DELETE FROM dispositivos WHERE device_id = ?',
+        [deviceId]
+    );
+    return result.affectedRows;
+};
+
 // Obtener todos los dispositivos con información de estación
 export const getAllDevicesWithStation = async () => {
     const [rows] = await pool.query(`

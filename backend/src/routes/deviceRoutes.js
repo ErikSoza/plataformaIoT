@@ -4,7 +4,8 @@ import {
     assignDevice,
     releaseDevice,
     getStationDevice,
-    getAllDevices
+    getAllDevices,
+    removeDevice
 } from '../controllers/deviceControllers.js';
 
 const router = express.Router();
@@ -15,5 +16,6 @@ router.get('/dispositivos/disponibles', getAvailableDevicesController);
 router.get('/dispositivos/estacion/:stationId', getStationDevice);
 router.post('/dispositivos/asignar', assignDevice);
 router.put('/dispositivos/:deviceId/liberar', releaseDevice);
+router.delete('/dispositivos/:deviceId', removeDevice);
 
 export default router;

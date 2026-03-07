@@ -158,6 +158,19 @@ export const deviceService = {
       throw new Error(`Error al liberar dispositivo: ${error.response?.data?.error || error.message}`);
     }
   },
+
+  // Eliminar dispositivo
+  delete: async (deviceId: string) => {
+    try {
+      console.log(`🔄 Eliminando dispositivo ${deviceId}`);
+      const response = await api.delete(`/dispositivos/${deviceId}`);
+      console.log('✅ Dispositivo eliminado exitosamente');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error al eliminar dispositivo:', error.response?.data || error.message);
+      throw new Error(`Error al eliminar dispositivo: ${error.response?.data?.error || error.message}`);
+    }
+  },
 };
 
 
