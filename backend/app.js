@@ -4,6 +4,7 @@ import cors from 'cors';
 import stationRouters from './src/routes/stationRouters.js';
 import readingRoutes from './src/routes/readingRoutes.js';
 import deviceRoutes from './src/routes/deviceRoutes.js';
+import userRoutes from './src/routes/userRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -21,6 +22,7 @@ app.use(express.json());
 app.use('/api', stationRouters);
 app.use('/api', readingRoutes);
 app.use('/api', deviceRoutes);
+app.use('/api/auth', userRoutes);
 
 // Ruta base
 app.get('/', (req, res) => {

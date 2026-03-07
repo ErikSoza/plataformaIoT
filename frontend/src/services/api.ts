@@ -31,6 +31,57 @@ api.interceptors.response.use(
 
 // ==================== ESTACIONES ====================
 
+// ==================== USUARIOS/AUTENTICACIÓN ====================
+
+export const authService = {
+  // Registrar nuevo usuario
+  register: async (userData: {
+    nombre: string;
+    email: string;
+    contrasena: string;
+    confirmPassword: string;
+  }) => {
+    try {
+      console.log('🔄 Registrando usuario:', userData.email);
+      const response = await api.post('/auth/register', userData);
+      console.log('✅ Registro exitoso:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error en registro:', error.response?.data || error.message);
+      throw error; // Propagamos el error para manejarlo en el componente
+    }
+  },
+
+  // Verificar si email existe
+  checkEmailExists: async (email: string) => {
+    try {
+      console.log('🔄 Verificando email:', email);
+      const response = await api.get(`/auth/check-email?email=${encodeURIComponent(email)}`);
+      console.log('✅ Email verificado:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error verificando email:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Login de usuario
+  login: async (credentials: {
+    email: string;
+    password: string;
+  }) => {
+    try {
+      console.log('🔄 Intentando login:', credentials.email);
+      const response = await api.post('/auth/login', credentials);
+      console.log('✅ Login exitoso:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error en login:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+};
+
 export const stationService = {
   // Obtener todas las estaciones
   getAll: async () => {
