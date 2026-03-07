@@ -1,5 +1,28 @@
 import pool from '../db/connection.js';
 
+// Crear nuevo dispositivo
+export const createDevice = async (deviceData) => {
+    const {
+        device_id,
+        modelo,
+        estado = 'disponible', // Valor por defecto
+        bateria = null,
+        ultima_conexion = null,
+        id_estacion = null
+    } = deviceData;
+    
+    const [result] = await pool.query(
+        'INSERT INTO dispositivos (device_id, modelo, estado, bateria, ultima_conexion, id_estacion) VALUES (?, ?, ?, ?, ?, ?)',
+        [device_id, modelo, estado, bateria, ultima_conexion, id_estacion]
+    );
+    
+    return {
+        device_id,
+        insertId: result.insertId,
+        affectedRows: result.affectedRows
+    };
+};
+
 // Obtener todos los dispositivos disponibles (no asignados)
 export const getAvailableDevices = async () => {
     const [rows] = await pool.query(

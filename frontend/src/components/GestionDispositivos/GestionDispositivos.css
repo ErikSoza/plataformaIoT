@@ -23,6 +23,12 @@
   font-weight: 600;
 }
 
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 /* ============= ESTADÍSTICAS ============= */
 .stats-section {
   display: flex;
@@ -145,6 +151,20 @@
   background-color: #fff3cd;
   color: #856404;
   border-left: 4px solid #ffc107;
+}
+
+.alert-info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border-left: 4px solid #17a2b8;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+}
+
+.alert-info strong {
+  font-weight: 600;
 }
 
 /* ============= GRID DE DISPOSITIVOS ============= */
@@ -441,6 +461,14 @@
   box-shadow: 0 0 0 0.2rem rgba(79, 172, 254, 0.25);
 }
 
+.form-group small {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
 /* ============= ESTADOS Y UTILIDADES ============= */
 .loading-spinner {
   text-align: center;
@@ -478,6 +506,11 @@
   
   .dispositivo-actions .btn {
     justify-content: center;
+  }
+  
+  .header-actions {
+    flex-direction: column;
+    gap: 8px;
   }
 }
 

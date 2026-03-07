@@ -195,7 +195,14 @@ export interface NuevaEstacionForm {
   descripcion?: string;
   estado?: string;
 }
-
+export interface NuevoDispositivoForm {
+  device_id: string;
+  modelo: string;
+  estado: 'disponible' | 'asignado' | 'mantenimiento';
+  bateria?: number;
+  ultima_conexion?: string;
+  id_estacion?: number;
+}
 export interface NuevaLecturaForm {
   id_estacion: number;
   timestamp?: string;

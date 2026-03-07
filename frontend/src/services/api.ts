@@ -104,6 +104,19 @@ export const deviceService = {
     }
   },
 
+  // Crear nuevo dispositivo
+  create: async (deviceData: any) => {
+    try {
+      console.log('🔄 Creando nuevo dispositivo:', deviceData.device_id);
+      const response = await api.post('/dispositivos', deviceData);
+      console.log('✅ Dispositivo creado exitosamente');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error al crear dispositivo:', error.response?.data || error.message);
+      throw new Error(`Error al crear dispositivo: ${error.response?.data?.error || error.message}`);
+    }
+  },
+
   // Obtener dispositivos disponibles
   getAvailable: async () => {
     try {

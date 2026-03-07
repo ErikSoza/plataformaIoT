@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { deviceService, stationService } from '../../services/api';
-import { Dispositivo, Estacion } from '../../types';
+import { Dispositivo, Estacion, NuevoDispositivoForm } from '../../types';
 import './GestionDispositivos.css';
 
 // Estados disponibles para los dispositivos
@@ -122,6 +122,121 @@ const DispositivoCard: React.FC<{
   );
 };
 
+// Modal para crear nuevo dispositivo
+const ModalCrearDispositivo: React.FC<{
+  nuevoDispositivo: NuevoDispositivoForm,
+  setNuevoDispositivo: (dispositivo: NuevoDispositivoForm) => void,
+  onSubmit: (e: React.FormEvent) => void,
+  onClose: () => void,
+  loading: boolean
+}> = ({ nuevoDispositivo, setNuevoDispositivo, onSubmit, onClose, loading }) => {
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h3>📱 Crear Nuevo Dispositivo</h3>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        
+        <form onSubmit={onSubmit}>
+          <div className="modal-body">
+            <div className="form-group">
+              <label>ID del Dispositivo *</label>
+              <input
+                type="text"
+                className="form-control"
+                value={nuevoDispositivo.device_id}
+                onChange={(e) => setNuevoDispositivo({
+                  ...nuevoDispositivo,
+                  device_id: e.target.value
+                })}
+                placeholder="Ej: UTALCA_A4CF12"
+                required
+                disabled={loading}
+              />
+              <small>Este ID debe ser único y coincidir con el dispositivo físico</small>
+            </div>
+
+            <div className="form-group">
+              <label>Modelo del Dispositivo *</label>
+              <input
+                type="text"
+                className="form-control"
+                value={nuevoDispositivo.modelo}
+                onChange={(e) => setNuevoDispositivo({
+                  ...nuevoDispositivo,
+                  modelo: e.target.value
+                })}
+                placeholder="Ej: Modelo2, ESP32-DevKit, etc."
+                required
+                disabled={loading}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Estado Inicial</label>
+              <select
+                className="form-control"
+                value={nuevoDispositivo.estado}
+                onChange={(e) => setNuevoDispositivo({
+                  ...nuevoDispositivo,
+                  estado: e.target.value as 'disponible' | 'asignado' | 'mantenimiento'
+                })}
+                disabled={loading}
+              >
+                {ESTADOS_DISPONIBLES.map(estado => (
+                  <option key={estado.value} value={estado.value}>
+                    {estado.icon} {estado.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label>Nivel de Batería (%)</label>
+              <input
+                type="number"
+                className="form-control"
+                value={nuevoDispositivo.bateria || ''}
+                onChange={(e) => setNuevoDispositivo({
+                  ...nuevoDispositivo,
+                  bateria: e.target.value ? parseInt(e.target.value) : undefined
+                })}
+                placeholder="Opcional - Ej: 85"
+                min="0"
+                max="100"
+                disabled={loading}
+              />
+            </div>
+
+            <div className="alert alert-info">
+              💡 <strong>Tip:</strong> Una vez creado, podrás asignar este dispositivo a una estación desde la lista de dispositivos.
+            </div>
+          </div>
+          
+          <div className="modal-footer">
+            <button 
+              type="button"
+              className="btn btn-secondary" 
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancelar
+            </button>
+            <button 
+              type="submit"
+              className="btn btn-primary"
+              disabled={loading || !nuevoDispositivo.device_id || !nuevoDispositivo.modelo}
+            >
+              {loading ? 'Creando...' : 'Crear Dispositivo'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // Modal para asignar/reasignar dispositivo
 const ModalAsignarDispositivo: React.FC<{
   estaciones: Estacion[],
@@ -205,10 +320,18 @@ const GestionDispositivos: React.FC = () => {
   const [success, setSuccess] = useState<string>('');
   
   // Estados del modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [selectedStationId, setSelectedStationId] = useState<string>('');
   const [currentStationId, setCurrentStationId] = useState<number | null>(null);
+
+  // Estado del formulario de nuevo dispositivo
+  const [nuevoDispositivo, setNuevoDispositivo] = useState<NuevoDispositivoForm>({
+    device_id: '',
+    modelo: '',
+    estado: 'disponible'
+  });
 
   // Estados de filtros
   const [filtroEstado, setFiltroEstado] = useState<string>('');
@@ -238,6 +361,29 @@ const GestionDispositivos: React.FC = () => {
   const limpiarMensajes = () => {
     setError('');
     setSuccess('');
+  };
+
+  // ====== CREAR DISPOSITIVO ======
+  const handleCrearDispositivo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    limpiarMensajes();
+    
+    try {
+      setLoading(true);
+      await deviceService.create(nuevoDispositivo);
+      setSuccess('Dispositivo creado exitosamente');
+      setShowCreateModal(false);
+      setNuevoDispositivo({
+        device_id: '',
+        modelo: '',
+        estado: 'disponible'
+      });
+      await cargarDatos();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ====== ASIGNAR/REASIGNAR DISPOSITIVO ======
@@ -338,13 +484,21 @@ const GestionDispositivos: React.FC = () => {
     <div className="gestion-dispositivos">
       <div className="header-section">
         <h2>📱 Gestión de Dispositivos</h2>
-        <button 
-          className="btn btn-secondary"
-          onClick={cargarDatos}
-          disabled={loading}
-        >
-          🔄 Actualizar
-        </button>
+        <div className="header-actions">
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowCreateModal(true)}
+          >
+            ➕ Nuevo Dispositivo
+          </button>
+          <button 
+            className="btn btn-secondary"
+            onClick={cargarDatos}
+            disabled={loading}
+          >
+            🔄 Actualizar
+          </button>
+        </div>
       </div>
 
       {/* Estadísticas */}
@@ -438,6 +592,17 @@ const GestionDispositivos: React.FC = () => {
           ))
         )}
       </div>
+
+      {/* Modal Crear Dispositivo */}
+      {showCreateModal && (
+        <ModalCrearDispositivo
+          nuevoDispositivo={nuevoDispositivo}
+          setNuevoDispositivo={setNuevoDispositivo}
+          onSubmit={handleCrearDispositivo}
+          onClose={() => setShowCreateModal(false)}
+          loading={loading}
+        />
+      )}
 
       {/* Modal Asignar Dispositivo */}
       {showAssignModal && (

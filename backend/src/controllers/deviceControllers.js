@@ -4,7 +4,8 @@ import {
     assignDeviceToStation,
     releaseDeviceFromStation,
     getAllDevicesWithStation,
-    deleteDevice
+    deleteDevice,
+    createDevice
 } from '../models/deviceModel.js';
 
 // Obtener todos los dispositivos disponibles
@@ -15,6 +16,56 @@ export const getAvailableDevicesController = async (req, res) => {
     } catch (error) {
         console.error('Error al obtener dispositivos disponibles:', error);
         res.status(500).json({ error: 'Error al obtener dispositivos disponibles' });
+    }
+};
+
+// Crear nuevo dispositivo
+export const createDeviceController = async (req, res) => {
+    try {
+        const { device_id, modelo, estado, bateria, ultima_conexion, id_estacion } = req.body;
+        
+        // Validar datos requeridos
+        if (!device_id || !modelo) {
+            return res.status(400).json({ 
+                error: 'device_id y modelo son campos requeridos' 
+            });
+        }
+
+        // Validar que el device_id no exista ya
+        const existingDevice = await getAllDevicesWithStation();
+        const deviceExists = existingDevice.some(device => device.device_id === device_id);
+        
+        if (deviceExists) {
+            return res.status(409).json({ 
+                error: `Ya existe un dispositivo con el ID: ${device_id}` 
+            });
+        }
+
+        const result = await createDevice({
+            device_id,
+            modelo,
+            estado,
+            bateria,
+            ultima_conexion,
+            id_estacion
+        });
+
+        res.status(201).json({ 
+            message: 'Dispositivo creado correctamente',
+            device_id: result.device_id,
+            data: result
+        });
+    } catch (error) {
+        console.error('Error al crear dispositivo:', error);
+        
+        // Si es error de duplicate key (por si acaso)
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({ 
+                error: 'Ya existe un dispositivo con este ID' 
+            });
+        }
+        
+        res.status(500).json({ error: 'Error al crear dispositivo' });
     }
 };
 
