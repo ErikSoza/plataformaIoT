@@ -237,18 +237,39 @@ const Home: React.FC = () => {
       ) : (
         <div style={styles.guestHeader}>
           <div style={styles.guestHeaderContent}>
-            <h2 style={styles.guestTitle}>🌐 Plataforma IoT UTalca - Vista Visitante</h2>
-            <p style={styles.guestSubtitle}>Datos meteorológicos en tiempo real</p>
+            {/* Logo/Título */}
+            <div style={styles.guestBrandSection}>
+              <h2 style={styles.guestBrandTitle}>🌐 Plataforma IoT UTalca</h2>
+              <span style={styles.guestSubtitle}>Vista Visitante</span>
+            </div>
+
+            {/* Botones de acción */}
             <div style={styles.guestActions}>
               <button 
                 style={styles.guestLoginBtn}
                 onClick={() => window.location.href = '/login'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f0f8ff';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
                 🚀 Iniciar Sesión
               </button>
               <button 
                 style={styles.guestRegisterBtn}
                 onClick={() => window.location.href = '/register'}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#00BCD4';
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
               >
                 📝 Registrarse
               </button>
@@ -291,38 +312,53 @@ const styles = {
     fontFamily: "'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
   },
   guestHeader: {
-    background: 'linear-gradient(135deg, #00BCD4 0%, #00ACC1 50%, #0097A7 100%)',
-    padding: '20px 0',
-    color: 'white',
-    textAlign: 'center' as const,
+    backgroundColor: 'white',
+    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+    borderBottom: '3px solid #00BCD4',
+    padding: '0',
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 100,
   },
   guestHeaderContent: {
     maxWidth: '1200px',
     margin: '0 auto',
-    padding: '0 20px',
+    padding: '15px 20px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  guestTitle: {
-    margin: '0 0 8px 0',
-    fontSize: '1.8rem',
+  guestBrandSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+  },
+  guestBrandTitle: {
+    margin: 0,
+    color: '#00BCD4',
+    fontSize: '24px',
     fontWeight: '600' as const,
   },
   guestSubtitle: {
-    margin: '0 0 20px 0',
-    fontSize: '1rem',
-    opacity: 0.9,
+    color: '#6c757d',
+    fontSize: '14px',
+    fontWeight: '500' as const,
+    backgroundColor: '#f8f9fa',
+    padding: '4px 12px',
+    borderRadius: '12px',
+    border: '1px solid #e9ecef',
   },
   guestActions: {
     display: 'flex',
-    gap: '15px',
-    justifyContent: 'center',
-    flexWrap: 'wrap' as const,
+    gap: '12px',
+    alignItems: 'center',
   },
   guestLoginBtn: {
-    backgroundColor: '#ffffff',
+    backgroundColor: 'white',
     color: '#00BCD4',
-    border: 'none',
-    padding: '10px 20px',
-    borderRadius: '5px',
+    border: '2px solid #00BCD4',
+    padding: '8px 16px',
+    borderRadius: '6px',
     fontSize: '14px',
     fontWeight: '600' as const,
     cursor: 'pointer',
@@ -330,10 +366,10 @@ const styles = {
   },
   guestRegisterBtn: {
     backgroundColor: 'transparent',
-    color: 'white',
-    border: '2px solid white',
-    padding: '8px 18px',
-    borderRadius: '5px',
+    color: '#00BCD4',
+    border: '2px solid #00BCD4',
+    padding: '8px 16px',
+    borderRadius: '6px',
     fontSize: '14px',
     fontWeight: '600' as const,
     cursor: 'pointer',
