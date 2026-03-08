@@ -24,7 +24,7 @@ L.Icon.Default.mergeOptions({
 
 const Home: React.FC = () => {
   // Hook de autenticación
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   
   // Estados del componente
   const [activeTab, setActiveTab] = useState<string>('monitoring');
@@ -53,11 +53,6 @@ const Home: React.FC = () => {
     );
   }
 
-  // Si no está autenticado, mostrar landing page
-  if (!isAuthenticated) {
-    return <LandingPage />;
-  }
-
   // Usar datos de la API si están disponibles, sino usar datos de ejemplo
   const devices = (isConnected && apiDevices.length > 0 ? apiDevices : deviceData) as DeviceData[];
   
@@ -73,15 +68,45 @@ const Home: React.FC = () => {
     console.warn('Error al conectar con la API, usando datos de ejemplo:', devicesError);
   }
 
-  // Configuración de tabs con estado dinámico
-  const tabs: TabItem[] = [
-    { id: 'monitoring', label: 'MONITOREO', active: activeTab === 'monitoring' },
-    { id: 'devices', label: 'DISPOSITIVOS', active: activeTab === 'devices' },
-    { id: 'stations', label: 'ESTACIONES', active: activeTab === 'stations' },
-    { id: 'device-management', label: 'GESTIÓN DISPOSITIVOS', active: activeTab === 'device-management' },
-    { id: 'reports', label: 'REPORTES', active: activeTab === 'reports' },
-    { id: 'settings', label: 'CONFIGURACIÓN', active: activeTab === 'settings' },
-  ];
+  // Función para obtener tabs según el rol del usuario
+  const getTabsByRole = (): TabItem[] => {
+    // Para visitantes (no autenticados) - Solo vista básica de monitoreo
+    if (!isAuthenticated) {
+      return [
+        { id: 'monitoring', label: 'MONITOREO CLIMA', active: activeTab === 'monitoring' },
+      ];
+    }
+
+    // Para usuarios registrados
+    if (user?.rol === 'usuario') {
+      return [
+        { id: 'monitoring', label: 'MONITOREO', active: activeTab === 'monitoring' },
+        { id: 'devices', label: 'DISPOSITIVOS', active: activeTab === 'devices' },
+        { id: 'reports', label: 'REPORTES', active: activeTab === 'reports' },
+        { id: 'settings', label: 'CONFIGURACIÓN', active: activeTab === 'settings' },
+      ];
+    }
+
+    // Para administradores - Acceso completo
+    if (user?.rol === 'admin') {
+      return [
+        { id: 'monitoring', label: 'MONITOREO', active: activeTab === 'monitoring' },
+        { id: 'devices', label: 'DISPOSITIVOS', active: activeTab === 'devices' },
+        { id: 'stations', label: 'ESTACIONES', active: activeTab === 'stations' },
+        { id: 'device-management', label: 'GESTIÓN DISPOSITIVOS', active: activeTab === 'device-management' },
+        { id: 'reports', label: 'REPORTES', active: activeTab === 'reports' },
+        { id: 'settings', label: 'CONFIGURACIÓN', active: activeTab === 'settings' },
+      ];
+    }
+
+    // Por defecto, mostrar solo monitoreo
+    return [
+      { id: 'monitoring', label: 'MONITOREO', active: activeTab === 'monitoring' },
+    ];
+  };
+
+  // Configuración de tabs con estado dinámico según rol
+  const tabs: TabItem[] = getTabsByRole();
 
   // Manejadores de eventos
   const handleTabChange = (tabId: string) => {
@@ -106,7 +131,7 @@ const Home: React.FC = () => {
     console.log('Estadística seleccionada:', stat, 'Índice:', index);
   };
 
-  // Renderizar contenido según la pestaña activa
+  // Renderizar contenido según la pestaña activa y rol del usuario
   const renderContent = () => {
     switch (activeTab) {
       case 'monitoring':
@@ -121,6 +146,21 @@ const Home: React.FC = () => {
         );
 
       case 'devices':
+        // Solo para usuarios autenticados
+        if (!isAuthenticated) {
+          return (
+            <div style={styles.accessDenied}>
+              <h3>🔒 Acceso Restringido</h3>
+              <p>Debes iniciar sesión para ver información detallada de dispositivos.</p>
+              <button 
+                style={styles.accessDeniedBtn}
+                onClick={() => window.location.href = '/login'}
+              >
+                Iniciar Sesión
+              </button>
+            </div>
+          );
+        }
         return (
           <DevicesPage
             devices={devices}
@@ -130,15 +170,57 @@ const Home: React.FC = () => {
         );
 
       case 'stations':
+        // Solo para administradores
+        if (!isAuthenticated || user?.rol !== 'admin') {
+          return (
+            <div style={styles.accessDenied}>
+              <h3>🔒 Acceso Restringido</h3>
+              <p>Solo los administradores pueden gestionar estaciones.</p>
+            </div>
+          );
+        }
         return <StationManagementPage />;
 
       case 'device-management':
+        // Solo para administradores
+        if (!isAuthenticated || user?.rol !== 'admin') {
+          return (
+            <div style={styles.accessDenied}>
+              <h3>🔒 Acceso Restringido</h3>
+              <p>Solo los administradores pueden gestionar dispositivos.</p>
+            </div>
+          );
+        }
         return <DeviceManagementPage />;
 
       case 'reports':
+        // Para usuarios registrados y administradores
+        if (!isAuthenticated) {
+          return (
+            <div style={styles.accessDenied}>
+              <h3>🔒 Acceso Restringido</h3>
+              <p>Debes iniciar sesión para acceder a los reportes.</p>
+              <button 
+                style={styles.accessDeniedBtn}
+                onClick={() => window.location.href = '/login'}
+              >
+                Iniciar Sesión
+              </button>
+            </div>
+          );
+        }
         return <ReportsPage />;
 
       case 'settings':
+        // Solo para administradores
+        if (!isAuthenticated || user?.rol !== 'admin') {
+          return (
+            <div style={styles.accessDenied}>
+              <h3>🔒 Acceso Restringido</h3>
+              <p>Solo los administradores pueden acceder a la configuración.</p>
+            </div>
+          );
+        }
         return <SettingsPage />;
 
       default:
@@ -146,12 +228,34 @@ const Home: React.FC = () => {
     }
   };
 
-  // Renderizar la aplicación principal para usuarios autenticados
+  // Renderizar la aplicación principal
   return (
     <div style={styles.pageContainer}>
-      {/* Header de usuario logueado */}
-      <UserHeader />
-      
+      {/* Header condicional según autenticación */}
+      {isAuthenticated ? (
+        <UserHeader />
+      ) : (
+        <div style={styles.guestHeader}>
+          <div style={styles.guestHeaderContent}>
+            <h2 style={styles.guestTitle}>🌐 Plataforma IoT UTalca - Vista Visitante</h2>
+            <p style={styles.guestSubtitle}>Datos meteorológicos en tiempo real</p>
+            <div style={styles.guestActions}>
+              <button 
+                style={styles.guestLoginBtn}
+                onClick={() => window.location.href = '/login'}
+              >
+                🚀 Iniciar Sesión
+              </button>
+              <button 
+                style={styles.guestRegisterBtn}
+                onClick={() => window.location.href = '/register'}
+              >
+                📝 Registrarse
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Indicador de conexión API */}
       <div style={styles.connectionIndicator}>
@@ -169,84 +273,11 @@ const Home: React.FC = () => {
 
       {/* Navegación de pestañas */}
       <TabNavigation tabs={tabs} onTabChange={handleTabChange} />
+      
       {/* Contenido principal */}
       <MainLayout>
         {renderContent()}
       </MainLayout>
-    </div>
-  );
-};
-
-// Componente Landing Page para usuarios no autenticados
-const LandingPage: React.FC = () => {
-  return (
-    <div style={landingStyles.container}>
-      <div style={landingStyles.hero}>
-        <h1 style={landingStyles.title}>🌐 Plataforma IoT UTalca</h1>
-        <p style={landingStyles.subtitle}>
-          Sistema de Monitoreo Meteorológico Inteligente
-        </p>
-        <p style={landingStyles.description}>
-          Accede a datos en tiempo real de nuestras estaciones meteorológicas
-          distribuidas por el campus universitario.
-        </p>
-        
-        <div style={landingStyles.buttonContainer}>
-          <button 
-            style={landingStyles.loginButton}
-            onClick={() => window.location.href = '/login'}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 188, 212, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          >
-            🚀 Iniciar Sesión
-          </button>
-          
-          <button 
-            style={landingStyles.registerButton}
-            onClick={() => window.location.href = '/register'}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#00ACC1';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            📝 Registrarse
-          </button>
-        </div>
-        
-        <div style={landingStyles.features}>
-          <div style={landingStyles.feature}>
-            <span style={landingStyles.featureIcon}>📊</span>
-            <h3 style={landingStyles.featureTitle}>Datos en Tiempo Real</h3>
-            <p style={landingStyles.featureText}>
-              Monitoreo continuo de condiciones meteorológicas
-            </p>
-          </div>
-          
-          <div style={landingStyles.feature}>
-            <span style={landingStyles.featureIcon}>🗺️</span>
-            <h3 style={landingStyles.featureTitle}>Mapas Interactivos</h3>
-            <p style={landingStyles.featureText}>
-              Visualización geoespacial de todas las estaciones
-            </p>
-          </div>
-          
-          <div style={landingStyles.feature}>
-            <span style={landingStyles.featureIcon}>📈</span>
-            <h3 style={landingStyles.featureTitle}>Reportes Avanzados</h3>
-            <p style={landingStyles.featureText}>
-              Análisis histórico y tendencias climatológicas
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
@@ -258,6 +289,55 @@ const styles = {
     minHeight: '100vh',
     backgroundColor: '#f8f9fa',
     fontFamily: "'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+  },
+  guestHeader: {
+    background: 'linear-gradient(135deg, #00BCD4 0%, #00ACC1 50%, #0097A7 100%)',
+    padding: '20px 0',
+    color: 'white',
+    textAlign: 'center' as const,
+  },
+  guestHeaderContent: {
+    maxWidth: '1200px',
+    margin: '0 auto',
+    padding: '0 20px',
+  },
+  guestTitle: {
+    margin: '0 0 8px 0',
+    fontSize: '1.8rem',
+    fontWeight: '600' as const,
+  },
+  guestSubtitle: {
+    margin: '0 0 20px 0',
+    fontSize: '1rem',
+    opacity: 0.9,
+  },
+  guestActions: {
+    display: 'flex',
+    gap: '15px',
+    justifyContent: 'center',
+    flexWrap: 'wrap' as const,
+  },
+  guestLoginBtn: {
+    backgroundColor: '#ffffff',
+    color: '#00BCD4',
+    border: 'none',
+    padding: '10px 20px',
+    borderRadius: '5px',
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
+  },
+  guestRegisterBtn: {
+    backgroundColor: 'transparent',
+    color: 'white',
+    border: '2px solid white',
+    padding: '8px 18px',
+    borderRadius: '5px',
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    cursor: 'pointer',
+    transition: 'all 0.3s ease',
   },
   connectionIndicator: {
     display: 'flex',
@@ -279,6 +359,31 @@ const styles = {
   connectionText: {
     fontWeight: '500',
   },
+  accessDenied: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '60px 20px',
+    textAlign: 'center' as const,
+    color: '#6c757d',
+    backgroundColor: '#fff',
+    margin: '20px',
+    borderRadius: '8px',
+    minHeight: '400px',
+  },
+  accessDeniedBtn: {
+    backgroundColor: '#00BCD4',
+    color: 'white',
+    border: 'none',
+    padding: '12px 24px',
+    borderRadius: '6px',
+    fontSize: '16px',
+    fontWeight: '500' as const,
+    cursor: 'pointer',
+    marginTop: '20px',
+    transition: 'all 0.3s ease',
+  },
   loadingContainer: {
     display: 'flex',
     flexDirection: 'column' as const,
@@ -296,95 +401,5 @@ const styles = {
     color: 'white',
     fontSize: '18px',
     fontWeight: '500' as const,
-  }
-};
-
-const landingStyles = {
-  container: {
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #00BCD4 0%, #00ACC1 50%, #0097A7 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px',
-  },
-  hero: {
-    textAlign: 'center' as const,
-    color: 'white',
-    maxWidth: '1000px',
-  },
-  title: {
-    fontSize: '3.5rem',
-    fontWeight: 'bold' as const,
-    marginBottom: '20px',
-    textShadow: '2px 2px 4px rgba(0,0,0,0.3)',
-  },
-  subtitle: {
-    fontSize: '1.5rem',
-    marginBottom: '15px',
-    opacity: 0.9,
-  },
-  description: {
-    fontSize: '1.1rem',
-    marginBottom: '40px',
-    opacity: 0.8,
-    lineHeight: 1.6,
-  },
-  buttonContainer: {
-    display: 'flex',
-    gap: '20px',
-    justifyContent: 'center',
-    marginBottom: '60px',
-    flexWrap: 'wrap' as const,
-  },
-  loginButton: {
-    backgroundColor: '#ffffff',
-    color: '#00BCD4',
-    border: 'none',
-    padding: '15px 30px',
-    borderRadius: '8px',
-    fontSize: '18px',
-    fontWeight: '600' as const,
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-  },
-  registerButton: {
-    backgroundColor: 'transparent',
-    color: 'white',
-    border: '2px solid white',
-    padding: '15px 30px',
-    borderRadius: '8px',
-    fontSize: '18px',
-    fontWeight: '600' as const,
-    cursor: 'pointer',
-    transition: 'all 0.3s ease',
-  },
-  features: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-    gap: '30px',
-    marginTop: '40px',
-  },
-  feature: {
-    textAlign: 'center' as const,
-    padding: '30px 20px',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: '12px',
-    backdropFilter: 'blur(10px)',
-  },
-  featureIcon: {
-    fontSize: '3rem',
-    marginBottom: '15px',
-    display: 'block',
-  },
-  featureTitle: {
-    fontSize: '1.3rem',
-    marginBottom: '10px',
-    fontWeight: '600' as const,
-  },
-  featureText: {
-    fontSize: '1rem',
-    opacity: 0.9,
-    lineHeight: 1.5,
   }
 };
