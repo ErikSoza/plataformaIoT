@@ -18,8 +18,22 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
 }) => {
   return (
     <>
+      {/* Sección de bienvenida */}
+      <div style={styles.welcomeSection}>
+        <div style={styles.welcomeContent}>
+          <h2 style={styles.welcomeTitle}>
+            🌡️ Bienvenido al Sistema de Monitoreo Meteorológico UTalca
+          </h2>
+          <p style={styles.welcomeText}>
+            Accede a información meteorológica en tiempo real de nuestra red de estaciones distribuidas 
+            por el campus universitario. Monitorea temperatura, humedad, presión atmosférica y más datos 
+            ambientales recolectados por nuestros sensores IoT de alta precisión.
+          </p>
+        </div>
+      </div>
+
       {/* Sección del mapa general */}
-      <ContentSection title="🌡️ Red de Sensores Ambientales - Campus UTalca">
+      <ContentSection title="🌐 Red de Sensores Ambientales - Campus UTalca">
         <UnifiedMap 
           devices={devices}
           selectedDevice={selectedDevice}
@@ -32,11 +46,129 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
       </ContentSection>
 
       {/* Sección de estadísticas */}
-      <ContentSection title="Panel de Control - Estadísticas en Tiempo Real">
+      <ContentSection title="📊 Panel de Control - Estadísticas en Tiempo Real">
         <StatsGrid stats={stats} onCardClick={onStatCardClick} />
       </ContentSection>
+
+      {/* Panel Acerca de */}
+      <div style={styles.aboutSection}>
+        <div style={styles.aboutContent}>
+          <h3 style={styles.aboutTitle}>ℹ️ Acerca de la Plataforma</h3>
+          <div style={styles.aboutGrid}>
+            <div style={styles.aboutCard}>
+              <div style={styles.aboutCardIcon}>🎓</div>
+              <h4 style={styles.aboutCardTitle}>Proyecto Universitario</h4>
+              <p style={styles.aboutCardText}>
+                Desarrollado por estudiantes de la Universidad de Talca para el monitoreo 
+                ambiental del campus usando tecnología IoT de última generación.
+              </p>
+            </div>
+            
+            <div style={styles.aboutCard}>
+              <div style={styles.aboutCardIcon}>⚡</div>
+              <h4 style={styles.aboutCardTitle}>Tecnología IoT</h4>
+              <p style={styles.aboutCardText}>
+                Red de sensores conectados que recopilan datos meteorológicos cada minuto, 
+                transmitidos en tiempo real a través de protocolos de comunicación avanzados.
+              </p>
+            </div>
+            
+            <div style={styles.aboutCard}>
+              <div style={styles.aboutCardIcon}>🌱</div>
+              <h4 style={styles.aboutCardTitle}>Impacto Ambiental</h4>
+              <p style={styles.aboutCardText}>
+                Los datos recopilados contribuyen a investigaciones sobre cambio climático 
+                y apoyan la toma de decisiones para un campus más sustentable.
+              </p>
+            </div>
+            
+            <div style={styles.aboutCard}>
+              <div style={styles.aboutCardIcon}>📱</div>
+              <h4 style={styles.aboutCardTitle}>Acceso Abierto</h4>
+              <p style={styles.aboutCardText}>
+                Información disponible 24/7 para la comunidad universitaria y público general. 
+                Regístrate para acceder a funciones avanzadas y reportes detallados.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </>
   );
+};
+
+const styles = {
+  welcomeSection: {
+    backgroundColor: 'white',
+    margin: '0 20px 20px 20px',
+    borderRadius: '12px',
+    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+    overflow: 'hidden',
+  },
+  welcomeContent: {
+    padding: '30px',
+    background: 'linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%)',
+    borderLeft: '5px solid #00BCD4',
+  },
+  welcomeTitle: {
+    color: '#2c3e50',
+    fontSize: '24px',
+    fontWeight: '600' as const,
+    margin: '0 0 15px 0',
+    lineHeight: 1.3,
+  },
+  welcomeText: {
+    color: '#6c757d',
+    fontSize: '16px',
+    lineHeight: 1.6,
+    margin: 0,
+  },
+  aboutSection: {
+    backgroundColor: 'white',
+    margin: '20px',
+    borderRadius: '12px',
+    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+    overflow: 'hidden',
+  },
+  aboutContent: {
+    padding: '30px',
+  },
+  aboutTitle: {
+    color: '#2c3e50',
+    fontSize: '20px',
+    fontWeight: '600' as const,
+    margin: '0 0 25px 0',
+    textAlign: 'center' as const,
+  },
+  aboutGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gap: '20px',
+  },
+  aboutCard: {
+    backgroundColor: '#f8f9fa',
+    padding: '25px',
+    borderRadius: '10px',
+    textAlign: 'center' as const,
+    border: '1px solid #e9ecef',
+    transition: 'all 0.3s ease',
+  },
+  aboutCardIcon: {
+    fontSize: '2.5rem',
+    marginBottom: '15px',
+  },
+  aboutCardTitle: {
+    color: '#00BCD4',
+    fontSize: '16px',
+    fontWeight: '600' as const,
+    margin: '0 0 12px 0',
+  },
+  aboutCardText: {
+    color: '#6c757d',
+    fontSize: '14px',
+    lineHeight: 1.5,
+    margin: 0,
+  },
 };
 
 export default MonitoringPage;

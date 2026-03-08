@@ -318,7 +318,7 @@ const styles = {
     padding: '0',
     position: 'sticky' as const,
     top: 0,
-    zIndex: 100,
+    zIndex: 9999,
   },
   guestHeaderContent: {
     maxWidth: '1200px',
@@ -384,6 +384,9 @@ const styles = {
     borderBottom: '1px solid #dee2e6',
     fontSize: '14px',
     color: '#6c757d',
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 9998,
   },
   connectionDot: {
     width: '8px',

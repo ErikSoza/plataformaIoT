@@ -74,7 +74,7 @@ const styles = {
     padding: '0',
     position: 'sticky' as const,
     top: 0,
-    zIndex: 100,
+    zIndex: 9999,
   },
   
   headerContent: {

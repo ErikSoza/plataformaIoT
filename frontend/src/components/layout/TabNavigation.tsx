@@ -41,6 +41,9 @@ const styles = {
     display: 'flex',
     maxWidth: '1200px',
     margin: '0 auto',
+    position: 'sticky' as const,
+    top: 0,
+    zIndex: 9997,
   },
 
   tabActive: {
