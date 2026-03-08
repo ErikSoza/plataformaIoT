@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface FormData {
     name: string;
@@ -40,6 +41,14 @@ const Register: React.FC = () => {
     });
     const [emailCheckTimeout, setEmailCheckTimeout] = useState<NodeJS.Timeout | null>(null);
     const navigate = useNavigate();
+    const { isAuthenticated, setAuthFromRegistration } = useAuth();
+
+    // Rediriger si ya está autenticado
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate('/');
+        }
+    }, [isAuthenticated, navigate]);
 
     // Validación en tiempo real del email
     useEffect(() => {
@@ -197,9 +206,29 @@ const Register: React.FC = () => {
                 confirmPassword: formData.confirmPassword
             });
 
-            // Mostrar mensaje de éxito y redirigir
-            alert(`¡${response.message}! Redirigiendo al login...`);
-            navigate('/login');
+            // Registro exitoso - hacer login automático
+            if (response.success) {
+                // Mostrar mensaje de éxito
+                alert(`¡${response.message}! Serás redirigido a la plataforma.`);
+                
+                // Login automático con los datos del registro
+                if (response.user && response.token) {
+                    setAuthFromRegistration(response.user, response.token);
+                    
+                    // Pequeño delay para procesar el auth antes de la redirección
+                    setTimeout(() => {
+                        navigate('/', { replace: true });
+                    }, 100);
+                } else {
+                    // Si no hay datos de usuario/token, redirigir al login
+                    setTimeout(() => {
+                        navigate('/login', { replace: true });
+                    }, 100);
+                }
+            } else {
+                // En caso de que success sea false pero no haya error
+                setErrors({ general: response.message || 'Error en el registro' });
+            }
             
         } catch (error: any) {
             console.error('Error en registro:', error);
@@ -229,7 +258,7 @@ const Register: React.FC = () => {
     };
 
     const handleGoToLogin = () => {
-        navigate('/login');
+        navigate('/login', { replace: true });
     };
 
     return (

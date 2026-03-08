@@ -17,6 +17,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   updateUser: (userData: User) => void;
+  setAuthFromRegistration: (user: User, token: string) => void;
 }
 
 interface AuthProviderProps {
@@ -131,6 +132,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('auth_user', JSON.stringify(userData));
   };
 
+  // Función para establecer autenticación desde el registro
+  const setAuthFromRegistration = (userData: User, userToken: string): void => {
+    // Establecer en el estado
+    setUser(userData);
+    setToken(userToken);
+    
+    // Guardar en localStorage para persistencia
+    localStorage.setItem('auth_token', userToken);
+    localStorage.setItem('auth_user', JSON.stringify(userData));
+    
+    console.log('✅ Auto-login después del registro:', userData.nombre);
+  };
+
   // Valores del contexto
   const contextValue: AuthContextType = {
     user,
@@ -140,6 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     updateUser,
+    setAuthFromRegistration,
   };
 
   return (
