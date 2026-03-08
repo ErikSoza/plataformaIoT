@@ -1,29 +1,110 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+
+interface LoginErrors {
+    email?: string;
+    password?: string;
+    general?: string;
+}
 
 const Login: React.FC = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [errors, setErrors] = useState<LoginErrors>({});
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+    const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+
+    // Rediriger si ya está autenticado
+    useEffect(() => {
+        if (!authLoading && isAuthenticated) {
+            navigate('/');
+        }
+    }, [isAuthenticated, authLoading, navigate]);
+
+    // Validaciones
+    const isValidEmail = (email: string): boolean => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    };
+
+    const validateForm = (): boolean => {
+        const newErrors: LoginErrors = {};
+
+        // Validar email
+        if (!email.trim()) {
+            newErrors.email = 'El email es requerido';
+        } else if (!isValidEmail(email)) {
+            newErrors.email = 'El email no tiene un formato válido';
+        }
+
+        // Validar contraseña
+        if (!password) {
+            newErrors.password = 'La contraseña es requerida';
+        } else if (password.length < 6) {
+            newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        // Validar formulario
+        if (!validateForm()) {
+            return;
+        }
+
         setIsLoading(true);
+        setErrors({});
         
         try {
-            // Aquí iría la lógica de autenticación
-            console.log('Login attempt:', { email, password });
+            await login(email.toLowerCase().trim(), password);
             
-            // Simulamos un login exitoso después de 1 segundo
-            setTimeout(() => {
-                setIsLoading(false);
-                // Rediriger al home después del login
-                navigate('/');
-            }, 1000);
-        } catch (error) {
-            console.error('Login error:', error);
+            // El useEffect se encargará de la redirección
+            console.log('✅ Login exitoso, redirigiendo...');
+            
+        } catch (error: any) {
+            console.error('❌ Error en login:', error);
+            
+            if (error.response?.data) {
+                const { message } = error.response.data;
+                
+                // Manejar errores específicos
+                if (message.toLowerCase().includes('credenciales')) {
+                    setErrors({ 
+                        general: 'Email o contraseña incorrectos. Verifica tus datos.' 
+                    });
+                } else {
+                    setErrors({ general: message });
+                }
+            } else {
+                setErrors({ 
+                    general: 'Error de conexión. Verifica tu internet e intenta nuevamente.' 
+                });
+            }
+        } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleInputChange = (field: 'email' | 'password', value: string) => {
+        if (field === 'email') {
+            setEmail(value);
+        } else {
+            setPassword(value);
+        }
+
+        // Limpiar errores cuando el usuario empiece a escribir
+        if (errors[field]) {
+            setErrors(prev => ({
+                ...prev,
+                [field]: undefined,
+                general: undefined // También limpiar error general
+            }));
         }
     };
 
@@ -59,6 +140,13 @@ const Login: React.FC = () => {
 
                 {/* Formulario */}
                 <form onSubmit={handleSubmit} style={styles.form}>
+                    {/* Error general */}
+                    {errors.general && (
+                        <div style={styles.errorMessage}>
+                            {errors.general}
+                        </div>
+                    )}
+
                     <div style={styles.formGroup}>
                         <label htmlFor="email" style={styles.label}>
                             Email:
@@ -67,19 +155,27 @@ const Login: React.FC = () => {
                             type="email"
                             id="email"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e) => handleInputChange('email', e.target.value)}
                             required
-                            style={styles.input}
+                            style={[
+                                styles.input,
+                                errors.email && styles.inputError
+                            ].reduce((a, b) => ({ ...a, ...b }), {})}
                             placeholder="tu@email.com"
                             onFocus={(e) => {
-                                e.currentTarget.style.borderColor = '#00BCD4';
-                                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0, 188, 212, 0.1)';
+                                if (!errors.email) {
+                                    e.currentTarget.style.borderColor = '#00BCD4';
+                                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0, 188, 212, 0.1)';
+                                }
                             }}
                             onBlur={(e) => {
-                                e.currentTarget.style.borderColor = '#e9ecef';
+                                e.currentTarget.style.borderColor = errors.email ? '#f44336' : '#e9ecef';
                                 e.currentTarget.style.boxShadow = 'none';
                             }}
                         />
+                        {errors.email && (
+                            <span style={styles.fieldError}>{errors.email}</span>
+                        )}
                     </div>
                     
                     <div style={styles.formGroup}>
@@ -90,31 +186,39 @@ const Login: React.FC = () => {
                             type="password"
                             id="password"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(e) => handleInputChange('password', e.target.value)}
                             required
-                            style={styles.input}
+                            style={[
+                                styles.input,
+                                errors.password && styles.inputError
+                            ].reduce((a, b) => ({ ...a, ...b }), {})}
                             placeholder="Tu contraseña"
                             onFocus={(e) => {
-                                e.currentTarget.style.borderColor = '#00BCD4';
-                                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0, 188, 212, 0.1)';
+                                if (!errors.password) {
+                                    e.currentTarget.style.borderColor = '#00BCD4';
+                                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(0, 188, 212, 0.1)';
+                                }
                             }}
                             onBlur={(e) => {
-                                e.currentTarget.style.borderColor = '#e9ecef';
+                                e.currentTarget.style.borderColor = errors.password ? '#f44336' : '#e9ecef';
                                 e.currentTarget.style.boxShadow = 'none';
                             }}
                         />
+                        {errors.password && (
+                            <span style={styles.fieldError}>{errors.password}</span>
+                        )}
                     </div>
                     
                     <button 
                         type="submit" 
-                        disabled={isLoading}
+                        disabled={isLoading || authLoading}
                         style={{
                             ...styles.submitButton,
-                            opacity: isLoading ? 0.7 : 1,
-                            cursor: isLoading ? 'not-allowed' : 'pointer'
+                            opacity: (isLoading || authLoading) ? 0.7 : 1,
+                            cursor: (isLoading || authLoading) ? 'not-allowed' : 'pointer'
                         }}
                         onMouseEnter={(e) => {
-                            if (!isLoading) {
+                            if (!isLoading && !authLoading) {
                                 e.currentTarget.style.transform = 'translateY(-2px)';
                                 e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 188, 212, 0.4)';
                             }
@@ -124,7 +228,9 @@ const Login: React.FC = () => {
                             e.currentTarget.style.boxShadow = 'none';
                         }}
                     >
-                        {isLoading ? '🔄 Cargando...' : '🚀 Iniciar Sesión'}
+                        {isLoading ? '🔄 Iniciando sesión...' : 
+                         authLoading ? '⏳ Cargando...' : 
+                         '🚀 Iniciar Sesión'}
                     </button>
                 </form>
 
@@ -232,6 +338,29 @@ const styles = {
         fontSize: '16px',
         transition: 'all 0.3s ease',
         outline: 'none',
+    },
+
+    inputError: {
+        borderColor: '#f44336',
+        backgroundColor: '#fef7f7',
+    },
+
+    errorMessage: {
+        backgroundColor: '#fef7f7',
+        color: '#f44336',
+        padding: '12px 16px',
+        borderRadius: '8px',
+        border: '1px solid #f44336',
+        fontSize: '14px',
+        textAlign: 'center' as const,
+        marginBottom: '10px',
+    },
+
+    fieldError: {
+        color: '#f44336',
+        fontSize: '12px',
+        marginTop: '4px',
+        fontWeight: '500' as const,
     },
 
     submitButton: {

@@ -1,5 +1,4 @@
 // Archivo de exportación de componentes de layout
-export { default as UtalcaHeader } from './UtalcaHeader';
 export { default as TabNavigation } from './TabNavigation';
 export { default as MainLayout } from './MainLayout';
 export { default as ContentSection } from './ContentSection';

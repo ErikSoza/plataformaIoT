@@ -92,7 +92,7 @@ const Register: React.FC = () => {
                 clearTimeout(emailCheckTimeout);
             }
         };
-    }, [formData.email]);
+    }, [emailCheckTimeout, formData.email]);
 
     // Funciones de validación
     const isValidEmail = (email: string): boolean => {
