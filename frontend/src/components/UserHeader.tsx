@@ -12,7 +12,7 @@ const UserHeader: React.FC = () => {
     const confirmed = window.confirm('¿Estás seguro que deseas cerrar sesión?');
     if (confirmed) {
       logout();
-      navigate('/login');
+      navigate('/');
     }
   };
 
@@ -32,7 +32,7 @@ const UserHeader: React.FC = () => {
       <div style={styles.headerContent}>
         {/* Logo/Título */}
         <div style={styles.brandSection}>
-          <h2 style={styles.brandTitle}>🌐 IOT UTalca</h2>
+          <h2 style={styles.brandTitle}>🌐 Plataforma IoT - Universidad de Talca</h2>
         </div>
 
         {/* Información del usuario */}
