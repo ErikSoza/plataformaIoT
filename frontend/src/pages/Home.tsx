@@ -213,11 +213,11 @@ const Home: React.FC = () => {
 
       case 'settings':
         // Solo para administradores y usuarios
-        if (!isAuthenticated || user?.rol !== 'admin' && user?.rol !== 'usuario') {
+        if (!isAuthenticated || (user?.rol !== 'admin' && user?.rol !== 'usuario')) {
           return (
             <div style={styles.accessDenied}>
               <h3>🔒 Acceso Restringido</h3>
-              <p>Solo los administradores pueden acceder a la configuración.</p>
+              <p>Solo los administradores y usuarios pueden acceder a la configuración.</p>
             </div>
           );
         }
