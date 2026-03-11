@@ -255,6 +255,183 @@ const userController = {
         message: 'Error interno del servidor'
       });
     }
+  },
+
+  // Actualizar perfil del usuario
+  updateProfile: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { nombre, email, currentPassword, newPassword, confirmNewPassword } = req.body;
+
+      // Validar campos requeridos
+      if (!nombre || !email) {
+        return res.status(400).json({
+          success: false,
+          message: 'Nombre y email son requeridos'
+        });
+      }
+
+      // Validar nombre
+      if (!isValidName(nombre)) {
+        return res.status(400).json({
+          success: false,
+          message: 'El nombre debe tener al menos 2 caracteres'
+        });
+      }
+
+      // Validar email
+      if (!isValidEmail(email)) {
+        return res.status(400).json({
+          success: false,
+          message: 'El email no tiene un formato válido'
+        });
+      }
+
+      // Verificar si el email ya existe para otro usuario
+      const emailExists = await UserModel.checkEmailExistsForOtherUser(email.toLowerCase().trim(), userId);
+      if (emailExists) {
+        return res.status(400).json({
+          success: false,
+          message: 'Este email ya está registrado por otro usuario',
+          field: 'email'
+        });
+      }
+
+      // Obtener los datos actuales del usuario
+      const currentUser = await UserModel.findByCredentials(req.user.email);
+      if (!currentUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
+        });
+      }
+
+      let updateData = {
+        nombre: nombre.trim(),
+        email: email.toLowerCase().trim()
+      };
+
+      // Si se quiere cambiar la contraseña
+      if (newPassword) {
+        // Validar contraseña actual
+        if (!currentPassword) {
+          return res.status(400).json({
+            success: false,
+            message: 'Contraseña actual requerida para cambiar la contraseña'
+          });
+        }
+
+        const validCurrentPassword = await bcrypt.compare(currentPassword, currentUser.contrasena);
+        if (!validCurrentPassword) {
+          return res.status(400).json({
+            success: false,
+            message: 'Contraseña actual incorrecta',
+            field: 'currentPassword'
+          });
+        }
+
+        // Validar nueva contraseña
+        if (!isValidPassword(newPassword)) {
+          return res.status(400).json({
+            success: false,
+            message: 'La nueva contraseña debe tener al menos 6 caracteres'
+          });
+        }
+
+        // Verificar confirmación de nueva contraseña
+        if (newPassword !== confirmNewPassword) {
+          return res.status(400).json({
+            success: false,
+            message: 'Las contraseñas nuevas no coinciden'
+          });
+        }
+
+        // Hash de la nueva contraseña
+        const saltRounds = 12;
+        updateData.contrasena = await bcrypt.hash(newPassword, saltRounds);
+      }
+
+      // Actualizar usuario
+      const updatedUser = await UserModel.update(userId, updateData);
+
+      res.json({
+        success: true,
+        message: 'Perfil actualizado exitosamente',
+        user: updatedUser
+      });
+
+    } catch (error) {
+      console.error('Error actualizando perfil:', error);
+      
+      if (error.code === 'ER_DUP_ENTRY') {
+        return res.status(400).json({
+          success: false,
+          message: 'Este email ya está registrado',
+          field: 'email'
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  },
+
+  // Eliminar cuenta del usuario
+  deleteAccount: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { password } = req.body;
+
+      // Validar contraseña
+      if (!password) {
+        return res.status(400).json({
+          success: false,
+          message: 'Contraseña requerida para eliminar la cuenta'
+        });
+      }
+
+      // Obtener los datos actuales del usuario para verificar la contraseña
+      const currentUser = await UserModel.findByCredentials(req.user.email);
+      if (!currentUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
+        });
+      }
+
+      // Verificar contraseña
+      const validPassword = await bcrypt.compare(password, currentUser.contrasena);
+      if (!validPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Contraseña incorrecta'
+        });
+      }
+
+      // Eliminar usuario
+      const deleted = await UserModel.delete(userId);
+      
+      if (!deleted) {
+        return res.status(500).json({
+          success: false,
+          message: 'No se pudo eliminar la cuenta'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Cuenta eliminada exitosamente'
+      });
+
+    } catch (error) {
+      console.error('Error eliminando cuenta:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
   }
 };
 

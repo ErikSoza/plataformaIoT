@@ -84,6 +84,56 @@ class UserModel {
       throw error;
     }
   }
+
+  // Actualizar usuario
+  static async update(id, userData) {
+    try {
+      const { nombre, email, contrasena } = userData;
+      let query;
+      let params;
+
+      if (contrasena) {
+        // Si se incluye contraseña, actualizarla también
+        query = 'UPDATE usuarios SET nombre = ?, email = ?, contrasena = ? WHERE id = ?';
+        params = [nombre, email, contrasena, id];
+      } else {
+        // Solo actualizar nombre y email
+        query = 'UPDATE usuarios SET nombre = ?, email = ? WHERE id = ?';
+        params = [nombre, email, id];
+      }
+      
+      await pool.execute(query, params);
+      
+      // Retornar el usuario actualizado (sin contraseña)
+      return await UserModel.findById(id);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Eliminar usuario
+  static async delete(id) {
+    try {
+      const query = 'DELETE FROM usuarios WHERE id = ?';
+      const [result] = await pool.execute(query, [id]);
+      
+      return result.affectedRows > 0;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Verificar si email existe para otro usuario (útil para actualizaciones)
+  static async checkEmailExistsForOtherUser(email, userId) {
+    try {
+      const query = 'SELECT COUNT(*) as count FROM usuarios WHERE email = ? AND id != ?';
+      const [rows] = await pool.execute(query, [email, userId]);
+      
+      return rows[0].count > 0;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 export default UserModel;

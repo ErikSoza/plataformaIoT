@@ -23,7 +23,8 @@ export const MAP_CONFIG = {
   
   // Configuración de mapa de calor
   HEATMAP: {
-    RADIUS: 50,
+    RADIUS: 300,
+    OPACITY: 0.7,
     BLUR: 25,
     MAX_ZOOM: 17,
   },

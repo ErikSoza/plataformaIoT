@@ -79,6 +79,66 @@ export const authService = {
       console.error('❌ Error en login:', error.response?.data || error.message);
       throw error;
     }
+  },
+
+  // Obtener perfil del usuario autenticado
+  getProfile: async (token: string) => {
+    try {
+      console.log('🔄 Obteniendo perfil del usuario');
+      const response = await api.get('/auth/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log('✅ Perfil obtenido:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error obteniendo perfil:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Actualizar perfil del usuario
+  updateProfile: async (token: string, profileData: {
+    nombre: string;
+    email: string;
+    currentPassword?: string;
+    newPassword?: string;
+    confirmNewPassword?: string;
+  }) => {
+    try {
+      console.log('🔄 Actualizando perfil del usuario:', profileData.email);
+      const response = await api.put('/auth/profile', profileData, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log('✅ Perfil actualizado:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error actualizando perfil:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Eliminar cuenta del usuario
+  deleteAccount: async (token: string, password: string) => {
+    try {
+      console.log('🔄 Eliminando cuenta del usuario');
+      const response = await api.delete('/auth/account', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        data: {
+          password
+        }
+      });
+      console.log('✅ Cuenta eliminada:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error eliminando cuenta:', error.response?.data || error.message);
+      throw error;
+    }
   }
 };
 

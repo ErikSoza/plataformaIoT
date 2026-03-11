@@ -9,8 +9,10 @@ router.post('/register', userController.register);
 router.post('/login', userController.login);
 router.get('/check-email', userController.checkEmail);
 
-// Rutas protegidas (requieren autenticación) - por implementar si necesitas
-// router.get('/profile', authenticateToken, userController.getProfile);
+// Rutas protegidas (requieren autenticación)
+router.get('/profile', authenticateToken, userController.getProfile);
+router.put('/profile', authenticateToken, userController.updateProfile);
+router.delete('/account', authenticateToken, userController.deleteAccount);
 
 // Middleware de autenticación (opcional, para rutas futuras)
 function authenticateToken(req, res, next) {
