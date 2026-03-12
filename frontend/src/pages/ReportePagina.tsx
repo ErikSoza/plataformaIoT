@@ -13,6 +13,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import * as XLSX from 'xlsx';
 
 // Registrar componentes de Chart.js
 ChartJS.register(
@@ -43,7 +44,7 @@ const ReportsPage: React.FC = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Función auxiliar para normalizar datos numéricos
-  const normalizeReadingData = (reading: any): Lectura => {
+  const normalizeReadingData = useCallback((reading: any): Lectura => {
     return {
       ...reading,
       temperatura: reading.temperatura ? Number(reading.temperatura) : null,
@@ -52,14 +53,9 @@ const ReportsPage: React.FC = () => {
       velocidad_viento: reading.velocidad_viento ? Number(reading.velocidad_viento) : null,
       prediccion_temp: reading.prediccion_temp ? Number(reading.prediccion_temp) : null,
     };
-  };
-
-  // Cargar datos de lecturas al montar el componente
-  useEffect(() => {
-    loadReadings();
   }, []);
 
-  const loadReadings = async () => {
+  const loadReadings = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -73,7 +69,12 @@ const ReportsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [normalizeReadingData]);
+
+  // Cargar datos de lecturas al montar el componente
+  useEffect(() => {
+    loadReadings();
+  }, [loadReadings]);
 
   const applyFilters = useCallback(() => {
     let filtered = readings;
@@ -198,6 +199,170 @@ const ReportsPage: React.FC = () => {
       .filter((station, index, arr) => arr.indexOf(station) === index)
       .sort();
     return stations;
+  };
+
+  // Función para descargar datos filtrados a Excel (XLSX)
+  const downloadFilteredDataToExcel = () => {
+    if (filteredReadings.length === 0) {
+      alert('No hay datos para exportar. Aplique filtros para obtener datos.');
+      return;
+    }
+
+    // Preparar datos para Excel con formato mejorado
+    const excelData = filteredReadings.map(reading => ({
+      'ID': reading.id,
+      'Estación': reading.estacion_nombre || 'N/A',
+      'Ubicación': reading.ubicacion || 'N/A', 
+      'Fecha y Hora': formatTimestamp(reading.fecha_registro),
+      'Temperatura (°C)': typeof reading.temperatura === 'number' ? reading.temperatura.toFixed(2) : 'N/A',
+      'Humedad (%)': typeof reading.humedad === 'number' ? reading.humedad.toFixed(2) : 'N/A',
+      'Presión Atmosférica (hPa)': typeof reading.presion_at === 'number' ? reading.presion_at.toFixed(2) : 'N/A',
+      'Velocidad del Viento (m/s)': typeof reading.velocidad_viento === 'number' ? reading.velocidad_viento.toFixed(2) : 'N/A',
+      'Predicción de Temperatura (°C)': typeof reading.prediccion_temp === 'number' ? reading.prediccion_temp.toFixed(2) : 'N/A',
+      'Fecha de Registro Original': reading.fecha_registro
+    }));
+
+    // Crear libro de trabajo
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    
+    // Configurar ancho de columnas optimizado
+    const columnWidths = [
+      { wch: 8 },  // ID
+      { wch: 20 }, // Estación
+      { wch: 25 }, // Ubicación
+      { wch: 20 }, // Fecha y Hora
+      { wch: 18 }, // Temperatura
+      { wch: 15 }, // Humedad
+      { wch: 25 }, // Presión
+      { wch: 25 }, // Viento
+      { wch: 30 }, // Predicción
+      { wch: 25 }, // Fecha Original
+    ];
+    worksheet['!cols'] = columnWidths;
+
+    // Agregar hoja al libro
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Datos Meteorológicos');
+    
+    // Crear nombre del archivo
+    let fileName = 'Reporte_Meteorologico';
+    if (filters.estacion) {
+      fileName += `_${filters.estacion.replace(/\s+/g, '_')}`;
+    }
+    if (filters.fechaInicio) {
+      fileName += `_desde_${filters.fechaInicio}`;
+    }
+    if (filters.fechaFin) {
+      fileName += `_hasta_${filters.fechaFin}`;
+    }
+    fileName += `_${new Date().toISOString().split('T')[0]}.xlsx`;
+    
+    // Descargar archivo
+    XLSX.writeFile(workbook, fileName);
+    
+    // Mostrar mensaje de éxito
+    const totalRegistros = filteredReadings.length;
+    alert(`✅ Descarga Excel completada!
+
+📁 Archivo: ${fileName}
+📊 Registros exportados: ${totalRegistros}
+🎨 Formato: Excel con estilos y columnas optimizadas
+
+🔍 Detalles del filtro aplicado:
+${filters.estacion ? `• Estación: ${filters.estacion}\n` : ''}${filters.fechaInicio ? `• Fecha desde: ${filters.fechaInicio}\n` : ''}${filters.fechaFin ? `• Fecha hasta: ${filters.fechaFin}\n` : ''}
+💡 El archivo Excel mantiene formato, anchos de columna y es ideal para análisis avanzado.`);
+  };
+
+  // Función para descargar datos filtrados a CSV (compatible con Excel)
+  const downloadFilteredDataToCSV = () => {
+    if (filteredReadings.length === 0) {
+      alert('No hay datos para exportar. Aplique filtros para obtener datos.');
+      return;
+    }
+
+    // Encabezados CSV
+    const headers = [
+      'ID',
+      'Estación',
+      'Ubicación',
+      'Fecha y Hora',
+      'Temperatura (°C)',
+      'Humedad (%)',
+      'Presión Atmosférica (hPa)',
+      'Velocidad del Viento (m/s)',
+      'Predicción de Temperatura (°C)',
+      'Fecha de Registro Original'
+    ];
+
+    // Preparar datos para CSV
+    const csvData = filteredReadings.map(reading => [
+      reading.id,
+      reading.estacion_nombre || 'N/A',
+      reading.ubicacion || 'N/A',
+      formatTimestamp(reading.fecha_registro),
+      typeof reading.temperatura === 'number' ? reading.temperatura.toFixed(2) : 'N/A',
+      typeof reading.humedad === 'number' ? reading.humedad.toFixed(2) : 'N/A',
+      typeof reading.presion_at === 'number' ? reading.presion_at.toFixed(2) : 'N/A',
+      typeof reading.velocidad_viento === 'number' ? reading.velocidad_viento.toFixed(2) : 'N/A',
+      typeof reading.prediccion_temp === 'number' ? reading.prediccion_temp.toFixed(2) : 'N/A',
+      reading.fecha_registro
+    ]);
+
+    // Convertir a formato CSV
+    const csvContent = [
+      headers.join(','),
+      ...csvData.map(row => 
+        row.map(field => {
+          // Escapar comillas y envolver campos que contienen comas o comillas
+          const fieldStr = String(field);
+          if (fieldStr.includes(',') || fieldStr.includes('"') || fieldStr.includes('\n')) {
+            return `"${fieldStr.replace(/"/g, '""')}"`;
+          }
+          return fieldStr;
+        }).join(',')
+      )
+    ].join('\n');
+
+    // Crear nombre del archivo con información de filtros
+    let fileName = 'Reporte_Meteorologico';
+    if (filters.estacion) {
+      fileName += `_${filters.estacion.replace(/\s+/g, '_')}`;
+    }
+    if (filters.fechaInicio) {
+      fileName += `_desde_${filters.fechaInicio}`;
+    }
+    if (filters.fechaFin) {
+      fileName += `_hasta_${filters.fechaFin}`;
+    }
+    fileName += `_${new Date().toISOString().split('T')[0]}.csv`;
+
+    // Crear blob y descargar
+    const blob = new Blob(['\uFEFF' + csvContent], { 
+      type: 'text/csv;charset=utf-8;' 
+    });
+    
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', fileName);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Mostrar mensaje de éxito
+    const totalRegistros = filteredReadings.length;
+    alert(`✅ Descarga CSV completada!
+
+📁 Archivo: ${fileName}
+📊 Registros exportados: ${totalRegistros}
+💽 Formato: CSV (compatible con Excel)
+
+🔍 Detalles del filtro aplicado:
+${filters.estacion ? `• Estación: ${filters.estacion}\n` : ''}${filters.fechaInicio ? `• Fecha desde: ${filters.fechaInicio}\n` : ''}${filters.fechaFin ? `• Fecha hasta: ${filters.fechaFin}\n` : ''}
+💡 Tip: Abra el archivo con Excel. El formato CSV es más liviano y universalmente compatible.`);
   };
 
   // Configuración de variables para el gráfico
@@ -509,6 +674,43 @@ const ReportsPage: React.FC = () => {
                 🗑️ Limpiar filtros
               </button>
             </div>
+            
+            <div style={styles.downloadSection}>
+              <div style={styles.downloadTitle}>📥 Descargar Datos ({filteredReadings.length} registros)</div>
+              <div style={styles.downloadButtons}>
+                <button
+                  onClick={downloadFilteredDataToExcel}
+                  style={styles.downloadButtonExcel}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#1e7e34';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#28a745';
+                    e.currentTarget.style.transform = 'translateY(0px)';
+                  }}
+                >
+                  📊 Excel (.xlsx)<br/>
+                  <small style={styles.downloadButtonSubtext}>Con formato y estilos</small>
+                </button>
+                
+                <button
+                  onClick={downloadFilteredDataToCSV}
+                  style={styles.downloadButtonCSV}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#138496';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = '#17a2b8';
+                    e.currentTarget.style.transform = 'translateY(0px)';
+                  }}
+                >
+                  💾 CSV (.csv)<br/>
+                  <small style={styles.downloadButtonSubtext}>Liviano y universal</small>
+                </button>
+              </div>
+            </div>
           </div>
             <div style={styles.tableContainer}>
               <table style={styles.table}>
@@ -722,6 +924,85 @@ const styles = {
     transition: 'all 0.3s ease',
     width: '100%',
     height: 'fit-content',
+  },
+
+  downloadButton: {
+    padding: '12px 20px',
+    backgroundColor: '#28A745',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    transition: 'all 0.3s ease',
+    width: '100%',
+    height: 'fit-content',
+    boxShadow: '0 2px 4px rgba(40, 167, 69, 0.2)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '8px',
+  },
+
+  downloadSection: {
+    marginTop: '15px',
+    padding: '20px',
+    backgroundColor: '#f8f9fa',
+    borderRadius: '12px',
+    border: '1px solid #e9ecef',
+  },
+
+  downloadTitle: {
+    fontSize: '16px',
+    fontWeight: 'bold' as const,
+    color: '#495057',
+    marginBottom: '15px',
+    textAlign: 'center' as const,
+  },
+
+  downloadButtons: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '15px',
+  },
+
+  downloadButtonExcel: {
+    padding: '15px 20px',
+    backgroundColor: '#28a745',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    transition: 'all 0.3s ease',
+    boxShadow: '0 2px 6px rgba(40, 167, 69, 0.3)',
+    textAlign: 'center' as const,
+    lineHeight: 1.3,
+  },
+
+  downloadButtonCSV: {
+    padding: '15px 20px',
+    backgroundColor: '#17a2b8',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    fontWeight: '600' as const,
+    transition: 'all 0.3s ease',
+    boxShadow: '0 2px 6px rgba(23, 162, 184, 0.3)',
+    textAlign: 'center' as const,
+    lineHeight: 1.3,
+  },
+
+  downloadButtonSubtext: {
+    fontSize: '11px',
+    opacity: 0.9,
+    fontWeight: 'normal' as const,
+    display: 'block',
+    marginTop: '4px',
   },
 
   quickFilters: {
