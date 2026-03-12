@@ -660,7 +660,8 @@ ${filters.estacion ? `• Estación: ${filters.estacion}\n` : ''}${filters.fecha
                 )}
               </div>
             
-            <div style={styles.filterGroup}>
+            {/* Sección de acciones: limpiar filtros y descargar datos */}
+            <div style={styles.filterActions}>
               <button
                 onClick={clearFilters}
                 style={styles.clearButton}
@@ -673,43 +674,35 @@ ${filters.estacion ? `• Estación: ${filters.estacion}\n` : ''}${filters.fecha
               >
                 🗑️ Limpiar filtros
               </button>
-            </div>
-            
-            <div style={styles.downloadSection}>
-              <div style={styles.downloadTitle}>📥 Descargar Datos ({filteredReadings.length} registros)</div>
-              <div style={styles.downloadButtons}>
-                <button
-                  onClick={downloadFilteredDataToExcel}
-                  style={styles.downloadButtonExcel}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#1e7e34';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#28a745';
-                    e.currentTarget.style.transform = 'translateY(0px)';
-                  }}
-                >
-                  📊 Excel (.xlsx)<br/>
-                  <small style={styles.downloadButtonSubtext}>Con formato y estilos</small>
-                </button>
-                
-                <button
-                  onClick={downloadFilteredDataToCSV}
-                  style={styles.downloadButtonCSV}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#138496';
-                    e.currentTarget.style.transform = 'translateY(-1px)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#17a2b8';
-                    e.currentTarget.style.transform = 'translateY(0px)';
-                  }}
-                >
-                  💾 CSV (.csv)<br/>
-                  <small style={styles.downloadButtonSubtext}>Liviano y universal</small>
-                </button>
-              </div>
+              
+              <span style={styles.downloadSeparator}>|</span>
+              <span style={styles.downloadLabel}>Descargar ({filteredReadings.length}):</span>
+              
+              <button
+                onClick={downloadFilteredDataToExcel}
+                style={styles.downloadButtonSimple}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#1e7e34';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#28a745';
+                }}
+              >
+                📊 Excel
+              </button>
+              
+              <button
+                onClick={downloadFilteredDataToCSV}
+                style={styles.downloadButtonSimpleCSV}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#138496';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = '#17a2b8';
+                }}
+              >
+                💾 CSV
+              </button>
             </div>
           </div>
             <div style={styles.tableContainer}>
@@ -1049,8 +1042,53 @@ const styles = {
 
   filterActions: {
     display: 'flex',
-    gap: '10px',
+    alignItems: 'center',
+    gap: '15px',
+    marginTop: '20px',
+    padding: '15px',
+    background: '#f8f9fa',
+    borderRadius: '8px',
+    border: '1px solid #e9ecef',
     flexWrap: 'wrap' as const,
+  },
+  
+  downloadSeparator: {
+    color: '#6c757d',
+    fontSize: '18px',
+    userSelect: 'none' as const,
+  },
+  
+  downloadLabel: {
+    color: '#495057',
+    fontSize: '14px',
+    fontWeight: '500' as const,
+    whiteSpace: 'nowrap' as const,
+  },
+  
+  downloadButtonSimple: {
+    padding: '6px 12px',
+    backgroundColor: '#28a745',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: '500' as const,
+    transition: 'all 0.2s ease',
+    whiteSpace: 'nowrap' as const,
+  },
+  
+  downloadButtonSimpleCSV: {
+    padding: '6px 12px',
+    backgroundColor: '#17a2b8',
+    color: 'white',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    fontSize: '12px',
+    fontWeight: '500' as const,
+    transition: 'all 0.2s ease',
+    whiteSpace: 'nowrap' as const,
   },
 
 
