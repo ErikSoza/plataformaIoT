@@ -39,15 +39,16 @@ const styles = {
     borderBottom: '3px solid #00BCD4',
     boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
     display: 'flex',
-    maxWidth: '1200px',
+    width: 'fit-content',
     margin: '0 auto',
     position: 'sticky' as const,
     top: 0,
     zIndex: 9997,
+    justifyContent: 'center',
   },
 
   tabActive: {
-    padding: '15px 30px',
+    padding: '15px 20px',
     backgroundColor: '#00BCD4',
     color: 'white',
     fontSize: '0.9rem',
@@ -57,10 +58,12 @@ const styles = {
     borderBottom: '3px solid #00BCD4',
     position: 'relative' as const,
     transition: 'all 0.3s ease',
+    flex: '0 0 auto',
+    whiteSpace: 'nowrap' as const,
   },
 
   tab: {
-    padding: '15px 30px',
+    padding: '15px 20px',
     backgroundColor: 'transparent',
     color: '#666',
     fontSize: '0.9rem',
@@ -69,6 +72,8 @@ const styles = {
     cursor: 'pointer',
     borderBottom: '3px solid transparent',
     transition: 'all 0.3s ease',
+    flex: '0 0 auto',
+    whiteSpace: 'nowrap' as const,
   },
 };
 
