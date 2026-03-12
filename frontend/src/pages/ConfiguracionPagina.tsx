@@ -58,7 +58,7 @@ const ConfiguracionPagina: React.FC = () => {
     try {
       const updateData: any = {
         nombre: profileData.nombre.trim(),
-        email: profileData.email.trim()
+        email: user?.email || '' // Usar email original ya que no se puede cambiar
       };
 
       // Si se está cambiando la contraseña
@@ -134,10 +134,49 @@ const ConfiguracionPagina: React.FC = () => {
 
   return (
     <ContentSection title="⚙️ Configuración de Cuenta">
+      <style>
+        {`
+          @keyframes slideIn {
+            from {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+            to {
+              transform: translateX(0);
+              opacity: 1;
+            }
+          }
+          
+          @keyframes slideOut {
+            from {
+              transform: translateX(0);
+              opacity: 1;
+            }
+            to {
+              transform: translateX(100%);
+              opacity: 0;
+            }
+          }
+        `}
+      </style>
       <div style={styles.container}>
         {message && (
-          <div style={message.type === 'success' ? styles.successMessage : styles.errorMessage}>
-            {message.text}
+          <div style={{
+            ...styles.toast,
+            ...(message.type === 'success' ? styles.toastSuccess : styles.toastError)
+          }}>
+            <div style={styles.toastContent}>
+              <span style={styles.toastIcon}>
+                {message.type === 'success' ? '✅' : '❌'}
+              </span>
+              <span>{message.text}</span>
+              <button 
+                style={styles.toastClose}
+                onClick={() => setMessage(null)}
+              >
+                ×
+              </button>
+            </div>
           </div>
         )}
 
@@ -194,11 +233,10 @@ const ConfiguracionPagina: React.FC = () => {
                 <label style={styles.label}>Correo electrónico</label>
                 <input
                   type="email"
-                  style={styles.input}
-                  value={profileData.email}
-                  onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-                  required
-                  disabled={isLoading}
+                  style={styles.inputReadonly}
+                  value={user?.email || ''}
+                  readOnly
+                  title="El correo electrónico no se puede modificar"
                 />
               </div>
               <button
@@ -504,6 +542,75 @@ const styles = {
     display: 'flex',
     gap: '15px',
     marginTop: '15px',
+  },
+
+  inputReadonly: {
+    width: '100%',
+    padding: '12px 16px',
+    border: '2px solid #e9ecef',
+    borderRadius: '8px',
+    fontSize: '1rem',
+    backgroundColor: '#f8f9fa',
+    color: '#6c757d',
+    cursor: 'not-allowed',
+    boxSizing: 'border-box' as const,
+  },
+
+  helpText: {
+    fontSize: '0.85rem',
+    color: '#6c757d',
+    marginTop: '5px',
+    display: 'block',
+  },
+
+  toast: {
+    position: 'fixed' as const,
+    top: '80px',
+    right: '20px',
+    zIndex: 1000,
+    borderRadius: '12px',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+    minWidth: '350px',
+    maxWidth: '500px',
+    animation: 'slideIn 0.3s ease-out',
+  },
+
+  toastSuccess: {
+    background: 'linear-gradient(135deg, #28a745, #20c997)',
+    color: 'white',
+  },
+
+  toastError: {
+    background: 'linear-gradient(135deg, #dc3545, #fd7e14)',
+    color: 'white',
+  },
+
+  toastContent: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '16px 20px',
+    gap: '12px',
+  },
+
+  toastIcon: {
+    fontSize: '1.2rem',
+    flexShrink: 0,
+  },
+
+  toastClose: {
+    marginLeft: 'auto',
+    background: 'rgba(255, 255, 255, 0.2)',
+    border: 'none',
+    color: 'inherit',
+    width: '28px',
+    height: '28px',
+    borderRadius: '50%',
+    cursor: 'pointer',
+    fontSize: '1.2rem',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
   },
 
   successMessage: {
