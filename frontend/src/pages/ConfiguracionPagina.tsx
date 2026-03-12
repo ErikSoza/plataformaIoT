@@ -15,12 +15,29 @@ interface DeleteFormData {
   password: string;
 }
 
+interface User {
+  id: number;
+  nombre: string;
+  email: string;
+  rol: 'admin' | 'usuario';
+  fecha_registro: string;
+}
+
+interface UserFormData {
+  nombre: string;
+  email: string;
+  rol: 'admin' | 'usuario';
+  password?: string;
+  confirmPassword?: string;
+}
+
 const ConfiguracionPagina: React.FC = () => {
   const { user, token, updateUser, logout } = useAuth();
-  const [activeSection, setActiveSection] = useState<'profile' | 'password' | 'danger'>('profile');
+  const [activeSection, setActiveSection] = useState<'profile' | 'password' | 'danger' | 'users'>('profile');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Estados para gestión personal
   const [profileData, setProfileData] = useState<ProfileFormData>({
     nombre: user?.nombre || '',
     email: user?.email || '',
@@ -35,6 +52,19 @@ const ConfiguracionPagina: React.FC = () => {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Estados para gestión de usuarios (solo admin)
+  const [users, setUsers] = useState<User[]>([]);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userFormData, setUserFormData] = useState<UserFormData>({
+    nombre: '',
+    email: '',
+    rol: 'usuario',
+    password: '',
+    confirmPassword: ''
+  });
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [showDeleteUserConfirm, setShowDeleteUserConfirm] = useState<number | null>(null);
+
   useEffect(() => {
     if (user) {
       setProfileData(prev => ({
@@ -45,9 +75,129 @@ const ConfiguracionPagina: React.FC = () => {
     }
   }, [user]);
 
+  // Cargar usuarios cuando es admin y se selecciona la pestaña
+  useEffect(() => {
+    if (user?.rol === 'admin' && activeSection === 'users' && token) {
+      loadUsers();
+    }
+  }, [user, activeSection, token]);
+
+  const loadUsers = async () => {
+    if (!token) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await authService.getAllUsers(token);
+      setUsers(response);
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.message || 'Error al cargar usuarios');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const showMessage = (type: 'success' | 'error', text: string) => {
     setMessage({ type, text });
     setTimeout(() => setMessage(null), 5000);
+  };
+
+  // ==================== GESTIÓN DE USUARIOS (Solo Admin) ====================
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+
+    if (userFormData.password !== userFormData.confirmPassword) {
+      showMessage('error', 'Las contraseñas no coinciden');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await authService.createUser(token, {
+        nombre: userFormData.nombre,
+        email: userFormData.email,
+        contrasena: userFormData.password!,
+        rol: userFormData.rol
+      });
+      
+      showMessage('success', 'Usuario creado exitosamente');
+      setShowUserForm(false);
+      setUserFormData({ nombre: '', email: '', rol: 'usuario', password: '', confirmPassword: '' });
+      loadUsers();
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.message || 'Error al crear usuario');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !editingUser) return;
+
+    setIsLoading(true);
+    try {
+      const updateData: any = {
+        nombre: userFormData.nombre,
+        email: userFormData.email,
+        rol: userFormData.rol
+      };
+
+      if (userFormData.password) {
+        if (userFormData.password !== userFormData.confirmPassword) {
+          showMessage('error', 'Las contraseñas no coinciden');
+          return;
+        }
+        updateData.newPassword = userFormData.password;
+      }
+
+      await authService.updateUser(token, editingUser.id, updateData);
+      
+      showMessage('success', 'Usuario actualizado exitosamente');
+      setEditingUser(null);
+      setShowUserForm(false);
+      setUserFormData({ nombre: '', email: '', rol: 'usuario', password: '', confirmPassword: '' });
+      loadUsers();
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.message || 'Error al actualizar usuario');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    if (!token) return;
+
+    setIsLoading(true);
+    try {
+      await authService.deleteUser(token, userId);
+      showMessage('success', 'Usuario eliminado exitosamente');
+      setShowDeleteUserConfirm(null);
+      loadUsers();
+    } catch (error: any) {
+      showMessage('error', error.response?.data?.message || 'Error al eliminar usuario');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const openEditUser = (user: User) => {
+    setEditingUser(user);
+    setUserFormData({
+      nombre: user.nombre,
+      email: user.email,
+      rol: user.rol,
+      password: '',
+      confirmPassword: ''
+    });
+    setShowUserForm(true);
+  };
+
+  const openCreateUser = () => {
+    setEditingUser(null);
+    setUserFormData({ nombre: '', email: '', rol: 'usuario', password: '', confirmPassword: '' });
+    setShowUserForm(true);
   };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
@@ -206,6 +356,14 @@ const ConfiguracionPagina: React.FC = () => {
           >
             🔒 Cambiar Contraseña
           </button>
+          {user.rol === 'admin' && (
+            <button
+              style={activeSection === 'users' ? styles.tabActive : styles.tab}
+              onClick={() => setActiveSection('users')}
+            >
+              👥 Gestión de Usuarios
+            </button>
+          )}
           <button
             style={activeSection === 'danger' ? styles.tabActive : styles.tab}
             onClick={() => setActiveSection('danger')}
@@ -352,6 +510,212 @@ const ConfiguracionPagina: React.FC = () => {
                     {isLoading ? '⏳ Eliminando...' : '🗑️ Confirmar Eliminación'}
                   </button>
                 </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Sección de Gestión de Usuarios (Solo Admin) */}
+        {user.rol === 'admin' && activeSection === 'users' && (
+          <div style={styles.usersSection}>
+            <div style={styles.sectionHeader}>
+              <h4>👥 Gestión de Usuarios</h4>
+              <button
+                type="button"
+                style={styles.button}
+                onClick={openCreateUser}
+                disabled={isLoading}
+              >
+                ➕ Nuevo Usuario
+              </button>
+            </div>
+
+            {isLoading && !showUserForm && (
+              <div style={styles.loadingMessage}>
+                ⏳ Cargando usuarios...
+              </div>
+            )}
+
+            {!isLoading && users.length === 0 && !showUserForm && (
+              <div style={styles.emptyMessage}>
+                👥 No hay usuarios registrados
+              </div>
+            )}
+
+            {users.length > 0 && !showUserForm && (
+              <div style={styles.usersGrid}>
+                {users.map((userData) => (
+                  <div key={userData.id} style={styles.userCard}>
+                    <div style={styles.userCardHeader}>
+                      <div style={styles.userAvatar}>
+                        {userData.nombre.charAt(0).toUpperCase()}
+                      </div>
+                      <div style={styles.userCardInfo}>
+                        <h5>{userData.nombre}</h5>
+                        <p>{userData.email}</p>
+                        <span style={userData.rol === 'admin' ? styles.adminBadge : styles.userBadge}>
+                          {userData.rol === 'admin' ? '👑 Admin' : '👤 Usuario'}
+                        </span>
+                      </div>
+                    </div>
+                    <div style={styles.userCardActions}>
+                      <button
+                        style={styles.editButton}
+                        onClick={() => openEditUser(userData)}
+                        disabled={isLoading}
+                      >
+                        ✏️ Editar
+                      </button>
+                      {userData.id !== user.id && (
+                        <button
+                          style={styles.deleteButton}
+                          onClick={() => setShowDeleteUserConfirm(userData.id)}
+                          disabled={isLoading}
+                        >
+                          🗑️ Eliminar
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Confirmación de eliminación */}
+                    {showDeleteUserConfirm === userData.id && (
+                      <div style={styles.confirmDeleteUser}>
+                        <p>¿Eliminar a <strong>{userData.nombre}</strong>?</p>
+                        <div style={styles.buttonGroup}>
+                          <button
+                            style={styles.cancelButton}
+                            onClick={() => setShowDeleteUserConfirm(null)}
+                            disabled={isLoading}
+                          >
+                            ❌ Cancelar
+                          </button>
+                          <button
+                            style={isLoading ? styles.buttonDisabled : styles.dangerButton}
+                            onClick={() => handleDeleteUser(userData.id)}
+                            disabled={isLoading}
+                          >
+                            {isLoading ? '⏳ Eliminando...' : '🗑️ Confirmar'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Formulario para crear/editar usuario */}
+            {showUserForm && (
+              <div style={styles.userForm}>
+                <div style={styles.formHeader}>
+                  <h5>{editingUser ? '✏️ Editar Usuario' : '➕ Nuevo Usuario'}</h5>
+                  <button
+                    type="button"
+                    style={styles.closeButton}
+                    onClick={() => {
+                      setShowUserForm(false);
+                      setEditingUser(null);
+                      setUserFormData({ nombre: '', email: '', rol: 'usuario', password: '', confirmPassword: '' });
+                    }}
+                    disabled={isLoading}
+                  >
+                    ✖️
+                  </button>
+                </div>
+
+                <form onSubmit={editingUser ? handleUpdateUser : handleCreateUser}>
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Nombre completo</label>
+                    <input
+                      type="text"
+                      style={styles.input}
+                      value={userFormData.nombre}
+                      onChange={(e) => setUserFormData(prev => ({ ...prev, nombre: e.target.value }))}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Correo electrónico</label>
+                    <input
+                      type="email"
+                      style={styles.input}
+                      value={userFormData.email}
+                      onChange={(e) => setUserFormData(prev => ({ ...prev, email: e.target.value }))}
+                      required
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Rol</label>
+                    <select
+                      style={styles.input}
+                      value={userFormData.rol}
+                      onChange={(e) => setUserFormData(prev => ({ ...prev, rol: e.target.value as 'admin' | 'usuario' }))}
+                      disabled={isLoading}
+                    >
+                      <option value="usuario">👤 Usuario</option>
+                      <option value="admin">👑 Administrador</option>
+                    </select>
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>
+                      {editingUser ? 'Nueva contraseña (dejar vacío para no cambiar)' : 'Contraseña'}
+                    </label>
+                    <input
+                      type="password"
+                      style={styles.input}
+                      value={userFormData.password}
+                      onChange={(e) => setUserFormData(prev => ({ ...prev, password: e.target.value }))}
+                      required={!editingUser}
+                      minLength={6}
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div style={styles.formGroup}>
+                    <label style={styles.label}>Confirmar contraseña</label>
+                    <input
+                      type="password"
+                      style={styles.input}
+                      value={userFormData.confirmPassword}
+                      onChange={(e) => setUserFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                      required={!editingUser || !!userFormData.password}
+                      minLength={6}
+                      disabled={isLoading}
+                    />
+                  </div>
+
+                  <div style={styles.buttonGroup}>
+                    <button
+                      type="button"
+                      style={styles.cancelButton}
+                      onClick={() => {
+                        setShowUserForm(false);
+                        setEditingUser(null);
+                        setUserFormData({ nombre: '', email: '', rol: 'usuario', password: '', confirmPassword: '' });
+                      }}
+                      disabled={isLoading}
+                    >
+                      ❌ Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      style={isLoading ? styles.buttonDisabled : styles.button}
+                      disabled={isLoading}
+                    >
+                      {isLoading 
+                        ? '⏳ Procesando...' 
+                        : editingUser 
+                        ? '💾 Actualizar Usuario' 
+                        : '➕ Crear Usuario'
+                      }
+                    </button>
+                  </div>
+                </form>
               </div>
             )}
           </div>
@@ -629,6 +993,164 @@ const styles = {
     borderRadius: '8px',
     marginBottom: '20px',
     border: '1px solid #f5c6cb',
+  },
+
+  // ==================== ESTILOS GESTIÓN DE USUARIOS ====================
+
+  usersSection: {
+    background: 'white',
+    borderRadius: '12px',
+    boxShadow: '0 4px 15px rgba(0, 0, 0, 0.08)',
+    padding: '30px',
+  },
+
+  sectionHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '25px',
+  },
+
+  loadingMessage: {
+    textAlign: 'center' as const,
+    padding: '40px',
+    color: '#6c757d',
+    fontSize: '16px',
+  },
+
+  emptyMessage: {
+    textAlign: 'center' as const,
+    padding: '40px',
+    color: '#6c757d',
+    fontSize: '16px',
+  },
+
+  usersGrid: {
+    display: 'grid',
+    gap: '20px',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+  },
+
+  userCard: {
+    border: '2px solid #e9ecef',
+    borderRadius: '12px',
+    padding: '20px',
+    background: '#f8f9fa',
+    position: 'relative' as const,
+  },
+
+  userCardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '15px',
+    marginBottom: '15px',
+  },
+
+  userAvatar: {
+    width: '50px',
+    height: '50px',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, #00BCD4, #0097A7)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '1.5rem',
+    fontWeight: 'bold',
+    color: 'white',
+    flexShrink: 0,
+  },
+
+  userCardInfo: {
+    flex: 1,
+  },
+
+  adminBadge: {
+    background: '#ffd700',
+    color: '#856404',
+    padding: '4px 10px',
+    borderRadius: '15px',
+    fontSize: '0.8rem',
+    fontWeight: '600',
+  },
+
+  userBadge: {
+    background: '#e3f2fd',
+    color: '#1976d2',
+    padding: '4px 10px',
+    borderRadius: '15px',
+    fontSize: '0.8rem',
+    fontWeight: '600',
+  },
+
+  userCardActions: {
+    display: 'flex',
+    gap: '10px',
+  },
+
+  editButton: {
+    background: '#007bff',
+    color: 'white',
+    border: 'none',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+  },
+
+  deleteButton: {
+    background: '#dc3545',
+    color: 'white',
+    border: 'none',
+    padding: '6px 12px',
+    borderRadius: '6px',
+    fontSize: '0.85rem',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+  },
+
+  confirmDeleteUser: {
+    position: 'absolute' as const,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: '12px',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '20px',
+    textAlign: 'center' as const,
+  },
+
+  userForm: {
+    background: '#f8f9fa',
+    borderRadius: '12px',
+    padding: '25px',
+    border: '2px solid #e9ecef',
+  },
+
+  formHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '25px',
+  },
+
+  closeButton: {
+    background: '#6c757d',
+    color: 'white',
+    border: 'none',
+    width: '35px',
+    height: '35px',
+    borderRadius: '50%',
+    cursor: 'pointer',
+    fontSize: '1rem',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 };
 

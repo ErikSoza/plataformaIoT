@@ -52,7 +52,7 @@ class UserModel {
   // Obtener todos los usuarios (sin contraseñas)
   static async findAll() {
     try {
-      const query = 'SELECT id, nombre, email, rol, created_at FROM usuarios ORDER BY created_at DESC';
+      const query = 'SELECT id, nombre, email, rol, created_at as fecha_registro FROM usuarios ORDER BY created_at DESC';
       const [rows] = await pool.execute(query);
       
       return rows;
@@ -88,20 +88,38 @@ class UserModel {
   // Actualizar usuario
   static async update(id, userData) {
     try {
-      const { nombre, email, contrasena } = userData;
-      let query;
-      let params;
+      const updateFields = [];
+      const params = [];
 
-      if (contrasena) {
-        // Si se incluye contraseña, actualizarla también
-        query = 'UPDATE usuarios SET nombre = ?, email = ?, contrasena = ? WHERE id = ?';
-        params = [nombre, email, contrasena, id];
-      } else {
-        // Solo actualizar nombre y email
-        query = 'UPDATE usuarios SET nombre = ?, email = ? WHERE id = ?';
-        params = [nombre, email, id];
+      // Agregar campos dinámicamente según lo que se quiera actualizar
+      if (userData.nombre !== undefined) {
+        updateFields.push('nombre = ?');
+        params.push(userData.nombre);
       }
-      
+
+      if (userData.email !== undefined) {
+        updateFields.push('email = ?');
+        params.push(userData.email);
+      }
+
+      if (userData.rol !== undefined) {
+        updateFields.push('rol = ?');
+        params.push(userData.rol);
+      }
+
+      if (userData.contrasena !== undefined) {
+        updateFields.push('contrasena = ?');
+        params.push(userData.contrasena);
+      }
+
+      if (updateFields.length === 0) {
+        throw new Error('No se proporcionaron campos para actualizar');
+      }
+
+      // Agregar el ID al final
+      params.push(id);
+
+      const query = `UPDATE usuarios SET ${updateFields.join(', ')} WHERE id = ?`;
       await pool.execute(query, params);
       
       // Retornar el usuario actualizado (sin contraseña)
@@ -110,7 +128,6 @@ class UserModel {
       throw error;
     }
   }
-
   // Eliminar usuario
   static async delete(id) {
     try {

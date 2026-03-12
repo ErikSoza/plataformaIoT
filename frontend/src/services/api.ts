@@ -139,6 +139,86 @@ export const authService = {
       console.error('❌ Error eliminando cuenta:', error.response?.data || error.message);
       throw error;
     }
+  },
+
+  // ==================== GESTIÓN DE USUARIOS (Solo Administradores) ====================
+  
+  // Obtener todos los usuarios (solo admin)
+  getAllUsers: async (token: string) => {
+    try {
+      console.log('🔄 Obteniendo todos los usuarios');
+      const response = await api.get('/auth/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log('✅ Usuarios obtenidos:', response.data.length || 0);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error obteniendo usuarios:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Crear nuevo usuario (solo admin)
+  createUser: async (token: string, userData: {
+    nombre: string;
+    email: string;
+    contrasena: string;
+    rol: 'admin' | 'usuario';
+  }) => {
+    try {
+      console.log('🔄 Creando usuario:', userData.email);
+      const response = await api.post('/auth/users', userData, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log('✅ Usuario creado:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error creando usuario:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Actualizar usuario (solo admin)
+  updateUser: async (token: string, userId: number, userData: {
+    nombre?: string;
+    email?: string;
+    rol?: 'admin' | 'usuario';
+    newPassword?: string;
+  }) => {
+    try {
+      console.log('🔄 Actualizando usuario:', userId);
+      const response = await api.put(`/auth/users/${userId}`, userData, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log('✅ Usuario actualizado:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error actualizando usuario:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Eliminar usuario (solo admin)
+  deleteUser: async (token: string, userId: number) => {
+    try {
+      console.log('🔄 Eliminando usuario:', userId);
+      const response = await api.delete(`/auth/users/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log('✅ Usuario eliminado:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error eliminando usuario:', error.response?.data || error.message);
+      throw error;
+    }
   }
 };
 

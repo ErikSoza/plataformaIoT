@@ -432,6 +432,266 @@ const userController = {
         message: 'Error interno del servidor'
       });
     }
+  },
+
+  // ==================== GESTIÓN DE USUARIOS (Solo Administradores) ====================
+
+  // Obtener todos los usuarios
+  getAllUsers: async (req, res) => {
+    try {
+      const users = await UserModel.findAll();
+      
+      // Eliminar contraseñas de la respuesta
+      const usersWithoutPasswords = users.map(user => ({
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email,
+        rol: user.rol,
+        fecha_registro: user.fecha_registro
+      }));
+
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      console.error('Error obteniendo usuarios:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  },
+
+  // Crear nuevo usuario
+  createUser: async (req, res) => {
+    try {
+      const { nombre, email, contrasena, rol } = req.body;
+
+      // Validación de campos requeridos
+      if (!nombre || !email || !contrasena || !rol) {
+        return res.status(400).json({
+          success: false,
+          message: 'Todos los campos son requeridos'
+        });
+      }
+
+      // Validar nombre
+      if (!isValidName(nombre)) {
+        return res.status(400).json({
+          success: false,
+          message: 'El nombre debe tener al menos 2 caracteres'
+        });
+      }
+
+      // Validar email
+      if (!isValidEmail(email)) {
+        return res.status(400).json({
+          success: false,
+          message: 'El email no tiene un formato válido'
+        });
+      }
+
+      // Validar contraseña
+      if (!isValidPassword(contrasena)) {
+        return res.status(400).json({
+          success: false,
+          message: 'La contraseña debe tener al menos 6 caracteres'
+        });
+      }
+
+      // Validar rol
+      if (!['admin', 'usuario'].includes(rol)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Rol inválido'
+        });
+      }
+
+      // Verificar si el email ya existe
+      const existingUser = await UserModel.findByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          message: 'Este email ya está registrado'
+        });
+      }
+
+      // Hash de la contraseña
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(contrasena, saltRounds);
+
+      // Crear usuario
+      const newUser = await UserModel.create({
+        nombre: nombre.trim(),
+        email: email.toLowerCase().trim(),
+        contrasena: hashedPassword,
+        rol: rol
+      });
+
+      res.status(201).json({
+        success: true,
+        message: 'Usuario creado exitosamente',
+        user: {
+          id: newUser.id,
+          nombre: newUser.nombre,
+          email: newUser.email,
+          rol: newUser.rol,
+          fecha_registro: newUser.fecha_registro
+        }
+      });
+
+    } catch (error) {
+      console.error('Error creando usuario:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  },
+
+  // Actualizar usuario
+  updateUser: async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const { nombre, email, rol, newPassword } = req.body;
+
+      if (!userId || isNaN(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de usuario inválido'
+        });
+      }
+
+      // Verificar que el usuario existe
+      const existingUser = await UserModel.findById(userId);
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
+        });
+      }
+
+      // Preparar datos de actualización
+      const updateData = {};
+
+      if (nombre !== undefined) {
+        if (!isValidName(nombre)) {
+          return res.status(400).json({
+            success: false,
+            message: 'El nombre debe tener al menos 2 caracteres'
+          });
+        }
+        updateData.nombre = nombre.trim();
+      }
+
+      if (email !== undefined) {
+        if (!isValidEmail(email)) {
+          return res.status(400).json({
+            success: false,
+            message: 'El email no tiene un formato válido'
+          });
+        }
+
+        // Verificar que el email no esté en uso por otro usuario
+        if (email !== existingUser.email) {
+          const emailInUse = await UserModel.findByEmail(email);
+          if (emailInUse && emailInUse.id !== userId) {
+            return res.status(400).json({
+              success: false,
+              message: 'Este email ya está en uso'
+            });
+          }
+        }
+        updateData.email = email.toLowerCase().trim();
+      }
+
+      if (rol !== undefined) {
+        if (!['admin', 'usuario'].includes(rol)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Rol inválido'
+          });
+        }
+        updateData.rol = rol;
+      }
+
+      if (newPassword !== undefined && newPassword !== '') {
+        if (!isValidPassword(newPassword)) {
+          return res.status(400).json({
+            success: false,
+            message: 'La contraseña debe tener al menos 6 caracteres'
+          });
+        }
+        const saltRounds = 12;
+        updateData.contrasena = await bcrypt.hash(newPassword, saltRounds);
+      }
+
+      // Actualizar usuario
+      const updatedUser = await UserModel.update(userId, updateData);
+
+      res.json({
+        success: true,
+        message: 'Usuario actualizado exitosamente',
+        user: {
+          id: updatedUser.id,
+          nombre: updatedUser.nombre,
+          email: updatedUser.email,
+          rol: updatedUser.rol,
+          fecha_registro: updatedUser.fecha_registro
+        }
+      });
+
+    } catch (error) {
+      console.error('Error actualizando usuario:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  },
+
+  // Eliminar usuario
+  deleteUser: async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+
+      if (!userId || isNaN(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de usuario inválido'
+        });
+      }
+
+      // Verificar que el usuario existe
+      const user = await UserModel.findById(userId);
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'Usuario no encontrado'
+        });
+      }
+
+      // Prevenir que un admin se elimine a sí mismo
+      if (userId === req.user.id) {
+        return res.status(400).json({
+          success: false,
+          message: 'No puedes eliminar tu propia cuenta desde esta función'
+        });
+      }
+
+      // Eliminar usuario
+      await UserModel.delete(userId);
+
+      res.json({
+        success: true,
+        message: 'Usuario eliminado exitosamente'
+      });
+
+    } catch (error) {
+      console.error('Error eliminando usuario:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
   }
 };
 

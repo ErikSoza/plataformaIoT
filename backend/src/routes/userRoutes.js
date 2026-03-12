@@ -14,6 +14,12 @@ router.get('/profile', authenticateToken, userController.getProfile);
 router.put('/profile', authenticateToken, userController.updateProfile);
 router.delete('/account', authenticateToken, userController.deleteAccount);
 
+// Rutas de administración (requieren autenticación y rol admin)
+router.get('/users', authenticateToken, requireAdmin, userController.getAllUsers);
+router.post('/users', authenticateToken, requireAdmin, userController.createUser);
+router.put('/users/:id', authenticateToken, requireAdmin, userController.updateUser);
+router.delete('/users/:id', authenticateToken, requireAdmin, userController.deleteUser);
+
 // Middleware de autenticación (opcional, para rutas futuras)
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
@@ -36,6 +42,17 @@ function authenticateToken(req, res, next) {
     req.user = user;
     next();
   });
+}
+
+// Middleware para verificar que el usuario sea administrador
+function requireAdmin(req, res, next) {
+  if (!req.user || req.user.rol !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Acceso denegado. Se requieren privilegios de administrador.'
+    });
+  }
+  next();
 }
 
 export default router;
