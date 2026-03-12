@@ -292,21 +292,35 @@ interface UnifiedMapProps {
   onDataRefresh?: () => void; // Función callback para refrescar los datos desde el componente padre
   // Nueva prop para detectar cambios automáticamente
   enableAutoDetection?: boolean; // Si debe detectar cambios automáticamente
+  // Nuevas props para búsqueda inteligente por ciudad
+  searchCenter?: [number, number] | null; // Centro basado en búsqueda
+  shouldCenterToSearch?: boolean; // Si debe centrar hacia la búsqueda
 }
 
-// Componente para manejar el cambio de centro del mapa SOLO cuando el usuario selecciona un dispositivo
-const MapController: React.FC<{ center: [number, number]; shouldCenter: boolean }> = ({ center, shouldCenter }) => {
+// Componente para manejar el cambio de centro del mapa SOLO cuando el usuario selecciona un dispositivo o busca una ubicación
+const MapController: React.FC<{ 
+  center: [number, number]; 
+  shouldCenter: boolean; 
+  searchCenter?: [number, number] | null; 
+  shouldCenterToSearch?: boolean;
+}> = ({ center, shouldCenter, searchCenter, shouldCenterToSearch }) => {
   const map = useMap();
   
   useEffect(() => {
-    // Solo centrar el mapa si shouldCenter es true (selección manual de dispositivo)
-    if (shouldCenter) {
+    // Priorizar búsqueda sobre selección de dispositivo
+    if (shouldCenterToSearch && searchCenter) {
+      map.flyTo(searchCenter, 12, {
+        animate: true,
+        duration: 2.0
+      });
+    } else if (shouldCenter) {
+      // Solo centrar el mapa si shouldCenter es true (selección manual de dispositivo)
       map.flyTo(center, 16, {
         animate: true,
         duration: 1.5
       });
     }
-  }, [center, map, shouldCenter]);
+  }, [center, map, shouldCenter, searchCenter, shouldCenterToSearch]);
   
   return null;
 };
@@ -324,7 +338,9 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   autoRefresh = false, // Por defecto NO refresca automáticamente
   refreshInterval = 30000, // 30 segundos por defecto
   onDataRefresh,
-  enableAutoDetection = true // Por defecto SÍ detecta cambios automáticamente
+  enableAutoDetection = true, // Por defecto SÍ detecta cambios automáticamente
+  searchCenter = null, // Centro de búsqueda
+  shouldCenterToSearch = false // Si debe centrar hacia búsqueda
 }) => {
   const [showHeatmap, setShowHeatmap] = useState(defaultHeatmapVisible);
   const [showTemperatureLabels, setShowTemperatureLabels] = useState(true); // Nuevo estado para etiquetas
@@ -339,7 +355,11 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   
   // Usar el dispositivo seleccionado interno o el externo
   const currentSelectedDevice = internalSelectedDevice || selectedDevice;
-  const mapCenter = currentSelectedDevice ? currentSelectedDevice.coordinates : defaultCenter;
+  
+  // Determinar el centro del mapa - priorizar búsqueda, luego dispositivo seleccionado, luego por defecto
+  const mapCenter = shouldCenterToSearch && searchCenter ? searchCenter : 
+                   currentSelectedDevice ? currentSelectedDevice.coordinates : 
+                   defaultCenter;
 
   // Función para refrescar los datos manualmente
   const handleManualRefresh = () => {
@@ -821,7 +841,12 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
           style={{ height: '100%', width: '100%' }}
           scrollWheelZoom={true}
         >
-          <MapController center={mapCenter} shouldCenter={shouldCenterMap} />
+          <MapController 
+            center={mapCenter} 
+            shouldCenter={shouldCenterMap} 
+            searchCenter={searchCenter}
+            shouldCenterToSearch={shouldCenterToSearch}
+          />
           
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
