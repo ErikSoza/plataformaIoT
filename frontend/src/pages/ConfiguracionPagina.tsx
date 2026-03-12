@@ -80,7 +80,7 @@ const ConfiguracionPagina: React.FC = () => {
     if (user?.rol === 'admin' && activeSection === 'users' && token) {
       loadUsers();
     }
-  }, [user, activeSection, token]);
+  }, [user, activeSection, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadUsers = async () => {
     if (!token) return;
