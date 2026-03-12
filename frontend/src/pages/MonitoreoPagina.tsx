@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ContentSection, StatsGrid, UnifiedMap, DeviceData, StatCardData } from '../components/layout';
+import CitySearch from '../components/CitySearch';
 
 interface MonitoringPageProps {
   devices: DeviceData[];
@@ -16,6 +17,24 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
   onDeviceMarkerClick,
   onStatCardClick
 }) => {
+  const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
+  const [shouldCenterToSearch, setShouldCenterToSearch] = useState(false);
+
+  // Manejar selección de ubicación desde la búsqueda
+  const handleLocationSelect = (coordinates: [number, number], cityName: string) => {
+    console.log('🗺️ Navegando a:', cityName, coordinates);
+    setMapCenter(coordinates);
+    setShouldCenterToSearch(true);
+    
+    // Resetear el centrado después de un tiempo para permitir navegación libre
+    setTimeout(() => setShouldCenterToSearch(false), 3000);
+  };
+
+  // Limpiar búsqueda
+  const handleClearSearch = () => {
+    setMapCenter(null);
+    setShouldCenterToSearch(false);
+  };
   return (
     <>
       {/* Sección de bienvenida */}
@@ -34,6 +53,15 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
 
       {/* Sección del mapa general */}
       <ContentSection title="🌐 Red de Sensores Ambientales - Campus UTalca">
+        {/* Búsqueda inteligente de ciudades */}
+        <div style={styles.searchContainer}>
+          <CitySearch
+            onLocationSelect={handleLocationSelect}
+            onClear={handleClearSearch}
+            isSearching={shouldCenterToSearch}
+          />
+        </div>
+        
         <UnifiedMap 
           devices={devices}
           selectedDevice={selectedDevice}
@@ -42,6 +70,8 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
           showHeatmapControls={true}
           defaultHeatmapVisible={true}
           defaultHeatmapMetric="temperature"
+          searchCenter={mapCenter}
+          shouldCenterToSearch={shouldCenterToSearch}
         />
       </ContentSection>
 
@@ -168,6 +198,13 @@ const styles = {
     fontSize: '14px',
     lineHeight: 1.5,
     margin: 0,
+  },
+  searchContainer: {
+    marginBottom: '20px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '0 20px',
   },
 };
 
