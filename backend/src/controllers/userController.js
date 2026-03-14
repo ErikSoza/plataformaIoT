@@ -434,6 +434,103 @@ const userController = {
     }
   },
 
+  // ==================== FAVORITOS DE ESTACIONES ====================
+
+  // Obtener favoritos del usuario autenticado
+  getFavoriteStations: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      const favorites = await UserModel.getFavoriteStationsByUser(userId);
+      const favoriteStationIds = favorites.map((favorite) => favorite.id);
+
+      res.json({
+        success: true,
+        favorites,
+        favoriteStationIds
+      });
+    } catch (error) {
+      console.error('Error obteniendo estaciones favoritas:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  },
+
+  // Agregar estación a favoritos del usuario autenticado
+  addFavoriteStation: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const stationId = parseInt(req.body.stationId, 10);
+
+      if (!stationId || isNaN(stationId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de estación inválido'
+        });
+      }
+
+      const result = await UserModel.addFavoriteStation(userId, stationId);
+
+      res.status(result.inserted ? 201 : 200).json({
+        success: true,
+        message: result.inserted
+          ? 'Estación agregada a favoritos'
+          : 'La estación ya estaba en favoritos',
+      });
+    } catch (error) {
+      console.error('Error agregando estación a favoritos:', error);
+
+      if (error.code === 'STATION_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          message: 'Estación no encontrada'
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  },
+
+  // Quitar estación de favoritos del usuario autenticado
+  removeFavoriteStation: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const stationId = parseInt(req.params.stationId, 10);
+
+      if (!stationId || isNaN(stationId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de estación inválido'
+        });
+      }
+
+      const deleted = await UserModel.removeFavoriteStation(userId, stationId);
+
+      if (!deleted) {
+        return res.status(404).json({
+          success: false,
+          message: 'La estación no estaba en favoritos'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Estación eliminada de favoritos'
+      });
+    } catch (error) {
+      console.error('Error eliminando estación de favoritos:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  },
+
   // ==================== GESTIÓN DE USUARIOS (Solo Administradores) ====================
 
   // Obtener todos los usuarios

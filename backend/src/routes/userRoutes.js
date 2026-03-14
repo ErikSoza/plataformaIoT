@@ -13,6 +13,9 @@ router.get('/check-email', userController.checkEmail);
 router.get('/profile', authenticateToken, userController.getProfile);
 router.put('/profile', authenticateToken, userController.updateProfile);
 router.delete('/account', authenticateToken, userController.deleteAccount);
+router.get('/favorites', authenticateToken, userController.getFavoriteStations);
+router.post('/favorites', authenticateToken, userController.addFavoriteStation);
+router.delete('/favorites/:stationId', authenticateToken, userController.removeFavoriteStation);
 
 // Rutas de administración (requieren autenticación y rol admin)
 router.get('/users', authenticateToken, requireAdmin, userController.getAllUsers);

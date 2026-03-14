@@ -6,12 +6,18 @@ interface DevicesPageProps {
   devices: DeviceData[];
   selectedDevice?: DeviceData;
   onDeviceSelect: (device: DeviceData) => void;
+  favoriteStationIds: number[];
+  onToggleFavorite: (stationId: number) => void;
+  favoritesLoading: boolean;
 }
 
 const DevicesPage: React.FC<DevicesPageProps> = ({
   devices,
   selectedDevice,
-  onDeviceSelect
+  onDeviceSelect,
+  favoriteStationIds,
+  onToggleFavorite,
+  favoritesLoading,
 }) => {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [searchedLocation, setSearchedLocation] = useState<string | null>(null);
@@ -68,6 +74,9 @@ const DevicesPage: React.FC<DevicesPageProps> = ({
             devices={devices}
             selectedDeviceId={selectedDevice?.id}
             onDeviceSelect={onDeviceSelect}
+            favoriteStationIds={favoriteStationIds}
+            onToggleFavorite={onToggleFavorite}
+            favoritesLoading={favoritesLoading}
           />
         </ContentSection>
       </div>

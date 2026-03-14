@@ -141,6 +141,57 @@ export const authService = {
     }
   },
 
+  // Obtener estaciones favoritas del usuario autenticado
+  getFavoriteStations: async (token: string) => {
+    try {
+      console.log('🔄 Obteniendo estaciones favoritas del usuario');
+      const response = await api.get('/auth/favorites', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log('✅ Favoritos obtenidos:', response.data.favoriteStationIds?.length || 0);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error obteniendo favoritos:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Agregar estación a favoritos
+  addFavoriteStation: async (token: string, stationId: number) => {
+    try {
+      console.log('🔄 Agregando estación a favoritos:', stationId);
+      const response = await api.post('/auth/favorites', { stationId }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log('✅ Estación agregada a favoritos');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error agregando favorito:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
+  // Eliminar estación de favoritos
+  removeFavoriteStation: async (token: string, stationId: number) => {
+    try {
+      console.log('🔄 Eliminando estación de favoritos:', stationId);
+      const response = await api.delete(`/auth/favorites/${stationId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      console.log('✅ Estación eliminada de favoritos');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error eliminando favorito:', error.response?.data || error.message);
+      throw error;
+    }
+  },
+
   // ==================== GESTIÓN DE USUARIOS (Solo Administradores) ====================
   
   // Obtener todos los usuarios (solo admin)

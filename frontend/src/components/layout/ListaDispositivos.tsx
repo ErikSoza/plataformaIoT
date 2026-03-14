@@ -21,12 +21,18 @@ interface DeviceListProps {
   devices: DeviceData[];
   selectedDeviceId?: number;
   onDeviceSelect: (device: DeviceData) => void;
+  favoriteStationIds: number[];
+  onToggleFavorite: (stationId: number) => void;
+  favoritesLoading: boolean;
 }
 
 const DeviceList: React.FC<DeviceListProps> = ({ 
   devices, 
   selectedDeviceId, 
-  onDeviceSelect 
+  onDeviceSelect,
+  favoriteStationIds,
+  onToggleFavorite,
+  favoritesLoading,
 }) => {
   const getStatusColor = (status: DeviceData['status']) => {
     switch (status) {
@@ -50,7 +56,10 @@ const DeviceList: React.FC<DeviceListProps> = ({
 
   return (
     <div style={styles.deviceList}>
-      {devices.map((device) => (
+      {devices.map((device) => {
+        const isFavorite = favoriteStationIds.includes(device.id);
+
+        return (
         <div
           key={device.id}
           style={{
@@ -64,11 +73,27 @@ const DeviceList: React.FC<DeviceListProps> = ({
               <span style={styles.deviceIcon}>📡</span>
               {device.name}
             </div>
-            <div style={{
-              ...styles.deviceStatus,
-              color: getStatusColor(device.status)
-            }}>
-              {getStatusIcon(device.status)} {device.status}
+            <div style={styles.deviceHeaderActions}>
+              <button
+                style={{
+                  ...styles.favoriteButton,
+                  ...(isFavorite ? styles.favoriteButtonActive : {})
+                }}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onToggleFavorite(device.id);
+                }}
+                disabled={favoritesLoading}
+                title={isFavorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              >
+                {isFavorite ? '★ Favorito' : '☆ Favorito'}
+              </button>
+              <div style={{
+                ...styles.deviceStatus,
+                color: getStatusColor(device.status)
+              }}>
+                {getStatusIcon(device.status)} {device.status}
+              </div>
             </div>
           </div>
           
@@ -105,7 +130,8 @@ const DeviceList: React.FC<DeviceListProps> = ({
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -143,6 +169,12 @@ const styles = {
     marginBottom: '15px',
   },
 
+  deviceHeaderActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+  },
+
   deviceName: {
     fontSize: '1.1rem',
     fontWeight: '600' as const,
@@ -162,6 +194,24 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '5px',
+  },
+
+  favoriteButton: {
+    border: '1px solid #ffc107',
+    background: '#fff8e1',
+    color: '#8a6d3b',
+    borderRadius: '999px',
+    padding: '4px 10px',
+    fontSize: '0.75rem',
+    fontWeight: '600' as const,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+
+  favoriteButtonActive: {
+    background: '#ffc107',
+    color: '#3d2f00',
+    borderColor: '#e0a800',
   },
 
   deviceInfo: {

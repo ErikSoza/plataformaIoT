@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {TabNavigation, MainLayout, TabItem, DeviceData} from '../components/layout';
 import UserHeader from '../components/UserHeader';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/api';
 
 // Importar páginas separadas
-import { MonitoringPage, DevicesPage, ReportsPage, SettingsPage, StationManagementPage, DeviceManagementPage } from './index';
+import { MonitoringPage, DevicesPage, FavoritesPage, ReportsPage, SettingsPage, StationManagementPage, DeviceManagementPage } from './index';
 
 // Importar hook unificado para datos de la API
 import { useDeviceData } from '../hooks/useDeviceData';
@@ -24,11 +25,13 @@ L.Icon.Default.mergeOptions({
 
 const Home: React.FC = () => {
   // Hook de autenticación
-  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, user, token, isLoading: authLoading } = useAuth();
   
   // Estados del componente
   const [activeTab, setActiveTab] = useState<string>('monitoring');
   const [selectedDevice, setSelectedDevice] = useState<DeviceData | undefined>(undefined);
+  const [favoriteStationIds, setFavoriteStationIds] = useState<number[]>([]);
+  const [favoritesLoading, setFavoritesLoading] = useState(false);
 
   // Obtener datos de la API usando hook unificado - DEBE estar al inicio
   const { 
@@ -42,6 +45,45 @@ const Home: React.FC = () => {
     refreshInterval: 30000,
     includeInactive: true
   });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchFavoriteStations = async () => {
+      if (!isAuthenticated || !token) {
+        setFavoriteStationIds([]);
+        setFavoritesLoading(false);
+        return;
+      }
+
+      try {
+        setFavoritesLoading(true);
+        const response = await authService.getFavoriteStations(token);
+
+        if (isMounted) {
+          const favoriteIds = Array.isArray(response.favoriteStationIds)
+            ? response.favoriteStationIds
+            : [];
+          setFavoriteStationIds(favoriteIds);
+        }
+      } catch (error) {
+        console.error('No se pudieron cargar los favoritos del usuario:', error);
+        if (isMounted) {
+          setFavoriteStationIds([]);
+        }
+      } finally {
+        if (isMounted) {
+          setFavoritesLoading(false);
+        }
+      }
+    };
+
+    fetchFavoriteStations();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isAuthenticated, token]);
 
   // Mostrar loading si la autenticación está cargando
   if (authLoading) {
@@ -82,6 +124,7 @@ const Home: React.FC = () => {
       return [
         { id: 'monitoring', label: 'MONITOREO', active: activeTab === 'monitoring' },
         { id: 'devices', label: 'DISPOSITIVOS', active: activeTab === 'devices' },
+        { id: 'favorites', label: 'FAVORITOS', active: activeTab === 'favorites' },
         { id: 'reports', label: 'REPORTES', active: activeTab === 'reports' },
         { id: 'settings', label: 'CONFIGURACIÓN', active: activeTab === 'settings' },
       ];
@@ -92,6 +135,7 @@ const Home: React.FC = () => {
       return [
         { id: 'monitoring', label: 'MONITOREO', active: activeTab === 'monitoring' },
         { id: 'devices', label: 'DISPOSITIVOS', active: activeTab === 'devices' },
+        { id: 'favorites', label: 'FAVORITOS', active: activeTab === 'favorites' },
         { id: 'stations', label: 'ESTACIONES', active: activeTab === 'stations' },
         { id: 'device-management', label: 'GESTIÓN DISPOSITIVOS', active: activeTab === 'device-management' },
         { id: 'reports', label: 'REPORTES', active: activeTab === 'reports' },
@@ -131,6 +175,34 @@ const Home: React.FC = () => {
     console.log('Estadística seleccionada:', stat, 'Índice:', index);
   };
 
+  const handleToggleFavorite = async (stationId: number) => {
+    if (!isAuthenticated || !token) {
+      return;
+    }
+
+    const isFavorite = favoriteStationIds.includes(stationId);
+
+    // Actualización optimista para una UI fluida
+    setFavoriteStationIds((prev) => (
+      isFavorite ? prev.filter((id) => id !== stationId) : [...prev, stationId]
+    ));
+
+    try {
+      if (isFavorite) {
+        await authService.removeFavoriteStation(token, stationId);
+      } else {
+        await authService.addFavoriteStation(token, stationId);
+      }
+    } catch (error) {
+      console.error('No se pudo actualizar favorito:', error);
+
+      // Revertir si falla la petición
+      setFavoriteStationIds((prev) => (
+        isFavorite ? [...prev, stationId] : prev.filter((id) => id !== stationId)
+      ));
+    }
+  };
+
   // Renderizar contenido según la pestaña activa y rol del usuario
   const renderContent = () => {
     switch (activeTab) {
@@ -166,6 +238,35 @@ const Home: React.FC = () => {
             devices={devices}
             selectedDevice={selectedDevice}
             onDeviceSelect={handleDeviceSelect}
+            favoriteStationIds={favoriteStationIds}
+            onToggleFavorite={handleToggleFavorite}
+            favoritesLoading={favoritesLoading}
+          />
+        );
+
+      case 'favorites':
+        // Para usuarios registrados y administradores
+        if (!isAuthenticated) {
+          return (
+            <div style={styles.accessDenied}>
+              <h3>🔒 Acceso Restringido</h3>
+              <p>Debes iniciar sesión para ver tus estaciones favoritas.</p>
+              <button
+                style={styles.accessDeniedBtn}
+                onClick={() => window.location.href = '/login'}
+              >
+                Iniciar Sesión
+              </button>
+            </div>
+          );
+        }
+
+        return (
+          <FavoritesPage
+            devices={devices}
+            favoriteStationIds={favoriteStationIds}
+            onToggleFavorite={handleToggleFavorite}
+            favoritesLoading={favoritesLoading}
           />
         );
 

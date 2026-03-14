@@ -151,6 +151,83 @@ class UserModel {
       throw error;
     }
   }
+
+  // Obtener estaciones favoritas del usuario autenticado
+  static async getFavoriteStationsByUser(userId) {
+    try {
+      const query = `
+        SELECT
+          e.id,
+          e.nombre,
+          e.ubicacion,
+          e.latitud,
+          e.longitud,
+          e.descripcion,
+          e.estado,
+          e.created_at,
+          f.created_at AS favorite_created_at
+        FROM usuarios_estaciones_favoritas f
+        INNER JOIN estaciones e ON e.id = f.id_estacion
+        WHERE f.id_usuario = ?
+        ORDER BY f.created_at DESC
+      `;
+
+      const [rows] = await pool.execute(query, [userId]);
+      return rows;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Obtener solo IDs de estaciones favoritas (uso eficiente en frontend)
+  static async getFavoriteStationIdsByUser(userId) {
+    try {
+      const query = 'SELECT id_estacion FROM usuarios_estaciones_favoritas WHERE id_usuario = ?';
+      const [rows] = await pool.execute(query, [userId]);
+      return rows.map((row) => row.id_estacion);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Agregar estación favorita a un usuario
+  static async addFavoriteStation(userId, stationId) {
+    try {
+      const [stationRows] = await pool.execute('SELECT id FROM estaciones WHERE id = ?', [stationId]);
+      if (!stationRows.length) {
+        const notFoundError = new Error('Estación no encontrada');
+        notFoundError.code = 'STATION_NOT_FOUND';
+        throw notFoundError;
+      }
+
+      const query = `
+        INSERT IGNORE INTO usuarios_estaciones_favoritas (id_usuario, id_estacion)
+        VALUES (?, ?)
+      `;
+      const [result] = await pool.execute(query, [userId, stationId]);
+
+      return {
+        inserted: result.affectedRows > 0,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Eliminar estación favorita de un usuario
+  static async removeFavoriteStation(userId, stationId) {
+    try {
+      const query = `
+        DELETE FROM usuarios_estaciones_favoritas
+        WHERE id_usuario = ? AND id_estacion = ?
+      `;
+      const [result] = await pool.execute(query, [userId, stationId]);
+
+      return result.affectedRows > 0;
+    } catch (error) {
+      throw error;
+    }
+  }
 }
 
 export default UserModel;

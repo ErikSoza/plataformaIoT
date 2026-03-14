@@ -39,6 +39,20 @@ CREATE TABLE IF NOT EXISTS estaciones (
     ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Tabla: FAVORITOS DE USUARIO POR ESTACION
+CREATE TABLE IF NOT EXISTS usuarios_estaciones_favoritas (
+  id_usuario INT NOT NULL,
+  id_estacion INT NOT NULL,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id_usuario, id_estacion),
+  CONSTRAINT fk_favorito_usuario
+    FOREIGN KEY (id_usuario) REFERENCES usuarios(id)
+    ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_favorito_estacion
+    FOREIGN KEY (id_estacion) REFERENCES estaciones(id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Tabla: DISPOSITIVOS (Hardware / Edges)
 CREATE TABLE IF NOT EXISTS dispositivos (
   device_id VARCHAR(50) PRIMARY KEY,
