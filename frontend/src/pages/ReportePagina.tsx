@@ -1042,6 +1042,7 @@ const styles = {
 
   filterActions: {
     display: 'flex',
+    justifyContent: 'center',
     alignItems: 'center',
     gap: '15px',
     marginTop: '20px',

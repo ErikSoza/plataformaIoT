@@ -8,8 +8,8 @@ import 'leaflet.heat';
 // Importar estilos CSS
 import './MapaCalor.css';
 
-// Configuración del radio fijo para los círculos de temperatura
-const CIRCLE_RADIUS = 80; // Radio fijo en píxeles - Cambia este valor para ajustar el tamaño
+// Configuración del radio fijo para los círculos de datos
+const CIRCLE_RADIUS = 1500; // Radio fijo en metros (aprox 3km de cobertura por sensor)
 
 // Extender la interfaz de Leaflet para incluir el plugin de heatmap
 declare module 'leaflet' {
@@ -79,7 +79,7 @@ const FixedTemperatureCircles: React.FC<FixedTemperatureCirclesProps> = ({ devic
   };
 
   useEffect(() => {
-    let circleMarkers: L.CircleMarker[] = [];
+    let circleMarkers: L.Circle[] = [];
 
     if (visible) {
       // Filtrar dispositivos que tienen datos para la métrica seleccionada
@@ -94,9 +94,9 @@ const FixedTemperatureCircles: React.FC<FixedTemperatureCirclesProps> = ({ devic
         const value = device[metric]!;
         const color = getFixedColor(value, metric);
         
-        // Crear círculo con tamaño fijo en píxeles
-        const circle = L.circleMarker([lat, lng], {
-          radius: CIRCLE_RADIUS, // Radio fijo configurado en la constante (píxeles)
+        // Crear círculo con tamaño fijo en metros
+        const circle = L.circle([lat, lng], {
+          radius: CIRCLE_RADIUS, // Radio fijo configurado en la constante (metros)
           fillColor: color,
           color: color,
           weight: 2,
