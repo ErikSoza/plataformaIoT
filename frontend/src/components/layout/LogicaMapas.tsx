@@ -2,7 +2,7 @@
 El componente UnifiedMap utiliza la librería React Leaflet para renderizar un mapa interactivo. Permite a los usuarios ver la ubicación de varios dispositivos, seleccionar un dispositivo para ver más detalles y activar un mapa de calor que visualiza diferentes métricas ambientales (como temperatura, humedad, presión, calidad del aire y radiación solar) basándose en los datos recopilados por los dispositivos. El componente también incluye controles para personalizar la visualización del mapa de calor, como elegir la métrica a mostrar y activar o desactivar el mapa de calor.
 */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { DeviceData } from './ListaDispositivos';
@@ -325,6 +325,21 @@ const MapController: React.FC<{
   return null;
 };
 
+// Componente para invalidar el tamaño del mapa cuando cambia el modo de pantalla completa
+const FullscreenResizer: React.FC<{ isFullscreen: boolean }> = ({ isFullscreen }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    // Retraso ligero para permitir que los estilos CSS se apliquen antes de recalcular
+    const timeout = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    return () => clearTimeout(timeout);
+  }, [isFullscreen, map]);
+
+  return null;
+};
+
 // componente que renderiza el mapa
 const UnifiedMap: React.FC<UnifiedMapProps> = ({ 
   devices, 
@@ -349,6 +364,32 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   const [internalSelectedDevice, setInternalSelectedDevice] = useState<DeviceData | undefined>(selectedDevice); // Estado interno para manejar la selección
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date()); // Estado para trackear la última actualización
   const [previousDevicesLength, setPreviousDevicesLength] = useState<number>(devices.length); // Para detectar cambios en dispositivos
+  
+  // Estados para pantalla completa
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const mapWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Efecto para escuchar cambios de pantalla completa del navegador
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = () => {
+    if (!isFullscreen) {
+      if (mapWrapperRef.current?.requestFullscreen) {
+        mapWrapperRef.current.requestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
 
   // Centro por defecto (Campus UTalca)
   const defaultCenter: [number, number] = [-35.0020711, -71.2288796];
@@ -612,7 +653,40 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   };
   
   return (
-    <div style={{ position: 'relative' }}>
+    <div 
+      ref={mapWrapperRef} 
+      style={{ 
+        position: 'relative', 
+        height: isFullscreen ? '100vh' : 'auto',
+        width: isFullscreen ? '100vw' : 'auto',
+        backgroundColor: '#f8f9fa'
+      }}
+    >
+      {/* Botón de Pantalla Completa */}
+      <button
+        onClick={toggleFullscreen}
+        style={{
+          position: 'absolute',
+          top: '10px',
+          left: '50px',
+          zIndex: 1000,
+          background: 'white',
+          border: '2px solid rgba(0,0,0,0.2)',
+          borderRadius: '4px',
+          width: '34px',
+          height: '34px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          boxShadow: '0 1px 5px rgba(0,0,0,0.65)',
+          fontSize: '18px'
+        }}
+        title={isFullscreen ? "Salir de pantalla completa" : "Pantalla completa"}
+      >
+        {isFullscreen ? '↩️' : '⬆️'}
+      </button>
+
       {/* Controles del Mapa de Calor - Solo mostrar si está habilitado */}
       {showHeatmapControls && (
         <div style={{
@@ -834,7 +908,12 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
       )}
 
       {/* Mapa */}
-      <div style={{ height, width: '100%', borderRadius: '10px', overflow: 'hidden' }}>
+      <div style={{ 
+        height: isFullscreen ? '100%' : height, 
+        width: '100%', 
+        borderRadius: isFullscreen ? '0px' : '10px', 
+        overflow: 'hidden' 
+      }}>
         <LeafletMapContainer
           center={mapCenter}
           zoom={20}
@@ -847,6 +926,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
             searchCenter={searchCenter}
             shouldCenterToSearch={shouldCenterToSearch}
           />
+          <FullscreenResizer isFullscreen={isFullscreen} />
           
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
