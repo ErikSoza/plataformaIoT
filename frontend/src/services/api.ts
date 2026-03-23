@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 // Configuración base de axios
-const API_BASE_URL = 'http://localhost:3000/api';
+// Usar variable de entorno si existe (inyectada por el contenedor Docker), 
+// de lo contrario usar el localhost:3000 por defecto para desarrollo nativo sin Docker
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
 
 // Crear instancia de axios
 const api = axios.create({
@@ -574,8 +576,9 @@ export const apiUtils = {
   // Función para verificar la conexión con la API
   checkConnection: async () => {
     try {
-      // Probar con el endpoint base del servidor (sin /api)
-      const response = await axios.get('http://localhost:3000/');
+      // Usar un endpoint válido desde /api, o usar la base URL directamente
+      // (Dado que usamos API_BASE_URL, si no está disponible fallará)
+      const response = await axios.get(API_BASE_URL);
       return response.status === 200;
     } catch (error) {
       console.warn('No se pudo conectar con la API:', error);

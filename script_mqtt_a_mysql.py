@@ -1,5 +1,6 @@
 import json
 import time
+import os
 from datetime import datetime
 import paho.mqtt.client as mqtt
 import mysql.connector
@@ -10,12 +11,12 @@ MQTT_BROKER = "192.168.1.93"
 MQTT_PORT = 1883
 MQTT_TOPIC = "datos"
 
-# 2. Datos MySQL (Tu Base de Datos Local)
+# 2. Datos MySQL (Tu Base de Datos Local o en Docker)
 DB_CONFIG = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'millahue343',
-    'database': 'plataformaiot'
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'user': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', 'millahue343'),
+    'database': os.getenv('DB_NAME', 'plataformaiot')
 }
 
 # --- FUNCIONES ---

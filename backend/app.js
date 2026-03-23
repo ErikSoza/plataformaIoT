@@ -9,9 +9,10 @@ import userRoutes from './src/routes/userRoutes.js';
 dotenv.config();
 const app = express();
 
-// Configurar CORS para permitir peticiones desde el frontend
+// Configurar CORS para permitir peticiones desde el frontend y a través de Nginx
 app.use(cors({
-    origin: 'http://localhost:3001', // Puerto donde corre React
+    // Permite que el proxy pase las peticiones, o en local
+    origin: true, 
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true
 }));
@@ -19,6 +20,13 @@ app.use(cors({
 app.use(express.json());
 
 // Rutas API
+app.get('/api', (req, res) => {
+    res.json({
+        message: 'Bienvenido a la API de Gestión de Estaciones IoT (Ruta API)',
+        status: 'online',
+        timestamp: new Date().toISOString()
+    });
+});
 app.use('/api', stationRouters);
 app.use('/api', readingRoutes);
 app.use('/api', deviceRoutes);

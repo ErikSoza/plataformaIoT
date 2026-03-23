@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # Base de datos MySQL
+  db:
+    image: mysql:8.0
+    container_name: iot_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-millahue343}
+      MYSQL_DATABASE: ${DB_NAME:-plataformaiot}
+    volumes:
+      # Monta los scripts para que se ejecuten automáticamente al inicializar la base de datos vacía
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/1_init.sql
+      - ./backend/datos_pruebas.sql:/docker-entrypoint-initdb.d/2_datos_pruebas.sql
+      # Persistencia de la información
+      - db_data:/var/lib/mysql
+
+  # Servidor Backend (Node.js)
+  backend:
+    image: node:20-alpine
+    container_name: iot_backend
+    working_dir: /app
+    volumes:
+      # Montar código fuente para reflejar cambios en tiempo real
+      - ./backend:/app
+      - backend_node_modules:/app/node_modules
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-millahue343}
+      DB_NAME: ${DB_NAME:-plataformaiot}
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_started
+    # Instalar dependencias e iniciar (modo dev para usar nodemon)
+    command: sh -c "npm install && npm run dev"
+
+  # Cliente Frontend (React)
+  frontend:
+    image: node:20-alpine
+    container_name: iot_frontend
+    working_dir: /app
+    volumes:
+      # Montar código fuente para hot-reloading
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    environment:
+      PORT: 3001
+      # Nginx interceptará la ruta /api y la enviará al backend
+      REACT_APP_API_URL: /api
+      WDS_SOCKET_PORT: 0
+    depends_on:
+      - backend
+    # Instalar e iniciar servidor de react
+    command: sh -c "npm install && npm start"
+
+  # Worker con Python para capturar datos de MQTT y guardarlos en MySQL
+  script-mqtt:
+    image: python:3.9-slim
+    container_name: iot_script_mqtt
+    restart: always # Si falla o se desconecta, el contenedor volverá a levantarse automáticamente
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-millahue343}
+      DB_NAME: ${DB_NAME:-plataformaiot}
+      # Aquí puedes añadir variables de entorno referentes a MQTT si lo deseas
+    depends_on:
+      db:
+        condition: service_started
+    # Instala las librerías al levantar y ejecuta el script
+    command: sh -c "pip install -q paho-mqtt mysql-connector-python && python script_mqtt_a_mysql.py"
+
+  # Proxy inverso (Nginx) para enrutar tráfico
+  nginx:
+    image: nginx:alpine
+    container_name: iot_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  db_data:
+  backend_node_modules:
+  frontend_node_modules:
