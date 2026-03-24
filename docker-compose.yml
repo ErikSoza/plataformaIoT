@@ -56,6 +56,19 @@ services:
     # Instalar e iniciar servidor de react
     command: sh -c "npm install && npm start"
 
+  # Broker MQTT (Mosquitto)
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: iot_mosquitto
+    restart: always
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+
   # Worker con Python para capturar datos de MQTT y guardarlos en MySQL
   script-mqtt:
     image: python:3.9-slim
@@ -92,3 +105,5 @@ volumes:
   db_data:
   backend_node_modules:
   frontend_node_modules:
+  mosquitto_data:
+  mosquitto_log:
