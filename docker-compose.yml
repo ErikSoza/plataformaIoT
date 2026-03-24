@@ -63,7 +63,6 @@ services:
     restart: always
     ports:
       - "1883:1883"
-      - "9001:9001"
     volumes:
       - ./mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf
       - mosquitto_data:/mosquitto/data
@@ -85,6 +84,8 @@ services:
       # Aquí puedes añadir variables de entorno referentes a MQTT si lo deseas
     depends_on:
       db:
+        condition: service_started
+      mosquitto:
         condition: service_started
     # Instala las librerías al levantar y ejecuta el script
     command: sh -c "pip install -q paho-mqtt mysql-connector-python && python script_mqtt_a_mysql.py"
