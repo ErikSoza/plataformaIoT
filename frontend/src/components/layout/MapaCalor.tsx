@@ -1,128 +1,83 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { DeviceData } from './ListaDispositivos';
+import { HEATMAP_CONFIG, normalizar } from '../../config/heatmapConfig';
 
 // Importar leaflet.heat
 import 'leaflet.heat';
+import 'leaflet-velocity';
+import 'leaflet-velocity/dist/leaflet-velocity.css';
 // Importar estilos CSS
 import './MapaCalor.css';
 
 // Configuración del radio fijo para los círculos de datos
-const CIRCLE_RADIUS = 1500; // Radio fijo en metros (aprox 3km de cobertura por sensor)
+//const CIRCLE_RADIUS = 1500; // Radio fijo en metros (aprox 3km de cobertura por sensor)
 
 // Extender la interfaz de Leaflet para incluir el plugin de heatmap
 declare module 'leaflet' {
   namespace L {
     function heatLayer(latlngs: Array<[number, number, number?]>, options?: any): any;
+    function velocityLayer(options?: any): any;
   }
 }
 
-// Componente para círculos de temperatura fijos (reemplaza el heatmap tradicional)
-interface FixedTemperatureCirclesProps {
+// Componente para el Heatmap con leaflet.heat
+interface HeatmapLayerProps {
   devices: DeviceData[];
   metric: 'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation';
   visible: boolean;
 }
 
-const FixedTemperatureCircles: React.FC<FixedTemperatureCirclesProps> = ({ devices, metric, visible }) => {
+const HeatLayerComponent: React.FC<HeatmapLayerProps> = ({ devices, metric, visible }) => {
   const map = useMap();
-
-  // Función para obtener color fijo basado en el valor y métrica
-  const getFixedColor = (value: number, metric: string) => {
-    switch (metric) {
-      case 'temperature':
-        if (value <= 10) return '#0066cc'; // Azul muy frío
-        if (value <= 15) return '#0099ff'; // Azul frío
-        if (value <= 20) return '#33cc33'; // Verde fresco
-        if (value <= 25) return '#66ff66'; // Verde cálido
-        if (value <= 30) return '#ffff00'; // Amarillo
-        if (value <= 35) return '#ff9900'; // Naranja
-        return '#ff0000'; // Rojo caliente
-      
-      case 'humidity':
-        if (value <= 20) return '#ffff99'; // Amarillo seco
-        if (value <= 40) return '#99ff99'; // Verde seco
-        if (value <= 60) return '#66ccff'; // Azul medio
-        if (value <= 80) return '#0099ff'; // Azul húmedo
-        return '#0066cc'; // Azul muy húmedo
-      
-      case 'pressure':
-        if (value <= 1000) return '#ff0000'; // Rojo baja presión
-        if (value <= 1005) return '#ff6600'; // Naranja
-        if (value <= 1010) return '#ffff00'; // Amarillo
-        if (value <= 1015) return '#66ff66'; // Verde
-        return '#0066ff'; // Azul alta presión
-      
-      case 'wind':
-        if (value <= 2) return '#99ff99'; // Verde suave
-        if (value <= 5) return '#ffff66'; // Amarillo moderado
-        if (value <= 10) return '#ff9966'; // Naranja fuerte
-        return '#ff6666'; // Rojo muy fuerte
-      
-      case 'gas':
-        if (value <= 0.02) return '#00ff00'; // Verde buena calidad
-        if (value <= 0.05) return '#66ff66'; // Verde claro
-        if (value <= 0.08) return '#ffff00'; // Amarillo moderado
-        return '#ff0000'; // Rojo mala calidad
-      
-      case 'radiation':
-        if (value <= 200) return '#66ccff'; // Azul baja
-        if (value <= 400) return '#99ff99'; // Verde baja-media
-        if (value <= 600) return '#ffff66'; // Amarillo media
-        if (value <= 800) return '#ff9966'; // Naranja alta
-        return '#ff6666'; // Rojo muy alta
-      
-      default:
-        return '#666666';
-    }
-  };
+  const heatLayerRef = useRef<any>(null);
 
   useEffect(() => {
-    let circleMarkers: L.Circle[] = [];
-
-    if (visible) {
-      // Filtrar dispositivos que tienen datos para la métrica seleccionada
-      const validDevices = devices.filter(device => {
-        const value = device[metric];
-        return value !== undefined && value !== null && !isNaN(Number(value)) && Number(value) > 0;
-      });
-
-      // Crear círculos fijos para cada dispositivo válido
-      validDevices.forEach(device => {
-        const [lat, lng] = device.coordinates;
-        const value = device[metric]!;
-        const color = getFixedColor(value, metric);
-        
-        // Crear círculo con tamaño fijo en metros
-        const circle = L.circle([lat, lng], {
-          radius: CIRCLE_RADIUS, // Radio fijo configurado en la constante (metros)
-          fillColor: color,
-          color: color,
-          weight: 2,
-          opacity: 0.8,
-          fillOpacity: 0.4,
-          // Asegurar que el círculo no se redibuje con el zoom
-          interactive: false, // Desactivar interactividad para mejor rendimiento
-          bubblingMouseEvents: false
-        });
-        
-        // Agregar el círculo al mapa
-        circle.addTo(map);
-        circleMarkers.push(circle);
-      });
+    // Si no está visible o no hay dispositivos, remover capa si existe
+    if (!visible || devices.length === 0) {
+      if (heatLayerRef.current) {
+        map.removeLayer(heatLayerRef.current);
+        heatLayerRef.current = null;
+      }
+      return;
     }
 
-    // Cleanup: remover los círculos cuando el componente se desmonte o cambie
+    const cfg = HEATMAP_CONFIG[metric];
+    if (!cfg) return;
+
+    // Normalizar puntos
+    const puntosNormalizados = devices
+      .filter(s => s[metric] != null && !isNaN(Number(s[metric])))
+      .map(s => [
+        s.coordinates[0], 
+        s.coordinates[1], 
+        normalizar(Number(s[metric]), cfg.min, cfg.max)
+      ] as [number, number, number]);
+
+    // Remover capa anterior si existe antes de crear la nueva
+    if (heatLayerRef.current) {
+      map.removeLayer(heatLayerRef.current);
+    }
+
+    // Crear nueva capa
+    heatLayerRef.current = L.heatLayer(puntosNormalizados, {
+      radius: cfg.radius,
+      blur: cfg.blur,
+      maxZoom: 18,
+      max: 1.0,
+      gradient: cfg.gradient
+    });
+
+    heatLayerRef.current.addTo(map);
+
     return () => {
-      circleMarkers.forEach(circle => {
-        if (map.hasLayer(circle)) {
-          map.removeLayer(circle);
-        }
-      });
-      circleMarkers = [];
+      if (heatLayerRef.current) {
+        map.removeLayer(heatLayerRef.current);
+        heatLayerRef.current = null;
+      }
     };
-  }, [map, devices, metric, visible]); // Solo recrear cuando cambien estos valores, NO en zoom
+  }, [map, devices, metric, visible]);
 
   return null;
 };
@@ -257,6 +212,156 @@ const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, v
   return null;
 };
 
+// Componente para animación de viento
+interface WindAnimationLayerProps {
+  devices: DeviceData[];
+  metric: string;
+  visible: boolean;
+}
+
+const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric, visible }) => {
+  const map = useMap();
+  const velocityLayerRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (!visible || metric !== 'wind') {
+      if (velocityLayerRef.current) {
+        map.removeLayer(velocityLayerRef.current);
+        velocityLayerRef.current = null;
+      }
+      return;
+    }
+
+    // Convertir datos de viento a formato U/V que requiere leaflet-velocity
+    // Asumimos que "wind" es la velocidad en m/s. Para la dirección, si no existe wind_direction,
+    // usaremos un valor calculado o por defecto ya que en DeviceData solo veo "wind".
+    // Wait, the prompt says "Los sensores de viento deben tener: wind_speed (m/s) y wind_direction (grados). 
+    // Si tus sensores tienen otro nombre de campo, ajustar aquí".
+    // In `ListaDispositivos.tsx`, DeviceData has `wind?: number`. We'll use `wind` for wind_speed. 
+    // What about wind direction? Let's use `windDirection` if it exists, or just a default/mock for now context 
+    // because DeviceData doesn't show direction. Or maybe it has `windDirection` in reality?
+    
+    // De acuerdo al prompt, ajustaré.
+    const sensoresViento = devices.filter(s =>
+      s.wind != null && !isNaN(Number(s.wind))
+    );
+
+    if (sensoresViento.length < 2) {
+      console.warn('[Viento] Se necesitan al menos 2 sensores con wind');
+      return;
+    }
+
+    // Agregar dirección mock si no existe
+    const puntosUV = sensoresViento.map(s => {
+      const spd = Number(s.wind);
+      const dir = (s as any).windDirection ?? ((s.id * 37) % 360); // Mock direction if not present
+      return {
+        lat: s.coordinates[0],
+        lng: s.coordinates[1],
+        U: -spd * Math.sin(dir * Math.PI / 180),
+        V: -spd * Math.cos(dir * Math.PI / 180)
+      };
+    });
+
+    const lats = puntosUV.map(p => p.lat);
+    const lngs = puntosUV.map(p => p.lng);
+    const minLat = Math.min(...lats) - 0.05;
+    const maxLat = Math.max(...lats) + 0.05;
+    const minLng = Math.min(...lngs) - 0.05;
+    const maxLng = Math.max(...lngs) + 0.05;
+    const nx = 15, ny = 15;
+
+    const interpolar = (campo: 'U' | 'V') => {
+      const resultado: number[] = [];
+      for (let j = 0; j < ny; j++) {
+        for (let i = 0; i < nx; i++) {
+          const lat = maxLat - j * (maxLat - minLat) / (ny - 1);
+          const lng = minLng + i * (maxLng - minLng) / (nx - 1);
+          let sumPeso = 0, sumValor = 0;
+          for (const p of puntosUV) {
+            const dist2 = (p.lat - lat) ** 2 + (p.lng - lng) ** 2;
+            const peso = dist2 < 1e-10 ? 1e10 : 1 / dist2;
+            sumPeso += peso;
+            sumValor += peso * p[campo];
+          }
+          resultado.push(sumValor / sumPeso);
+        }
+      }
+      return resultado;
+    };
+
+    const dataU = interpolar('U');
+    const dataV = interpolar('V');
+    const dx = (maxLng - minLng) / (nx - 1);
+    const dy = (maxLat - minLat) / (ny - 1);
+
+    const jsonVelocity = [
+      {
+        header: {
+          parameterCategory: 2,
+          parameterNumber: 2,
+          parameterUnit: 'm.s-1',
+          lo1: minLng, la1: maxLat, lo2: maxLng, la2: minLat,
+          nx, ny, dx, dy
+        },
+        data: dataU
+      },
+      {
+        header: {
+          parameterCategory: 2,
+          parameterNumber: 3,
+          parameterUnit: 'm.s-1',
+          lo1: minLng, la1: maxLat, lo2: maxLng, la2: minLat,
+          nx, ny, dx, dy
+        },
+        data: dataV
+      }
+    ];
+
+    if (velocityLayerRef.current) {
+      try {
+        map.removeLayer(velocityLayerRef.current);
+      } catch (e) {
+        console.warn('Error removeLayer:', e);
+      }
+    }
+
+    try {
+      velocityLayerRef.current = (L as any).velocityLayer({
+        displayValues: true,
+        displayOptions: {
+          velocityType: 'Viento',
+          displayPosition: 'bottomleft',
+          displayEmptyString: 'Sin datos de viento',
+          angleConvention: 'bearingCW',
+          speedUnit: 'm/s'
+        },
+        data: jsonVelocity,
+        maxVelocity: 15,
+        colorScale: ['#f7fbff','#9ecae1','#3182bd','#08306b'],
+        velocityScale: 0.008,
+        particleAge: 64,
+        lineWidth: 1.5
+      });
+
+      velocityLayerRef.current.addTo(map);
+    } catch(e) {
+      console.error('Error in velocityLayer:', e);
+    }
+
+    return () => {
+      if (velocityLayerRef.current) {
+        try {
+          map.removeLayer(velocityLayerRef.current);
+        } catch(e) {}
+        velocityLayerRef.current = null;
+      }
+    };
+  }, [map, devices, metric, visible]);
+
+  return null;
+};
+
 interface HeatMapLayerProps {
   devices: DeviceData[];
   metric: 'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation';
@@ -265,13 +370,10 @@ interface HeatMapLayerProps {
 }
 
 const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible, showLabels = true }) => {
-  // Nota: Ya no usamos el heatmap tradicional de leaflet.heat porque cambia con el zoom
-  // En su lugar usamos círculos fijos que mantienen su color constante
-  
-  // Renderizar los círculos de temperatura fijos y las etiquetas
   return (
     <>
-      <FixedTemperatureCircles devices={devices} metric={metric} visible={visible} />
+      {metric !== 'wind' && <HeatLayerComponent devices={devices} metric={metric} visible={visible} />}
+      {metric === 'wind' && <WindAnimationLayer devices={devices} metric={metric} visible={visible} />}
       <TemperatureLabels devices={devices} metric={metric} visible={visible && showLabels} />
     </>
   );

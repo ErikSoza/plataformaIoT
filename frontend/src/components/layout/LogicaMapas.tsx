@@ -7,6 +7,7 @@ import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup, useMap }
 import L from 'leaflet';
 import { DeviceData } from './ListaDispositivos';
 import HeatMapLayer from './MapaCalor';
+import MapLegend from '../MapLegend';
 
 // Configuración de métricas disponibles
 const MetricaVariables = {
@@ -912,7 +913,8 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
         height: isFullscreen ? '100%' : height, 
         width: '100%', 
         borderRadius: isFullscreen ? '0px' : '10px', 
-        overflow: 'hidden' 
+        overflow: 'hidden',
+        position: 'relative'
       }}>
         <LeafletMapContainer
           center={mapCenter}
@@ -1049,6 +1051,11 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
             );
           })}
         </LeafletMapContainer>
+        
+        {/* Leyenda de colores del mapa de calor */}
+        {showHeatmapControls && showHeatmap && (
+          <MapLegend variableActiva={heatmapMetric} />
+        )}
       </div>
     </div>
   );
