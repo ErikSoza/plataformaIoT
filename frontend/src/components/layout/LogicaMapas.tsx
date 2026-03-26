@@ -579,6 +579,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
       'lastUpdate', 
       'last_update', 
       'fecha_actualizacion',
+      'fecha_registro',
       'timestamp', 
       'created_at', 
       'updated_at',
@@ -1005,7 +1006,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                     </div>
 
                     {/* Métricas adicionales */}
-                    {(device.temperature || device.humidity || device.battery) && (
+                    {(device.temperature !== undefined || device.pressure !== undefined || device.wind !== undefined) && (
                       <div style={{ 
                         borderTop: '1px solid #e9ecef', 
                         paddingTop: '8px',
@@ -1013,33 +1014,38 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                         flexWrap: 'wrap' as const,
                         gap: '8px'
                       }}>
-                        {device.temperature && (
-                          <span style={{ 
-                            background: '#f8f9fa', 
-                            padding: '2px 6px', 
-                            borderRadius: '4px',
-                            fontSize: '0.85rem'
-                          }}>
+                        {device.temperature !== undefined && (
+                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
                             🌡️ {device.temperature}°C
                           </span>
                         )}
-                        {device.humidity && (
-                          <span style={{ 
-                            background: '#f8f9fa', 
-                            padding: '2px 6px', 
-                            borderRadius: '4px',
-                            fontSize: '0.85rem'
-                          }}>
+                        {device.humidity !== undefined && (
+                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
                             💧 {device.humidity}%
                           </span>
                         )}
-                        {device.battery && (
-                          <span style={{ 
-                            background: '#f8f9fa', 
-                            padding: '2px 6px', 
-                            borderRadius: '4px',
-                            fontSize: '0.85rem'
-                          }}>
+                        {device.pressure !== undefined && (
+                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
+                            🌫️ {device.pressure} hPa
+                          </span>
+                        )}
+                        {device.wind !== undefined && (
+                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
+                            💨 {device.wind} m/s
+                          </span>
+                        )}
+                        {device.gas !== undefined && (
+                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
+                            🌪️ {device.gas} ppm
+                          </span>
+                        )}
+                        {device.radiation !== undefined && (
+                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
+                            ☀️ {device.radiation} W/m²
+                          </span>
+                        )}
+                        {device.battery !== undefined && (
+                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
                             🔋 {device.battery}%
                           </span>
                         )}

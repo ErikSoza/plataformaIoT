@@ -153,7 +153,7 @@ export const normalizeStationData = (rawStation: any): Station => {
     coordinates: rawStation.latitud && rawStation.longitud 
       ? [rawStation.latitud, rawStation.longitud] 
       : [0, 0],
-    lastUpdate: rawStation.latestReading?.timestamp || rawStation.ultima_actualizacion,
+    lastUpdate: rawStation.latestReading?.fecha_registro || rawStation.latestReading?.timestamp || rawStation.ultima_actualizacion,
     type: 'Sensor Ambiental IoT',
   };
 

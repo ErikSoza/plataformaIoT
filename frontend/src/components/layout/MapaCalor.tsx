@@ -30,12 +30,44 @@ const getValueColorFromGradient = (value: number, metric: string): string => {
   const norm = normalizar(value, cfg.min, cfg.max);
   const stops = Object.keys(cfg.gradient).map(Number).sort((a, b) => a - b);
   
-  // Buscar el color correspondiente al porcentaje del valor actual
-  for (let i = 0; i < stops.length; i++) {
-    if (norm <= stops[i]) {
-      return cfg.gradient[stops[i] as keyof typeof cfg.gradient];
+  if (norm <= stops[0]) return cfg.gradient[stops[0]];
+  if (norm >= stops[stops.length - 1]) return cfg.gradient[stops[stops.length - 1] as keyof typeof cfg.gradient];
+
+  // Interpolar suavemente entre los colores para evitar saltos bruscos
+  for (let i = 0; i < stops.length - 1; i++) {
+    const start = stops[i];
+    const end = stops[i + 1];
+    
+    if (norm >= start && norm <= end) {
+      const colorStart = cfg.gradient[start];
+      const colorEnd = cfg.gradient[end];
+      
+      const t = (norm - start) / (end - start);
+      
+      // Función para extraer r,g,b del hex
+      const hex2rgb = (hex: string) => {
+        // Expandir hex corto si lo hubiera
+        if (hex.length === 4) {
+          hex = '#' + hex[1] + hex[1] + hex[2] + hex[2] + hex[3] + hex[3];
+        }
+        return [
+          parseInt(hex.slice(1, 3), 16),
+          parseInt(hex.slice(3, 5), 16),
+          parseInt(hex.slice(5, 7), 16)
+        ];
+      };
+      
+      const [r1, g1, b1] = hex2rgb(colorStart);
+      const [r2, g2, b2] = hex2rgb(colorEnd);
+      
+      const r = Math.round(r1 + t * (r2 - r1));
+      const g = Math.round(g1 + t * (g2 - g1));
+      const b = Math.round(b1 + t * (b2 - b1));
+      
+      return `rgb(${r}, ${g}, ${b})`;
     }
   }
+  
   return cfg.gradient[stops[stops.length - 1] as keyof typeof cfg.gradient];
 };
 
@@ -309,22 +341,25 @@ const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, v
           className: `temperature-label-icon ${colorInfo.class} ${metric === 'humidity' ? 'humidity-pulse-effect' : ''}`,
           html: `
             <div style="
-              background: ${colorInfo.bg};
+              background: ${colorInfo.bg.replace(/0\.\d+\)/, '1)')};
               color: white;
-              padding: 4px 8px;
-              border-radius: 12px;
-              font-weight: bold;
-              font-size: 13px;
+              padding: 4px 10px;
+              border-radius: 6px;
+              font-weight: 800;
+              font-size: 14px;
               text-align: center;
               white-space: nowrap;
-              border: 2px solid ${colorInfo.border};
-              box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-              min-width: 45px;
+              border: 1.5px solid rgba(0,0,0,0.5);
+              box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.4);
+              min-width: 50px;
               font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              backdrop-filter: blur(8px);
-              text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+              text-shadow: 1px 1px 2px black;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              justify-content: center;
             ">
-              <div>${displayValue}${unitSymbol}</div>
+              <span style="display: block;">${displayValue}${unitSymbol}</span>
               ${extraInfoHtml}
             </div>
           `,
