@@ -227,6 +227,40 @@ const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, v
   return null;
 };
 
+// --- INICIO PARCHE LEAFLET-VELOCITY ---
+// Esto soluciona un error crítico de React (Strict Mode) donde los callbacks 
+// intentan acceder a this._map después de que el componente (y la capa) fue desmontado.
+if (typeof L !== 'undefined' && (L as any).CanvasLayer) {
+  const origDrawLayer = (L as any).CanvasLayer.prototype.drawLayer;
+  if (origDrawLayer && !origDrawLayer.__patched) {
+    (L as any).CanvasLayer.prototype.drawLayer = function(...args: any[]) {
+      if (!this._map) return;
+      return origDrawLayer.apply(this, args);
+    };
+    (L as any).CanvasLayer.prototype.drawLayer.__patched = true;
+  }
+
+  const origOnLayerDidMove = (L as any).CanvasLayer.prototype._onLayerDidMove;
+  if (origOnLayerDidMove && !origOnLayerDidMove.__patched) {
+    (L as any).CanvasLayer.prototype._onLayerDidMove = function(...args: any[]) {
+      if (!this._map) return;
+      return origOnLayerDidMove.apply(this, args);
+    };
+    (L as any).CanvasLayer.prototype._onLayerDidMove.__patched = true;
+  }
+}
+if (typeof L !== 'undefined' && (L as any).VelocityLayer) {
+  const origStartWindy = (L as any).VelocityLayer.prototype._startWindy;
+  if (origStartWindy && !origStartWindy.__patched) {
+    (L as any).VelocityLayer.prototype._startWindy = function(...args: any[]) {
+      if (!this._map) return;
+      return origStartWindy.apply(this, args);
+    };
+    (L as any).VelocityLayer.prototype._startWindy.__patched = true;
+  }
+}
+// --- FIN PARCHE ---
+
 // Componente para animación de viento
 interface WindAnimationLayerProps {
   devices: DeviceData[];
@@ -239,24 +273,21 @@ const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric
   const velocityLayerRef = useRef<any>(null);
 
   useEffect(() => {
+    // Si no es la métrica visible de viento, limpiamos de forma segura y salimos
     if (!visible || metric !== 'wind') {
       if (velocityLayerRef.current) {
-        map.removeLayer(velocityLayerRef.current);
+        try {
+          if (map && map.hasLayer(velocityLayerRef.current)) {
+            map.removeLayer(velocityLayerRef.current);
+          }
+        } catch (e) {
+          // Ignorar errores de capa fantasma
+        }
         velocityLayerRef.current = null;
       }
       return;
     }
 
-    // Convertir datos de viento a formato U/V que requiere leaflet-velocity
-    // Asumimos que "wind" es la velocidad en m/s. Para la dirección, si no existe wind_direction,
-    // usaremos un valor calculado o por defecto ya que en DeviceData solo veo "wind".
-    // Wait, the prompt says "Los sensores de viento deben tener: wind_speed (m/s) y wind_direction (grados). 
-    // Si tus sensores tienen otro nombre de campo, ajustar aquí".
-    // In `ListaDispositivos.tsx`, DeviceData has `wind?: number`. We'll use `wind` for wind_speed. 
-    // What about wind direction? Let's use `windDirection` if it exists, or just a default/mock for now context 
-    // because DeviceData doesn't show direction. Or maybe it has `windDirection` in reality?
-    
-    // De acuerdo al prompt, ajustaré.
     const sensoresViento = devices.filter(s =>
       s.wind != null && !isNaN(Number(s.wind))
     );
@@ -266,10 +297,9 @@ const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric
       return;
     }
 
-    // Agregar dirección mock si no existe
     const puntosUV = sensoresViento.map(s => {
       const spd = Number(s.wind);
-      const dir = (s as any).windDirection ?? ((s.id * 37) % 360); // Mock direction if not present
+      const dir = (s as any).windDirection ?? ((s.id * 37) % 360);
       return {
         lat: s.coordinates[0],
         lng: s.coordinates[1],
@@ -335,14 +365,14 @@ const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric
 
     if (velocityLayerRef.current) {
       try {
-        map.removeLayer(velocityLayerRef.current);
-      } catch (e) {
-        console.warn('Error removeLayer:', e);
-      }
+        if (map.hasLayer(velocityLayerRef.current)) {
+           map.removeLayer(velocityLayerRef.current);
+        }
+      } catch (e) { }
     }
 
     try {
-      velocityLayerRef.current = (L as any).velocityLayer({
+      const velLayer = (L as any).velocityLayer({
         displayValues: true,
         displayOptions: {
           velocityType: 'Viento',
@@ -359,15 +389,20 @@ const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric
         lineWidth: 1.5
       });
 
-      velocityLayerRef.current.addTo(map);
+      velocityLayerRef.current = velLayer;
+      velLayer.addTo(map);
+
     } catch(e) {
-      console.error('Error in velocityLayer:', e);
+      console.error('Error montando velocityLayer:', e);
     }
 
+    // Cleanup profundo cuando el componente finalice o haya re-render
     return () => {
       if (velocityLayerRef.current) {
         try {
-          map.removeLayer(velocityLayerRef.current);
+          if (map && map.hasLayer(velocityLayerRef.current)) {
+            map.removeLayer(velocityLayerRef.current);
+          }
         } catch(e) {}
         velocityLayerRef.current = null;
       }
