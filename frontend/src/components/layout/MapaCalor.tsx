@@ -273,8 +273,8 @@ const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric
   const velocityLayerRef = useRef<any>(null);
 
   useEffect(() => {
-    // Si no es la métrica visible de viento, limpiamos de forma segura y salimos
-    if (!visible || metric !== 'wind') {
+    // Si no es la métrica visible de viento o temperatura, limpiamos de forma segura y salimos
+    if (!visible || (metric !== 'wind' && metric !== 'temperature')) {
       if (velocityLayerRef.current) {
         try {
           if (map && map.hasLayer(velocityLayerRef.current)) {
@@ -389,6 +389,8 @@ const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric
     }
 
     try {
+      const isTemperature = metric === 'temperature';
+
       const velLayer = (L as any).velocityLayer({
         displayValues: true,
         displayOptions: {
@@ -400,11 +402,11 @@ const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric
         },
         data: jsonVelocity,
         maxVelocity: 15,
-        colorScale: ['#72b9ff','#9ecae1','#3182bd','#08306b'],
+        colorScale: isTemperature ? ['#ffffff'] : ['#72b9ff','#9ecae1','#3182bd','#08306b'],
         velocityScale: 0.01,
-        particleAge: 40, // Reducido para que las estelas sean mas cortas
+        particleAge: isTemperature ? 20 : 40,
         lineWidth: 1,
-        particleMultiplier: 0.002, // Reducido para mostrar muchas menos particulas
+        particleMultiplier: isTemperature ? 0.0005 : 0.002,
       });
 
       velocityLayerRef.current = velLayer;
@@ -441,7 +443,7 @@ const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible, s
   return (
     <>
       {metric !== 'wind' && <GeographicHeatmapLayer devices={devices} metric={metric} visible={visible} />}
-      {metric === 'wind' && <WindAnimationLayer devices={devices} metric={metric} visible={visible} />}
+      {(metric === 'wind' || metric === 'temperature') && <WindAnimationLayer devices={devices} metric={metric} visible={visible} />}
       <TemperatureLabels devices={devices} metric={metric} visible={visible && showLabels} />
     </>
   );
