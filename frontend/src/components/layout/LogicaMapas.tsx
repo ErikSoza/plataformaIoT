@@ -44,8 +44,8 @@ const MetricaVariables = {
     icon: '💨',
     unit: 'm/s',
     description: 'Velocidad del viento',
-    color: '#607D8B',
-    gradient: ['#ffffb2', '#fecc5c', '#fd8d3c', '#f03b20', '#bd0026']
+    color: '#3182bd',
+    gradient: ['#f7fbff', '#9ecae1', '#3182bd', '#08306b']
   },
   gas: {
     id: 'gas',

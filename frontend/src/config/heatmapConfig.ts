@@ -36,7 +36,7 @@ export const HEATMAP_CONFIG: Record<string, any> = {
     legendLabel: 'Presión atmosférica'
   },
   wind: {
-    gradient: { 0.0: '#99ff99', 0.3: '#ffff66', 0.7: '#ff9966', 1.0: '#ff6666' },
+    gradient: { 0.0: '#f7fbff', 0.3: '#9ecae1', 0.7: '#3182bd', 1.0: '#08306b' },
     radius: 80,
     blur: 45,
     min: 0,
