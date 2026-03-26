@@ -48,49 +48,134 @@ interface GeographicHeatmapLayerProps {
 
 const GeographicHeatmapLayer: React.FC<GeographicHeatmapLayerProps> = ({ devices, metric, visible }) => {
   const map = useMap();
-  // Radio máximo estricto en metros para emular "un margen de 2km a su alrededor"
-  const BASE_RADIUS_METERS = 2000; 
+  const overlayRef = useRef<L.ImageOverlay | null>(null);
 
   useEffect(() => {
-    let circleLayers: L.Circle[] = [];
-
-    if (visible && devices.length > 0) {
-      const validDevices = devices.filter(
-        (s) => s[metric] !== undefined && s[metric] !== null && !isNaN(Number(s[metric]))
-      );
-
-      validDevices.forEach((device) => {
-        const [lat, lng] = device.coordinates;
-        const color = getValueColorFromGradient(Number(device[metric]), metric);
-        
-        // Simular un efecto "difuminado" (Glow/Heatmap) creando múltiples capas superpuestas
-        // de mayor a menor radio, aumentando ligeramente la opacidad hacia el centro.
-        //const scales = [1.0, 0.75]; // Radios relativos (100%, 75%, 50%, 25%)
-        
-        //scales.forEach((scale, index) => {
-          const circle = L.circle([lat, lng], {
-            radius: BASE_RADIUS_METERS,
-            fillColor: color,
-            color: 'transparent',    // Sin borde para no arruinar la ilusión de calor
-            weight: 0,
-            fillOpacity: 0.5, // Opacidad aumenta gradualmente al centro
-            interactive: false,
-            bubblingMouseEvents: false
-          });
-          
-          circle.addTo(map);
-          circleLayers.push(circle);
-        //});
-      });
+    // Si se oculta o no hay datos, limpiamos la capa
+    if (!visible || devices.length === 0) {
+      if (overlayRef.current && map.hasLayer(overlayRef.current)) {
+        map.removeLayer(overlayRef.current);
+        overlayRef.current = null;
+      }
+      return;
     }
 
-    return () => {
-      circleLayers.forEach((circle) => {
-        if (map.hasLayer(circle)) {
-          map.removeLayer(circle);
+    const validDevices = devices.filter(
+      (s) => s[metric] !== undefined && s[metric] !== null && !isNaN(Number(s[metric]))
+    );
+
+    if (validDevices.length === 0) return;
+
+    // 0. Pre-procesar dispositivos a números estrictos para máxima velocidad y evitar errores de NaN
+    const parsedDevices = validDevices.map(d => ({
+      val: Number(d[metric]),
+      lat: Number(d.coordinates[0]),
+      lng: Number(d.coordinates[1])
+    }));
+
+    // 1. Calcular el Bounding Box exacto que engloba a todos los sensores
+    let minLat = 90, maxLat = -90, minLng = 180, maxLng = -180;
+    parsedDevices.forEach((device) => {
+      if (device.lat < minLat) minLat = device.lat;
+      if (device.lat > maxLat) maxLat = device.lat;
+      if (device.lng < minLng) minLng = device.lng;
+      if (device.lng > maxLng) maxLng = device.lng;
+    });
+
+    // 2. Expandir el bounding box para cubrir visualmente el radio de acción (2km aprox = ~0.02 grados)
+    const MAX_DISTANCE_METERS = 2000;
+    const padding = 0.03; 
+    minLat -= padding;
+    maxLat += padding;
+    minLng -= padding;
+    maxLng += padding;
+
+    const bounds = L.latLngBounds([minLat, minLng], [maxLat, maxLng]);
+
+    // 3. Crear un grid "Canvas" off-screen para dibujar los pixeles de calor
+    const GRID_SIZE = 150; // Resolución equilibrada para rendimiento y calidad visual
+    const canvas = document.createElement('canvas');
+    canvas.width = GRID_SIZE;
+    canvas.height = GRID_SIZE;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 4. Utilidad rápida de distancia entre coordenadas (Haversine optimizado)
+    const deg2rad = Math.PI / 180;
+    const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371e3;
+      const x = (lon2 - lon1) * Math.cos((lat1 + lat2) / 2 * deg2rad);
+      const y = lat2 - lat1;
+      return Math.sqrt(x * x + y * y) * R * deg2rad;
+    };
+
+    // 5. Interpolarización por IDW (Inverse Distance Weighting)
+    for (let y = 0; y < GRID_SIZE; y++) {
+      for (let x = 0; x < GRID_SIZE; x++) {
+        // Mapear Coordenadas Canvas (X,Y) -> Grados Geográficos (Lat, Lng)
+        const pointLat = maxLat - (y / GRID_SIZE) * (maxLat - minLat);
+        const pointLng = minLng + (x / GRID_SIZE) * (maxLng - minLng);
+
+        let sumWeights = 0;
+        let sumValues = 0;
+        let minDist = Infinity;
+
+        // Medir distancias y pesos para cada sensor
+        parsedDevices.forEach((d) => {
+          // d.lat y d.lng ahora son 100% numéricos, previniendo errores NaN de interpolación
+          let d_mts = getDistance(pointLat, pointLng, d.lat, d.lng);
+          
+          if (d_mts < minDist) minDist = d_mts;
+
+          // Truco: min distance de 1 metro para evitar división entre cero si está a 0
+          if (d_mts < 1) d_mts = 1;
+          
+          const weight = 1 / Math.pow(d_mts, 2.5); // Fricción/potencia de IDW
+          sumWeights += weight;
+          sumValues += (d.val * weight);
+        });
+
+        // 6. Si el punto de la cuadrícula evaluada está a menos de 2km de AL MENOS 1 sensor
+        if (minDist <= MAX_DISTANCE_METERS && sumWeights > 0 && !isNaN(sumValues) && !isNaN(sumWeights)) {
+          const interpolatedValue = sumValues / sumWeights;
+          const color = getValueColorFromGradient(interpolatedValue, metric);
+          
+          // Difuminado de bordes para que no se vea cortado seco
+          let alpha = 0.7; // Opacidad máxima base
+          if (minDist > MAX_DISTANCE_METERS - 800) {
+            // Un "fade out" en los bordes de los últimos 800 metros
+            alpha *= (MAX_DISTANCE_METERS - minDist) / 800;
+          }
+
+          if (alpha > 0) {
+             // Pintar la matriz (sobreponiendo 1px extra para evitar rejillas transparentes)
+             ctx.fillStyle = color;
+             ctx.globalAlpha = alpha;
+             ctx.fillRect(x, y, 2, 2);
+          }
         }
-      });
-      circleLayers = [];
+      }
+    }
+
+    // 7. Generar Imagen Base64 desde el Canvas
+    const dataUrl = canvas.toDataURL('image/png');
+    
+    // Remover la capa estática anterior si está presenté
+    if (overlayRef.current && map.hasLayer(overlayRef.current)) {
+      map.removeLayer(overlayRef.current);
+    }
+
+    // Y montamos el Grid interpolado recién pintado al Leaflet
+    overlayRef.current = L.imageOverlay(dataUrl, bounds, {
+      opacity: 0.4,
+      interactive: false,
+    }).addTo(map);
+
+    // Limpieza habitual del Hook
+    return () => {
+      if (overlayRef.current && map.hasLayer(overlayRef.current)) {
+        map.removeLayer(overlayRef.current);
+      }
     };
   }, [map, devices, metric, visible]);
 
@@ -405,8 +490,8 @@ const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric
         colorScale: isTemperature ? ['#ffffff'] : ['#72b9ff','#9ecae1','#3182bd','#08306b'],
         velocityScale: 0.01,
         particleAge: isTemperature ? 20 : 40,
-        lineWidth: 1,
-        particleMultiplier: isTemperature ? 0.0005 : 0.002,
+        lineWidth: 2,
+        particleMultiplier: isTemperature ? 0.00005 : 0.002,
       });
 
       velocityLayerRef.current = velLayer;
