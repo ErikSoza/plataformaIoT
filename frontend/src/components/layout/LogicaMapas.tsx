@@ -22,19 +22,19 @@ const MetricaVariables = {
   },
   humidity: {
     id: 'humidity',
-    name: 'Humedad',
+    name: 'Humedad y Lluvia',
     icon: '💧',
     unit: '%',
-    description: 'Humedad relativa del aire',
+    description: 'Humedad relativa y probabilidad de lluvia',
     color: '#00BCD4',
     gradient: ['#f7fbff', '#deebf7', '#9ecae1', '#6baed6', '#08519c']
   },
   pressure: {
     id: 'pressure',
-    name: 'Presión',
+    name: 'Presión (Avanzado)',
     icon: '🌫️',
     unit: 'hPa',
-    description: 'Presión atmosférica',
+    description: 'Presión atmosférica avanzada',
     color: '#9C27B0',
     gradient: ['#800026', '#bd0026', '#e31a1c', '#fc4e2a', '#feb24c']
   },

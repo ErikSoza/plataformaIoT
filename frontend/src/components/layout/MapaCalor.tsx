@@ -257,39 +257,17 @@ const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, v
               const gamma = (alpha * t) / (beta + t) + Math.log(rh / 100.0);
               const dewPoint = (beta * gamma) / (alpha - gamma);
               
-              extraInfoHtml = `
-                <div style="font-size: 10px; font-weight: 500; margin-top: 3px; color: rgba(255,255,255,0.95); border-top: 1px solid rgba(255,255,255,0.4); padding-top: 2px;">
-                  Rocío: ${dewPoint.toFixed(1)}°C
-                </div>
-              `;
-            }
-            break;
-          case 'pressure':
-            displayValue = Math.round(value!).toString();
-            unitSymbol = ' hPa';
-            
-            // Simulación de predicción de lluvia (Zambretti simplificado con variables actuales)
-            if (device.temperature !== undefined && device.humidity !== undefined) {
-              const p = Number(value);
-              const h = Number(device.humidity);
-              const t = Number(device.temperature);
-              
+              // Simulación de predicción de lluvia (Zambretti simplificado)
               let rainProb = 0;
+              if (device.pressure !== undefined) {
+                const p = Number(device.pressure);
+                if (p < 1000) rainProb += 50;
+                else if (p < 1010) rainProb += 30;
+                else if (p < 1015) rainProb += 10;
+              }
               
-              // Factor de Presión (asumiendo tendencia en base a valor actual respecto al estándar 1013)
-              if (p < 1000) rainProb += 50;
-              else if (p < 1010) rainProb += 30;
-              else if (p < 1015) rainProb += 10;
-              
-              // Factor de Humedad
-              if (h > 85) rainProb += 30;
-              else if (h > 70) rainProb += 15;
-              
-              // Factor de Punto de Rocío (Proximidad a la temperatura ambiente)
-              const alpha = 17.271;
-              const beta = 237.7;
-              const gamma = (alpha * t) / (beta + t) + Math.log(h / 100.0);
-              const dewPoint = (beta * gamma) / (alpha - gamma);
+              if (rh > 85) rainProb += 30;
+              else if (rh > 70) rainProb += 15;
               
               if (t - dewPoint < 2) rainProb += 20;
               else if (t - dewPoint < 4) rainProb += 10;
@@ -299,10 +277,15 @@ const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, v
               
               extraInfoHtml = `
                 <div style="font-size: 10px; font-weight: 500; margin-top: 3px; color: rgba(255,255,255,0.95); border-top: 1px solid rgba(255,255,255,0.4); padding-top: 2px;">
-                  Lluvia: ${Math.round(rainProb)}% ${rainMood}
+                  Rocío: ${dewPoint.toFixed(1)}°C <br/>
+                  Pred. Lluvia: ${Math.round(rainProb)}% ${rainMood}
                 </div>
               `;
             }
+            break;
+          case 'pressure':
+            displayValue = Math.round(value!).toString();
+            unitSymbol = ' hPa';
             break;
           case 'wind':
             displayValue = value!.toFixed(1);

@@ -40,7 +40,7 @@ export const HEATMAP_CONFIG: Record<string, any> = {
     min: 980,
     max: 1040,
     unit: 'hPa',
-    legendLabel: 'Presión atmosférica'
+    legendLabel: 'Presión Atmosférica'
   },
   wind: {
     gradient: { 0.0: '#f7fbff', 0.3: '#9ecae1', 0.7: '#3182bd', 1.0: '#08306b' },
