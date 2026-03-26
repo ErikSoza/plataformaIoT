@@ -314,22 +314,39 @@ const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric
     const maxLat = Math.max(...lats) + 0.05;
     const minLng = Math.min(...lngs) - 0.05;
     const maxLng = Math.max(...lngs) + 0.05;
-    const nx = 15, ny = 15;
+    const nx = 40, ny = 40;
 
     const interpolar = (campo: 'U' | 'V') => {
       const resultado: number[] = [];
+
       for (let j = 0; j < ny; j++) {
         for (let i = 0; i < nx; i++) {
           const lat = maxLat - j * (maxLat - minLat) / (ny - 1);
           const lng = minLng + i * (maxLng - minLng) / (nx - 1);
+
           let sumPeso = 0, sumValor = 0;
+          let menorDistanciaMts = Infinity;
+
           for (const p of puntosUV) {
+            // calculamos la distancia fisica real en metro de leaflet
+
+            const distanciaMetros = map.distance([lat, lng], [p.lat, p.lng]);
+
+            if (distanciaMetros < menorDistanciaMts) {
+              menorDistanciaMts = distanciaMetros;
+            }
+
+            // Mantenemos el calculo IDW pero con un peso máximo para evitar distorsiones extremas
             const dist2 = (p.lat - lat) ** 2 + (p.lng - lng) ** 2;
             const peso = dist2 < 1e-10 ? 1e10 : 1 / dist2;
             sumPeso += peso;
             sumValor += peso * p[campo];
           }
-          resultado.push(sumValor / sumPeso);
+          if (menorDistanciaMts > 2000) {
+            resultado.push(NaN); // No hay viento real, forzamos a NaN (vacío) para que no se dibujen partículas quietas.
+          } else {
+            resultado.push(sumValor / sumPeso); // Sí hay viento interpolado.
+          }
         }
       }
       return resultado;
