@@ -400,10 +400,11 @@ const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric
         },
         data: jsonVelocity,
         maxVelocity: 15,
-        colorScale: ['#f7fbff','#9ecae1','#3182bd','#08306b'],
-        velocityScale: 0.008,
-        particleAge: 64,
-        lineWidth: 1.5
+        colorScale: ['#72b9ff','#9ecae1','#3182bd','#08306b'],
+        velocityScale: 0.01,
+        particleAge: 40, // Reducido para que las estelas sean mas cortas
+        lineWidth: 1,
+        particleMultiplier: 0.002, // Reducido para mostrar muchas menos particulas
       });
 
       velocityLayerRef.current = velLayer;
