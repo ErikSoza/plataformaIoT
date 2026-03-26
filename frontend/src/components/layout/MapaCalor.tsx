@@ -22,60 +22,75 @@ declare module 'leaflet' {
   }
 }
 
-// Componente para el Heatmap con leaflet.heat
-interface HeatmapLayerProps {
+// Función auxiliar para obtener el color estático desde el gradiente de HEATMAP_CONFIG
+const getValueColorFromGradient = (value: number, metric: string): string => {
+  const cfg = HEATMAP_CONFIG[metric];
+  if (!cfg) return '#666666';
+  
+  const norm = normalizar(value, cfg.min, cfg.max);
+  const stops = Object.keys(cfg.gradient).map(Number).sort((a, b) => a - b);
+  
+  // Buscar el color correspondiente al porcentaje del valor actual
+  for (let i = 0; i < stops.length; i++) {
+    if (norm <= stops[i]) {
+      return cfg.gradient[stops[i] as keyof typeof cfg.gradient];
+    }
+  }
+  return cfg.gradient[stops[stops.length - 1] as keyof typeof cfg.gradient];
+};
+
+// Componente para el Heatmap usando círculos de distancia geográfica realista
+interface GeographicHeatmapLayerProps {
   devices: DeviceData[];
   metric: 'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation';
   visible: boolean;
 }
 
-const HeatLayerComponent: React.FC<HeatmapLayerProps> = ({ devices, metric, visible }) => {
+const GeographicHeatmapLayer: React.FC<GeographicHeatmapLayerProps> = ({ devices, metric, visible }) => {
   const map = useMap();
-  const heatLayerRef = useRef<any>(null);
+  // Radio máximo estricto en metros para emular "un margen de 2km a su alrededor"
+  const BASE_RADIUS_METERS = 2000; 
 
   useEffect(() => {
-    // Si no está visible o no hay dispositivos, remover capa si existe
-    if (!visible || devices.length === 0) {
-      if (heatLayerRef.current) {
-        map.removeLayer(heatLayerRef.current);
-        heatLayerRef.current = null;
-      }
-      return;
+    let circleLayers: L.Circle[] = [];
+
+    if (visible && devices.length > 0) {
+      const validDevices = devices.filter(
+        (s) => s[metric] !== undefined && s[metric] !== null && !isNaN(Number(s[metric]))
+      );
+
+      validDevices.forEach((device) => {
+        const [lat, lng] = device.coordinates;
+        const color = getValueColorFromGradient(Number(device[metric]), metric);
+        
+        // Simular un efecto "difuminado" (Glow/Heatmap) creando múltiples capas superpuestas
+        // de mayor a menor radio, aumentando ligeramente la opacidad hacia el centro.
+        //const scales = [1.0, 0.75]; // Radios relativos (100%, 75%, 50%, 25%)
+        
+        //scales.forEach((scale, index) => {
+          const circle = L.circle([lat, lng], {
+            radius: BASE_RADIUS_METERS,
+            fillColor: color,
+            color: 'transparent',    // Sin borde para no arruinar la ilusión de calor
+            weight: 0,
+            fillOpacity: 0.5, // Opacidad aumenta gradualmente al centro
+            interactive: false,
+            bubblingMouseEvents: false
+          });
+          
+          circle.addTo(map);
+          circleLayers.push(circle);
+        //});
+      });
     }
-
-    const cfg = HEATMAP_CONFIG[metric];
-    if (!cfg) return;
-
-    // Normalizar puntos
-    const puntosNormalizados = devices
-      .filter(s => s[metric] != null && !isNaN(Number(s[metric])))
-      .map(s => [
-        s.coordinates[0], 
-        s.coordinates[1], 
-        normalizar(Number(s[metric]), cfg.min, cfg.max)
-      ] as [number, number, number]);
-
-    // Remover capa anterior si existe antes de crear la nueva
-    if (heatLayerRef.current) {
-      map.removeLayer(heatLayerRef.current);
-    }
-
-    // Crear nueva capa
-    heatLayerRef.current = L.heatLayer(puntosNormalizados, {
-      radius: cfg.radius,
-      blur: cfg.blur,
-      maxZoom: 18,
-      max: 1.0,
-      gradient: cfg.gradient
-    });
-
-    heatLayerRef.current.addTo(map);
 
     return () => {
-      if (heatLayerRef.current) {
-        map.removeLayer(heatLayerRef.current);
-        heatLayerRef.current = null;
-      }
+      circleLayers.forEach((circle) => {
+        if (map.hasLayer(circle)) {
+          map.removeLayer(circle);
+        }
+      });
+      circleLayers = [];
     };
   }, [map, devices, metric, visible]);
 
@@ -372,7 +387,7 @@ interface HeatMapLayerProps {
 const HeatMapLayer: React.FC<HeatMapLayerProps> = ({ devices, metric, visible, showLabels = true }) => {
   return (
     <>
-      {metric !== 'wind' && <HeatLayerComponent devices={devices} metric={metric} visible={visible} />}
+      {metric !== 'wind' && <GeographicHeatmapLayer devices={devices} metric={metric} visible={visible} />}
       {metric === 'wind' && <WindAnimationLayer devices={devices} metric={metric} visible={visible} />}
       <TemperatureLabels devices={devices} metric={metric} visible={visible && showLabels} />
     </>

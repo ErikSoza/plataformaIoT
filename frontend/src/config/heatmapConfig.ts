@@ -1,55 +1,64 @@
 export const HEATMAP_CONFIG: Record<string, any> = {
   temperature: {
-    gradient: { 0.0: '#313695', 0.2: '#4575b4', 0.4: '#74add1', 0.6: '#fee090', 0.8: '#f46d43', 1.0: '#d73027' },
-    radius: 50,
-    blur: 35,
-    min: -10,
+    // Gradiente térmico más acorde a la temperatura del sensor
+    gradient: {  
+      0.0: '#0066cc', // Hasta 10°C (Azul muy frío)
+      0.2: '#0099ff', // Hasta 15°C (Azul frío)
+      0.4: '#33cc33', // Hasta 20°C (Verde fresco)
+      0.5: '#66ff66', // Hasta 25°C (Verde cálido)
+      0.6: '#ffff00', // Hasta 30°C (Amarillo)
+      0.8: '#ff9900', // Hasta 35°C (Naranja)
+      1.0: '#ff0000'  // Más de 35°C (Rojo caliente)
+    },
+    radius: 90, // Radio aumentado para cubrir área aprox de 2km visible
+    blur: 50,   // Mejor difuminado para radios grandes
+    min: 0,     // Ajustado el min a 0 para que los colores coincidan mejor con la realidad de los sensores
     max: 45,
     unit: '°C',
     legendLabel: 'Temperatura ambiente'
   },
   humidity: {
-    gradient: { 0.0: '#543005', 0.3: '#bf812d', 0.6: '#35978f', 1.0: '#003c30' },
-    radius: 50,
-    blur: 35,
+    gradient: { 0.0: '#ffff99', 0.2: '#99ff99', 0.5: '#66ccff', 0.8: '#0099ff', 1.0: '#0066cc' },
+    radius: 80,
+    blur: 45,
     min: 0,
     max: 100,
     unit: '%',
     legendLabel: 'Humedad relativa'
   },
   pressure: {
-    gradient: { 0.0: '#40004b', 0.4: '#9970ab', 0.7: '#a6dba0', 1.0: '#00441b' },
-    radius: 50,
-    blur: 35,
+    gradient: { 0.0: '#ff0000', 0.2: '#ff6600', 0.5: '#ffff00', 0.8: '#66ff66', 1.0: '#0066ff' },
+    radius: 80,
+    blur: 45,
     min: 980,
     max: 1040,
     unit: 'hPa',
     legendLabel: 'Presión atmosférica'
   },
   wind: {
-    gradient: { 0.0: '#f7fbff', 0.3: '#9ecae1', 0.7: '#3182bd', 1.0: '#08306b' },
-    radius: 55,
-    blur: 40,
+    gradient: { 0.0: '#99ff99', 0.3: '#ffff66', 0.7: '#ff9966', 1.0: '#ff6666' },
+    radius: 80,
+    blur: 45,
     min: 0,
     max: 20,
     unit: 'm/s',
     legendLabel: 'Velocidad del viento'
   },
   gas: {
-    gradient: { 0.0: '#00e400', 0.25: '#ffff00', 0.5: '#ff7e00', 0.75: '#ff0000', 1.0: '#7e0023' },
-    radius: 50,
-    blur: 35,
+    gradient: { 0.0: '#00ff00', 0.25: '#66ff66', 0.4: '#ffff00', 0.8: '#ff0000', 1.0: '#7e0023' },
+    radius: 80,
+    blur: 45,
     min: 0,
-    max: 500,
+    max: 0.1,
     unit: 'ppm',
     legendLabel: 'Concentración de gases'
   },
   radiation: {
-    gradient: { 0.0: '#ffffcc', 0.3: '#41b6c4', 0.7: '#2c7fb8', 1.0: '#253494' },
-    radius: 50,
-    blur: 35,
+    gradient: { 0.0: '#66ccff', 0.3: '#99ff99', 0.5: '#ffff66', 0.8: '#ff9966', 1.0: '#ff6666' },
+    radius: 80,
+    blur: 45,
     min: 0,
-    max: 1200,
+    max: 1000,
     unit: 'W/m²',
     legendLabel: 'Radiación solar'
   }
