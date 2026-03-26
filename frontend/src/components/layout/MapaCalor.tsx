@@ -82,9 +82,10 @@ const GeographicHeatmapLayer: React.FC<GeographicHeatmapLayerProps> = ({ devices
       if (device.lng > maxLng) maxLng = device.lng;
     });
 
-    // 2. Expandir el bounding box para cubrir visualmente el radio de acción (2km aprox = ~0.02 grados)
-    const MAX_DISTANCE_METERS = 2000;
-    const padding = 0.03; 
+    // 2. Expandir el bounding box para cubrir visualmente el radio de acción
+    // Si es humedad, la "masa de aire" la hacemos más expansiva (3km), de lo contrario 2km.
+    const MAX_DISTANCE_METERS = metric === 'humidity' ? 3000 : 2000;
+    const padding = metric === 'humidity' ? 0.04 : 0.03; 
     minLat -= padding;
     maxLat += padding;
     minLng -= padding;
@@ -141,10 +142,12 @@ const GeographicHeatmapLayer: React.FC<GeographicHeatmapLayerProps> = ({ devices
           const color = getValueColorFromGradient(interpolatedValue, metric);
           
           // Difuminado de bordes para que no se vea cortado seco
-          let alpha = 0.7; // Opacidad máxima base
-          if (minDist > MAX_DISTANCE_METERS - 800) {
-            // Un "fade out" en los bordes de los últimos 800 metros
-            alpha *= (MAX_DISTANCE_METERS - minDist) / 800;
+          let alpha = metric === 'humidity' ? 0.85 : 0.7; // Opacidad máxima base
+          const fadeOutDistance = metric === 'humidity' ? 1500 : 800; // La humedad se desvanece más gradualmente
+          
+          if (minDist > MAX_DISTANCE_METERS - fadeOutDistance) {
+            // Un "fade out" en los bordes
+            alpha *= (MAX_DISTANCE_METERS - minDist) / fadeOutDistance;
           }
 
           if (alpha > 0) {
@@ -167,8 +170,9 @@ const GeographicHeatmapLayer: React.FC<GeographicHeatmapLayerProps> = ({ devices
 
     // Y montamos el Grid interpolado recién pintado al Leaflet
     overlayRef.current = L.imageOverlay(dataUrl, bounds, {
-      opacity: 0.4,
+      opacity: metric === 'humidity' ? 0.65 : 0.4,
       interactive: false,
+      className: metric === 'humidity' ? 'humidity-breath-effect' : '',
     }).addTo(map);
 
     // Limpieza habitual del Hook
@@ -201,9 +205,9 @@ const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, v
         return { bg: 'rgba(40, 167, 69, 0.95)', border: '#28a745', class: 'temperature-label-medium' };
       
       case 'humidity':
-        if (value <= 30) return { bg: 'rgba(255, 193, 7, 0.95)', border: '#ffc107', class: 'temperature-label-low' };
-        if (value >= 80) return { bg: 'rgba(0, 123, 255, 0.95)', border: '#007bff', class: 'temperature-label-high' };
-        return { bg: 'rgba(40, 167, 69, 0.95)', border: '#28a745', class: 'temperature-label-medium' };
+        if (value <= 30) return { bg: 'rgba(215, 205, 185, 0.9)', border: '#b89d78', class: 'temperature-label-low' };
+        if (value >= 80) return { bg: 'rgba(75, 155, 206, 0.9)', border: '#4b9bce', class: 'temperature-label-high' };
+        return { bg: 'rgba(102, 217, 232, 0.9)', border: '#66d9e8', class: 'temperature-label-medium' };
       
       case 'pressure':
         if (value <= 1005) return { bg: 'rgba(220, 53, 69, 0.95)', border: '#dc3545', class: 'temperature-label-low' };
@@ -233,6 +237,7 @@ const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, v
         // Formatear el valor según la métrica
         let displayValue = '';
         let unitSymbol = '';
+        let extraInfoHtml = ''; // Para agregar info adicional como el punto de rocío
         
         switch (metric) {
           case 'temperature':
@@ -242,10 +247,62 @@ const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, v
           case 'humidity':
             displayValue = Math.round(value!).toString();
             unitSymbol = '%';
+            
+            // Calculo del Punto de Rocío (Dew Point) usando aproximación de Magnus-Tetens
+            if (device.temperature !== undefined && device.temperature !== null) {
+              const t = Number(device.temperature);
+              const rh = Number(value);
+              const alpha = 17.271;
+              const beta = 237.7;
+              const gamma = (alpha * t) / (beta + t) + Math.log(rh / 100.0);
+              const dewPoint = (beta * gamma) / (alpha - gamma);
+              
+              extraInfoHtml = `
+                <div style="font-size: 10px; font-weight: 500; margin-top: 3px; color: rgba(255,255,255,0.95); border-top: 1px solid rgba(255,255,255,0.4); padding-top: 2px;">
+                  Rocío: ${dewPoint.toFixed(1)}°C
+                </div>
+              `;
+            }
             break;
           case 'pressure':
             displayValue = Math.round(value!).toString();
             unitSymbol = ' hPa';
+            
+            // Simulación de predicción de lluvia (Zambretti simplificado con variables actuales)
+            if (device.temperature !== undefined && device.humidity !== undefined) {
+              const p = Number(value);
+              const h = Number(device.humidity);
+              const t = Number(device.temperature);
+              
+              let rainProb = 0;
+              
+              // Factor de Presión (asumiendo tendencia en base a valor actual respecto al estándar 1013)
+              if (p < 1000) rainProb += 50;
+              else if (p < 1010) rainProb += 30;
+              else if (p < 1015) rainProb += 10;
+              
+              // Factor de Humedad
+              if (h > 85) rainProb += 30;
+              else if (h > 70) rainProb += 15;
+              
+              // Factor de Punto de Rocío (Proximidad a la temperatura ambiente)
+              const alpha = 17.271;
+              const beta = 237.7;
+              const gamma = (alpha * t) / (beta + t) + Math.log(h / 100.0);
+              const dewPoint = (beta * gamma) / (alpha - gamma);
+              
+              if (t - dewPoint < 2) rainProb += 20;
+              else if (t - dewPoint < 4) rainProb += 10;
+              
+              rainProb = Math.min(100, Math.max(0, rainProb));
+              const rainMood = rainProb > 70 ? '🌧️' : rainProb > 40 ? '🌦️' : '⛅';
+              
+              extraInfoHtml = `
+                <div style="font-size: 10px; font-weight: 500; margin-top: 3px; color: rgba(255,255,255,0.95); border-top: 1px solid rgba(255,255,255,0.4); padding-top: 2px;">
+                  Lluvia: ${Math.round(rainProb)}% ${rainMood}
+                </div>
+              `;
+            }
             break;
           case 'wind':
             displayValue = value!.toFixed(1);
@@ -266,7 +323,7 @@ const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, v
         
         // Crear ícono personalizado con el valor de la métrica
         const labelIcon = L.divIcon({
-          className: `temperature-label-icon ${colorInfo.class}`,
+          className: `temperature-label-icon ${colorInfo.class} ${metric === 'humidity' ? 'humidity-pulse-effect' : ''}`,
           html: `
             <div style="
               background: ${colorInfo.bg};
@@ -284,11 +341,12 @@ const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, v
               backdrop-filter: blur(8px);
               text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
             ">
-              ${displayValue}${unitSymbol}
+              <div>${displayValue}${unitSymbol}</div>
+              ${extraInfoHtml}
             </div>
           `,
-          iconSize: [60, 24],
-          iconAnchor: [30, 12]
+          iconSize: [60, extraInfoHtml ? 42 : 24],
+          iconAnchor: [30, extraInfoHtml ? 21 : 12]
         });
 
         // Crear el marcador y agregarlo al mapa
@@ -491,7 +549,7 @@ const WindAnimationLayer: React.FC<WindAnimationLayerProps> = ({ devices, metric
         velocityScale: 0.01,
         particleAge: isTemperature ? 20 : 40,
         lineWidth: 2,
-        particleMultiplier: isTemperature ? 0.00005 : 0.002,
+        particleMultiplier: isTemperature ? 0.00005 : 0.001,
       });
 
       velocityLayerRef.current = velLayer;

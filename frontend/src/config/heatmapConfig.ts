@@ -18,9 +18,16 @@ export const HEATMAP_CONFIG: Record<string, any> = {
     legendLabel: 'Temperatura ambiente'
   },
   humidity: {
-    gradient: { 0.0: '#ffff99', 0.2: '#99ff99', 0.5: '#66ccff', 0.8: '#0099ff', 1.0: '#0066cc' },
-    radius: 80,
-    blur: 45,
+    // Gradiente de agua/gases: Colores más suaves y pasteles para no opacar el mapa
+    gradient: { 
+      0.0: '#f4f1ea', // Muy seco (Arena claro translucido)
+      0.3: '#cce0ee', // Seco-Normal (Celeste muy pastel)
+      0.6: '#8bd9e6', // Confortable (Cian suave)
+      0.8: '#68abd4', // Muy húmedo (Azul medio suave)
+      1.0: '#8ba6b6'  // Saturado/Niebla (Azul humo pastel)
+    },
+    radius: 110, // Aumentado para simular una masa de aire en lugar de un punto
+    blur: 65,    // Mucho más difuminado para mezclar áreas de humedad
     min: 0,
     max: 100,
     unit: '%',
