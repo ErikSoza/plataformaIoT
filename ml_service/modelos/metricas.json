@@ -1,0 +1,65 @@
+{
+  "proyecto": "Plataforma IoT - Estaciones Meteorológicas",
+  "ubicacion": "Curicó, Región del Maule, Chile",
+  "dataset": {
+    "fuente": "Open-Meteo Historical Weather API",
+    "años": [
+      "2023",
+      "2024"
+    ],
+    "total_registros_originales": 17541,
+    "registros_usados_entrenamiento": 17457,
+    "variables_entrada": 42,
+    "ventana_lag": "12 horas",
+    "split": "80% train / 20% test (temporal, sin shuffle)"
+  },
+  "algoritmo": {
+    "nombre": "XGBRegressor (XGBoost)",
+    "version": "xgboost >= 2.0",
+    "nota": null,
+    "hiperparametros": {
+      "n_estimators": 500,
+      "max_depth": 6,
+      "learning_rate": 0.05,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "min_child_weight": 5
+    }
+  },
+  "resultados": {
+    "modelo_24h": {
+      "horizonte_horas": 24,
+      "mae_celsius": 1.7323,
+      "rmse_celsius": 2.2004,
+      "r2_score": 0.8988,
+      "nivel": "Bueno",
+      "train_size": 13965,
+      "test_size": 3492
+    },
+    "modelo_48h": {
+      "horizonte_horas": 48,
+      "mae_celsius": 2.1245,
+      "rmse_celsius": 2.6508,
+      "r2_score": 0.8537,
+      "nivel": "Bueno",
+      "train_size": 13965,
+      "test_size": 3492
+    },
+    "modelo_72h": {
+      "horizonte_horas": 72,
+      "mae_celsius": 2.2222,
+      "rmse_celsius": 2.7753,
+      "r2_score": 0.839,
+      "nivel": "Aceptable",
+      "train_size": 13965,
+      "test_size": 3492
+    }
+  },
+  "fecha_entrenamiento": "2026-04-03T19:04:35.764868",
+  "notas": [
+    "MAE esperable que aumente con el horizonte temporal (comportamiento natural)",
+    "R² de referencia: TinyML en Edge Impulse alcanzó 0.96 para horizonte de 1h",
+    "Sensores AHT20/BMP280 tienen ±0.5°C de error propio",
+    "Modelos entrenados con datos de Open-Meteo como proxy de sensores reales"
+  ]
+}
