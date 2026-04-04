@@ -62,7 +62,8 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, estacionN
   }, [cargarPrediccion]);
 
   // ── Construcción del gráfico ──────────────────────────────
-  const construirDatosGrafico = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const construirDatosGrafico = (): any => {
     if (!datos) return null;
 
     const predsLocal = datos.modelo_local.predicciones;
@@ -125,7 +126,7 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, estacionN
           tension: 0.4,
           fill: false,
         },
-        // 4. Línea Open-Meteo (gris punteada)
+        // 4. Línea Open-Meteo (gris punteada — el dash se aplica vía plugin segment)
         ...(datos.validacion_openmeteo.disponible
           ? [
               {
@@ -134,11 +135,13 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, estacionN
                 borderColor: '#9E9E9E',
                 backgroundColor: '#9E9E9E',
                 borderWidth: 1.8,
-                borderDash: [6, 4],
                 pointRadius: 0,
                 pointHoverRadius: 5,
                 tension: 0.4,
                 fill: false,
+                segment: {
+                  borderDash: () => [6, 4],
+                },
               },
             ]
           : []),

@@ -105,15 +105,24 @@ const DevicesPage: React.FC<DevicesPageProps> = ({
       </div>
     </div>
 
-    {/* Sección de predicción ML — visible al seleccionar una estación */}
-    {selectedDevice && (
-      <div style={styles.prediccionContainer}>
+    {/* Sección de predicción ML */}
+    <div style={styles.prediccionContainer}>
+      {selectedDevice ? (
         <PrediccionChart
           estacionId={selectedDevice.id}
           estacionNombre={selectedDevice.name}
         />
-      </div>
-    )}
+      ) : (
+        <div style={styles.prediccionPlaceholder}>
+          <span style={styles.placeholderIcono}>🤖</span>
+          <h3 style={styles.placeholderTitulo}>Predicción de Temperatura con IA</h3>
+          <p style={styles.placeholderTexto}>
+            Selecciona una estación de la lista para ver la predicción XGBoost
+            a 24h, 48h o 72h junto con la referencia Open-Meteo.
+          </p>
+        </div>
+      )}
+    </div>
     </div>
   );
 };
@@ -208,6 +217,35 @@ const styles = {
   },
   prediccionContainer: {
     margin: '0',
+  },
+  prediccionPlaceholder: {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    padding: '40px 24px',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
+    border: '1px solid #e9ecef',
+    borderLeft: '4px solid #00BCD4',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    alignItems: 'center',
+    textAlign: 'center' as const,
+    gap: '12px',
+  },
+  placeholderIcono: {
+    fontSize: '2.5rem',
+  },
+  placeholderTitulo: {
+    color: '#2c3e50',
+    fontSize: '1.2rem',
+    fontWeight: '500' as const,
+    margin: 0,
+  },
+  placeholderTexto: {
+    color: '#6c757d',
+    fontSize: '0.9rem',
+    maxWidth: '420px',
+    lineHeight: 1.6,
+    margin: 0,
   },
 
   deviceListContainer: {
