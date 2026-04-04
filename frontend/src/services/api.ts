@@ -539,6 +539,67 @@ export const readingService = {
   },
 };
 
+// ==================== PREDICCIÓN ML ====================
+
+export interface PuntoPrediccion {
+  hora_offset: number;
+  datetime: string;
+  temperatura: number;
+}
+
+export interface PrediccionResponse {
+  estacion: {
+    id: number;
+    nombre: string;
+    ubicacion: string;
+    estado: string;
+    coordenadas: { lat: number; lon: number };
+    lecturas_usadas: number;
+  };
+  modelo_local: {
+    horizonte_horas: number;
+    temperatura_predicha_final: number;
+    puntos_ancla: Record<string, number>;
+    predicciones: PuntoPrediccion[];
+    metricas_entrenamiento: {
+      mae_celsius: number;
+      rmse_celsius: number;
+      r2_score: number;
+      nivel: string;
+    } | null;
+  };
+  validacion_openmeteo: {
+    disponible: boolean;
+    fuente: string;
+    coordenadas: { lat: number; lon: number };
+    predicciones: PuntoPrediccion[];
+  };
+  confianza: {
+    nivel: string;
+    badge: string;
+    mae_diferencia: number | null;
+    descripcion: string;
+  };
+  meta: {
+    timestamp: string;
+    inputs: { temp_actual: number; humedad: number; presion: number; viento: number };
+    lags_reales: boolean;
+    lags_usados: number;
+  };
+}
+
+export const prediccionService = {
+  getByEstacion: async (estacionId: number, horas: 24 | 48 | 72 = 72): Promise<PrediccionResponse> => {
+    try {
+      const response = await api.get(`/prediccion/${estacionId}`, { params: { horas } });
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error al obtener predicción:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || 'Error al obtener la predicción');
+    }
+  },
+};
+
 // ==================== UTILIDADES ====================
 
 export const apiUtils = {

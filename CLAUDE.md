@@ -21,7 +21,7 @@ plataformaIoT/
 │   ├── datos/            # CSVs Open-Meteo 2023+2024
 │   ├── modelos/          # modelo_xgboost.pkl, metricas.json
 │   ├── train_model.py    # Script entrenamiento (COMPLETADO)
-│   ├── app.py            # FastAPI microservicio (PENDIENTE - Paso 2)
+│   ├── app.py            # FastAPI microservicio (COMPLETADO - Paso 2)
 │   └── requirements.txt  # Dependencias Python
 ├── firmware/             # Código ESP32
 └── CLAUDE.md             # Este archivo
@@ -31,7 +31,7 @@ plataformaIoT/
 | Capa | Componente | Horizonte | Estado |
 |------|-----------|-----------|--------|
 | Edge | TinyML en ESP32 (R²=0.96) | 1 hora | ✅ Implementado |
-| Backend | XGBoost entrenado localmente | 24-72 horas | ✅ Modelo entrenado, ⏳ FastAPI pendiente |
+| Backend | XGBoost entrenado localmente | 24-72 horas | ✅ Modelo entrenado, ✅ FastAPI completado |
 | Referencia | Open-Meteo Forecast API | 7-16 días | ⏳ Pendiente integración |
 
 ## Estado Actual del Modelo ML (Paso 1 — COMPLETADO)
@@ -54,20 +54,25 @@ plataformaIoT/
 - Consulta Open-Meteo Forecast API como referencia
 - Calcula métrica de confianza (MAE entre ambas predicciones)
 
-### Paso 3 — Proxy en Node.js
-- Nuevo endpoint: `GET /api/prediccion/:estacion_id`
-- Lee últimas 12 lecturas de MySQL para esa estación
-- Llama internamente a localhost:5001
-- Retorna respuesta al frontend
+### Paso 3 — Proxy en Node.js ✅ COMPLETADO
+- Endpoint: `GET /api/prediccion/:estacion_id?horas=72`
+- Lee últimas 13 lecturas de MySQL (1 actual + 12 lags reales)
+- Llama internamente a `POST localhost:5001/predict` con historial completo
+- Retorna respuesta enriquecida con datos de la estación
 - El microservicio Python NO se expone directamente al frontend
+- Archivos: `backend/src/models/prediccionModel.js`, `controllers/prediccionController.js`, `routes/prediccionRoutes.js`
 
-### Paso 4 — Visualización en React
-- Componente: `PrediccionChart.tsx` usando Chart.js
-- Línea azul sólida: predicción XGBoost (72h)
-- Línea gris punteada: predicción Open-Meteo (referencia)
-- Banda sombreada: rango de incertidumbre
-- Badge de confianza: 🟢 Alto / 🟡 Medio / 🔴 Bajo
-- Para días 4-7: Open-Meteo directo con etiqueta de fuente
+### Paso 4 — Visualización en React ✅ COMPLETADO
+- Componente: `frontend/src/components/PrediccionChart.tsx`
+- Línea azul sólida (#0288D1): predicción XGBoost
+- Línea gris punteada (#9E9E9E): referencia Open-Meteo
+- Banda sombreada: incertidumbre ±MAE del modelo de entrenamiento
+- Badge de confianza: 🟢 Alto / 🟡 Medio / 🔴 Bajo / ⚪ Desconocido
+- Selector de horizonte: 24h / 48h / 72h con recarga automática
+- Tarjetas de puntos ancla: temperatura actual + 24h/48h/72h
+- Métricas de entrenamiento (MAE, R², nivel) al pie del gráfico
+- Integrado en `DispositivosPagina.tsx` — aparece al seleccionar estación
+- `prediccionService` agregado a `frontend/src/services/api.ts`
 
 ## Objetivos Específicos de la Memoria
 - **OE2:** Modelo ML con métricas documentadas ✅

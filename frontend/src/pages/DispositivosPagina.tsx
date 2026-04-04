@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ContentSection, DeviceList, UnifiedMap, DeviceData } from '../components/layout';
 import CitySearch from '../components/CitySearch';
+import PrediccionChart from '../components/PrediccionChart';
 
 interface DevicesPageProps {
   devices: DeviceData[];
@@ -44,6 +45,7 @@ const DevicesPage: React.FC<DevicesPageProps> = ({
   };
 
   return (
+    <div style={styles.pageWrapper}>
     <div style={styles.devicesView}>
       {/* Lista de dispositivos con buscador */}
       <div style={styles.deviceListContainer}>
@@ -101,6 +103,17 @@ const DevicesPage: React.FC<DevicesPageProps> = ({
           />
         </ContentSection>
       </div>
+    </div>
+
+    {/* Sección de predicción ML — visible al seleccionar una estación */}
+    {selectedDevice && (
+      <div style={styles.prediccionContainer}>
+        <PrediccionChart
+          estacionId={selectedDevice.id}
+          estacionNombre={selectedDevice.name}
+        />
+      </div>
+    )}
     </div>
   );
 };
@@ -180,6 +193,11 @@ const SmartMap: React.FC<SmartMapProps> = ({
 };
 
 const styles = {
+  pageWrapper: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '20px',
+  },
   devicesView: {
     display: 'grid',
     gridTemplateColumns: '1fr 1fr',
@@ -187,6 +205,9 @@ const styles = {
     '@media (max-width: 768px)': {
       gridTemplateColumns: '1fr',
     },
+  },
+  prediccionContainer: {
+    margin: '0',
   },
 
   deviceListContainer: {
