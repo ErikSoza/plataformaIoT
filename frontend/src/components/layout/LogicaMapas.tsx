@@ -2,12 +2,83 @@
 El componente UnifiedMap utiliza la librería React Leaflet para renderizar un mapa interactivo. Permite a los usuarios ver la ubicación de varios dispositivos, seleccionar un dispositivo para ver más detalles y activar un mapa de calor que visualiza diferentes métricas ambientales (como temperatura, humedad, presión, calidad del aire y radiación solar) basándose en los datos recopilados por los dispositivos. El componente también incluye controles para personalizar la visualización del mapa de calor, como elegir la métrica a mostrar y activar o desactivar el mapa de calor.
 */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { DeviceData } from './ListaDispositivos';
 import HeatMapLayer from './MapaCalor';
 import MapLegend from '../MapLegend';
+import ForecastTimeSlider from '../ForecastTimeSlider';
+import { prediccionService, PuntoPrediccion } from '../../services/api';
+
+// ── Overlay de lluvia animada sobre el mapa ────────────────────────
+interface RainOverlayProps { intensity: number; /* 0-100 */ }
+const RainOverlay: React.FC<RainOverlayProps> = ({ intensity }) => {
+  if (intensity < 10) return null;
+
+  // Escalar parámetros según intensidad
+  const i        = intensity / 100;
+  const gap1     = Math.max(5,  22 - i * 17);  // gap entre gotas capa 1
+  const gap2     = Math.max(10, 38 - i * 28);  // gap entre gotas capa 2
+  const gap3     = Math.max(18, 55 - i * 37);  // gap entre gotas capa 3
+  const alpha1   = Math.min(0.45, i * 0.5);
+  const alpha2   = Math.min(0.22, i * 0.25);
+  const alpha3   = Math.min(0.18, i * 0.2);
+  const speed1   = Math.max(0.18, 0.65 - i * 0.47);
+  const speed2   = Math.max(0.28, 0.95 - i * 0.67);
+  const speed3   = Math.max(0.12, 0.45 - i * 0.33);
+  const mist     = i > 0.6;
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0,
+      pointerEvents: 'none', zIndex: 998,
+      overflow: 'hidden', borderRadius: 'inherit',
+    }}>
+      {/* Capa 1 — gotas medianas (ángulo 108°) */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        backgroundImage: `repeating-linear-gradient(
+          108deg,
+          transparent 0px, transparent ${gap1}px,
+          rgba(174,214,241,${alpha1}) ${gap1}px, rgba(174,214,241,${alpha1}) ${gap1 + 1.2}px
+        )`,
+        backgroundSize: '300px 300px',
+        animation: `rainFallMain ${speed1}s linear infinite`,
+      }} />
+      {/* Capa 2 — gotas finas (ángulo 105°) */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        backgroundImage: `repeating-linear-gradient(
+          105deg,
+          transparent 0px, transparent ${gap2}px,
+          rgba(140,200,230,${alpha2}) ${gap2}px, rgba(140,200,230,${alpha2}) ${gap2 + 0.8}px
+        )`,
+        backgroundSize: '200px 200px',
+        animation: `rainFallSecondary ${speed2}s linear infinite`,
+      }} />
+      {/* Capa 3 — gotas gruesas (ángulo 112°) */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        backgroundImage: `repeating-linear-gradient(
+          112deg,
+          transparent 0px, transparent ${gap3}px,
+          rgba(100,170,220,${alpha3}) ${gap3}px, rgba(100,170,220,${alpha3}) ${gap3 + 2}px
+        )`,
+        backgroundSize: '400px 400px',
+        animation: `rainFallHeavy ${speed3}s linear infinite`,
+      }} />
+      {/* Niebla (lluvia intensa) */}
+      {mist && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(174,214,241,0.06)',
+          animation: 'mistDrift 6s ease-in-out infinite',
+        }} />
+      )}
+    </div>
+  );
+};
 
 // Configuración de métricas disponibles
 const MetricaVariables = {
@@ -370,6 +441,14 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const mapWrapperRef = useRef<HTMLDivElement>(null);
 
+  // ── Estados del modo predicción temporal ─────────────────────────
+  const [forecastMode,      setForecastMode]      = useState(false);
+  const [forecastOffset,    setForecastOffset]    = useState(0);        // horas (0–72)
+  const [forecastHorizon,   setForecastHorizon]   = useState<24|48|72>(72);
+  const [forecastData,      setForecastData]      = useState<Map<number, PuntoPrediccion[]>>(new Map());
+  const [forecastLoading,   setForecastLoading]   = useState(false);
+  const [isPlayingForecast, setIsPlayingForecast] = useState(false);
+
   // Efecto para escuchar cambios de pantalla completa del navegador
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -394,9 +473,101 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
 
   // Centro por defecto (Campus UTalca)
   const defaultCenter: [number, number] = [-35.0020711, -71.2288796];
-  
+
   // Usar el dispositivo seleccionado interno o el externo
   const currentSelectedDevice = internalSelectedDevice || selectedDevice;
+
+  // ── Dispositivos con valores de predicción aplicados ─────────────
+  const forecastDevices = useMemo<DeviceData[]>(() => {
+    if (!forecastMode || forecastOffset === 0 || forecastData.size === 0) return devices;
+    return devices.map(device => {
+      const preds = forecastData.get(device.id);
+      if (!preds || preds.length === 0) return device;
+      // Encontrar la predicción más cercana al offset solicitado
+      const pred = preds.reduce((best, p) =>
+        Math.abs(p.hora_offset - forecastOffset) < Math.abs(best.hora_offset - forecastOffset) ? p : best
+      );
+      const tempDelta = pred.temperatura - (device.temperature ?? 20);
+      return {
+        ...device,
+        temperature: parseFloat(pred.temperatura.toFixed(1)),
+        // Humedad estimada: relación inversa aproximada con temperatura
+        humidity: device.humidity != null
+          ? Math.min(100, Math.max(0, parseFloat((device.humidity - tempDelta * 1.8).toFixed(0))))
+          : device.humidity,
+      };
+    });
+  }, [devices, forecastMode, forecastOffset, forecastData]);
+
+  // ── Probabilidad de lluvia promedio (impulsa RainOverlay) ─────────
+  const avgRainProbability = useMemo(() => {
+    const src = forecastMode ? forecastDevices : devices;
+    const valid = src.filter(d => d.temperature != null && d.humidity != null);
+    if (valid.length === 0) return 0;
+    const sum = valid.reduce((acc, d) => {
+      let prob = 0;
+      const p  = d.pressure ?? 1013;
+      const rh = d.humidity ?? 50;
+      const t  = d.temperature ?? 20;
+      if (p < 1000) prob += 50; else if (p < 1010) prob += 30; else if (p < 1015) prob += 10;
+      if (rh > 85)  prob += 30; else if (rh > 70)  prob += 15;
+      try {
+        const alpha = 17.271, beta = 237.7;
+        const gamma = (alpha * t) / (beta + t) + Math.log(rh / 100);
+        const dew   = (beta * gamma) / (alpha - gamma);
+        const spr   = t - dew;
+        if (spr < 2) prob += 20; else if (spr < 4) prob += 10;
+      } catch {}
+      return acc + Math.min(100, Math.max(0, prob));
+    }, 0);
+    return sum / valid.length;
+  }, [devices, forecastDevices, forecastMode]);
+
+  // ── Cargar predicciones de todas las estaciones activas ──────────
+  const loadForecastData = useCallback(async (horizon: 24|48|72) => {
+    const activeDevices = devices.filter(
+      d => d.status === 'Activo'
+    );
+    if (activeDevices.length === 0) return;
+
+    setForecastLoading(true);
+    try {
+      const results = await Promise.allSettled(
+        activeDevices.map(d => prediccionService.getByEstacion(d.id, horizon))
+      );
+      const newMap = new Map<number, PuntoPrediccion[]>();
+      results.forEach((result, i) => {
+        if (result.status === 'fulfilled') {
+          newMap.set(activeDevices[i].id, result.value.modelo_local.predicciones);
+        }
+      });
+      setForecastData(newMap);
+      setForecastMode(true);
+      setForecastOffset(0);
+      // En modo predicción forzamos temperatura (es lo que el modelo predice)
+      setHeatmapMetric('temperature');
+      if (!showHeatmap) setShowHeatmap(true);
+    } catch (e) {
+      console.error('[Forecast] Error cargando predicciones:', e);
+    } finally {
+      setForecastLoading(false);
+    }
+  }, [devices, showHeatmap]);
+
+  // ── Auto-avance de la línea de tiempo ────────────────────────────
+  useEffect(() => {
+    if (!isPlayingForecast || !forecastMode) return;
+    const id = setInterval(() => {
+      setForecastOffset(prev => {
+        if (prev >= forecastHorizon) {
+          setIsPlayingForecast(false);
+          return 0;
+        }
+        return prev + 1;
+      });
+    }, 350); // 1 hora cada 350 ms → 72h en ~25 s
+    return () => clearInterval(id);
+  }, [isPlayingForecast, forecastMode, forecastHorizon]);
   
   // Determinar el centro del mapa - priorizar búsqueda, luego dispositivo seleccionado, luego por defecto
   const mapCenter = shouldCenterToSearch && searchCenter ? searchCenter : 
@@ -819,8 +990,73 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
             </div>
           </div>
 
+          {/* ── Modo Predicción Temporal ──────────────────────── */}
+          <div style={{
+            marginBottom: '15px',
+            borderBottom: '1px solid #e9ecef',
+            paddingBottom: '12px',
+          }}>
+            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#2c3e50', marginBottom: '8px' }}>
+              🔮 Predicción Temporal
+            </div>
+            {!forecastMode ? (
+              <button
+                onClick={() => loadForecastData(forecastHorizon)}
+                disabled={forecastLoading || devices.filter(d => d.status === 'Activo').length === 0}
+                style={{
+                  width:         '100%',
+                  padding:       '8px 12px',
+                  background:    forecastLoading
+                    ? '#e9ecef'
+                    : 'linear-gradient(135deg, #0d1b2a, #0f3460)',
+                  color:         forecastLoading ? '#6c757d' : '#00BCD4',
+                  border:        '1px solid #00BCD4',
+                  borderRadius:  '8px',
+                  fontSize:      '0.8rem',
+                  fontWeight:    600,
+                  cursor:        forecastLoading ? 'not-allowed' : 'pointer',
+                  display:       'flex',
+                  alignItems:    'center',
+                  justifyContent:'center',
+                  gap:           '6px',
+                }}
+              >
+                {forecastLoading ? '⏳ Cargando…' : '▶ Ver evolución climática'}
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div className="forecast-active-badge" style={{
+                  background:   'rgba(0,188,212,0.1)',
+                  border:       '1px solid rgba(0,188,212,0.4)',
+                  borderRadius: '8px',
+                  padding:      '6px 10px',
+                  fontSize:     '0.78rem',
+                  color:        '#00BCD4',
+                  textAlign:    'center',
+                  fontWeight:   600,
+                }}>
+                  🔮 Predicción activa: +{forecastOffset}h
+                </div>
+                <button
+                  onClick={() => { setForecastMode(false); setForecastOffset(0); setIsPlayingForecast(false); }}
+                  style={{
+                    padding:      '5px',
+                    background:   'rgba(220,53,69,0.08)',
+                    border:       '1px solid rgba(220,53,69,0.3)',
+                    color:        '#dc3545',
+                    borderRadius: '6px',
+                    fontSize:     '0.75rem',
+                    cursor:       'pointer',
+                  }}
+                >
+                  ✕ Volver a tiempo real
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Fecha del mapa de calor*/}
-          {showHeatmap && devices.length > 0 && (
+          {showHeatmap && devices.length > 0 && !forecastMode && (
             <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#6c757d' }}>
               <strong>Última actualización del mapa de calor:</strong><br />
               {formatLastUpdate(devices[0])}
@@ -936,11 +1172,11 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {/* Capa del Mapa de Calor - Solo mostrar si está habilitado */}
+          {/* Capa del Mapa de Calor — usa forecastDevices en modo predicción */}
           {showHeatmapControls && (
-            <HeatMapLayer 
-              devices={devices} 
-              metric={heatmapMetric} 
+            <HeatMapLayer
+              devices={forecastDevices}
+              metric={heatmapMetric}
               visible={showHeatmap}
               showLabels={showTemperatureLabels}
             />
@@ -1058,11 +1294,80 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
           })}
         </LeafletMapContainer>
         
+        {/* ── Overlay de lluvia animada ──────────────────────────── */}
+        <RainOverlay intensity={avgRainProbability} />
+
+        {/* ── Badge de predicción activa (visible sobre el mapa) ─── */}
+        {forecastMode && forecastOffset > 0 && (
+          <div style={{
+            position:       'absolute',
+            bottom:         '12px',
+            left:           '50%',
+            transform:      'translateX(-50%)',
+            zIndex:         999,
+            background:     'linear-gradient(135deg, rgba(13,27,42,0.92), rgba(15,52,96,0.92))',
+            backdropFilter: 'blur(8px)',
+            border:         '1px solid rgba(0,188,212,0.5)',
+            borderRadius:   '20px',
+            padding:        '6px 18px',
+            display:        'flex',
+            alignItems:     'center',
+            gap:            '10px',
+            color:          'white',
+            fontSize:       '0.82rem',
+            pointerEvents:  'none',
+            boxShadow:      '0 4px 20px rgba(0,0,0,0.4)',
+          }}>
+            <span style={{ color: '#00BCD4', fontWeight: 700 }}>🔮 +{forecastOffset}h</span>
+            <span style={{ color: 'rgba(255,255,255,0.55)' }}>|</span>
+            <span>
+              {new Date(Date.now() + forecastOffset * 3_600_000).toLocaleString('es-CL', {
+                weekday: 'short', day: 'numeric', month: 'short',
+                hour: '2-digit', minute: '2-digit',
+              })}
+            </span>
+            {avgRainProbability >= 20 && (
+              <>
+                <span style={{ color: 'rgba(255,255,255,0.55)' }}>|</span>
+                <span style={{ color: '#29B6F6' }}>
+                  {avgRainProbability >= 70 ? '🌧️' : avgRainProbability >= 40 ? '🌦️' : '⛅'}
+                  {' '}{Math.round(avgRainProbability)}% lluvia
+                </span>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Leyenda de colores del mapa de calor */}
         {showHeatmapControls && showHeatmap && (
           <MapLegend variableActiva={heatmapMetric} />
         )}
       </div>
+
+      {/* ── Barra de control de predicción temporal ───────────────── */}
+      <ForecastTimeSlider
+        isVisible={forecastMode}
+        isLoading={forecastLoading}
+        hasData={forecastData.size > 0}
+        offset={forecastOffset}
+        maxHours={forecastHorizon}
+        currentHorizon={forecastHorizon}
+        isPlaying={isPlayingForecast}
+        rainProbability={avgRainProbability}
+        baseTime={new Date()}
+        onOffsetChange={setForecastOffset}
+        onPlayPause={() => setIsPlayingForecast(p => !p)}
+        onExit={() => {
+          setForecastMode(false);
+          setForecastOffset(0);
+          setIsPlayingForecast(false);
+        }}
+        onHorizonChange={h => {
+          setForecastHorizon(h);
+          loadForecastData(h);
+        }}
+        onLoad={() => loadForecastData(forecastHorizon)}
+      />
     </div>
   );
 };

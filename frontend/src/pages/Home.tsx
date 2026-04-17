@@ -23,6 +23,63 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
+// ── Loader meteorológico animado ─────────────────────────────────
+const WeatherLoader: React.FC = () => (
+  <div style={{
+    display:        'flex',
+    flexDirection:  'column',
+    alignItems:     'center',
+    gap:            '16px',
+    marginBottom:   '8px',
+  }}>
+    {/* Anillo giratorio exterior */}
+    <div style={{ position: 'relative', width: '80px', height: '80px' }}>
+      <div style={{
+        position:    'absolute',
+        inset:       0,
+        borderRadius:'50%',
+        border:      '4px solid rgba(255,255,255,0.2)',
+        borderTop:   '4px solid white',
+        animation:   'weatherLoaderSpin 1s linear infinite',
+      }} />
+      {/* Sol central */}
+      <div style={{
+        position:     'absolute',
+        top:          '50%',
+        left:         '50%',
+        transform:    'translate(-50%, -50%)',
+        fontSize:     '2rem',
+        animation:    'weatherLoaderSpin 8s linear infinite reverse',
+      }}>
+        🌤️
+      </div>
+    </div>
+
+    {/* Gotas de lluvia animadas */}
+    <div style={{ display: 'flex', gap: '6px' }}>
+      {[0, 0.2, 0.4].map((delay, i) => (
+        <div key={i} style={{
+          width:           '6px',
+          height:          '6px',
+          borderRadius:    '50%',
+          backgroundColor: 'rgba(255,255,255,0.7)',
+          animation:       `rainBead 1.2s ease-in-out ${delay}s infinite`,
+        }} />
+      ))}
+    </div>
+
+    {/* Keyframes inyectados una sola vez */}
+    <style>{`
+      @keyframes weatherLoaderSpin { to { transform: rotate(360deg); } }
+      @keyframes rainBead {
+        0%   { opacity:0; transform:translateY(-8px); }
+        40%  { opacity:1; }
+        100% { opacity:0; transform:translateY(10px); }
+      }
+    `}</style>
+  </div>
+);
+
 const Home: React.FC = () => {
   // Hook de autenticación
   const { isAuthenticated, user, token, isLoading: authLoading } = useAuth();
@@ -89,8 +146,8 @@ const Home: React.FC = () => {
   if (authLoading) {
     return (
       <div style={styles.loadingContainer}>
-        <div style={styles.loadingSpinner}>🔄</div>
-        <p style={styles.loadingText}>Cargando aplicación...</p>
+        <WeatherLoader />
+        <p style={styles.loadingText}>Cargando plataforma meteorológica...</p>
       </div>
     );
   }
@@ -381,15 +438,17 @@ const Home: React.FC = () => {
 
       {/* Indicador de conexión API */}
       <div style={styles.connectionIndicator}>
-        <span style={{
-          ...styles.connectionDot,
-          backgroundColor: isConnected ? '#28a745' : '#ffc107'
-        }}></span>
+        <span
+          className={isConnected ? 'connection-dot-connected' : 'connection-dot-disconnected'}
+          style={{
+            ...styles.connectionDot,
+            backgroundColor: isConnected ? '#28a745' : '#ffc107',
+          }}
+        />
         <span style={styles.connectionText}>
-          {isConnected 
-            ? `API Conectada - ${apiDevices.length} estaciones` 
-            : 'Usando datos de ejemplo - API no disponible'
-          }
+          {isConnected
+            ? `🟢 API Conectada — ${apiDevices.length} estaciones en línea`
+            : '🟡 Modo demostración — API no disponible'}
         </span>
       </div>
 

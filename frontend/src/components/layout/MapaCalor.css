@@ -111,3 +111,132 @@
 .leaflet-zoom-animated {
   transition: transform 0.25s cubic-bezier(0,0,0.25,1) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMACIONES POR MÉTRICA — Etiquetas del mapa
+   (Complementa weatherAnimations.css que define los keyframes)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Presión — onda expansiva anular ─────────────────────────── */
+@keyframes pressureRingOut {
+  0%   { box-shadow: 0 0 0 0 rgba(149, 117, 205, 0.65); }
+  70%  { box-shadow: 0 0 0 12px rgba(149, 117, 205, 0);  }
+  100% { box-shadow: 0 0 0 0  rgba(149, 117, 205, 0);  }
+}
+
+.temperature-label-icon.pressure-label-animate div {
+  animation: labelFadeIn 0.5s ease-out, pressureRingOut 3s ease-in-out 0.5s infinite !important;
+  border-color: rgba(149, 117, 205, 0.9) !important;
+}
+
+/* ── Viento — oscilación lateral suave ───────────────────────── */
+@keyframes windSweepLabel {
+  0%   { transform: translateX(-2px) rotate(-1deg); }
+  50%  { transform: translateX(2px)  rotate(1deg);  }
+  100% { transform: translateX(-2px) rotate(-1deg); }
+}
+
+.temperature-label-icon.wind-label-animate div {
+  animation: labelFadeIn 0.5s ease-out, windSweepLabel 2s ease-in-out 0.5s infinite !important;
+  border-color: rgba(2, 136, 209, 0.9) !important;
+}
+
+/* ── Radiación Solar — resplandor dorado pulsante ────────────── */
+@keyframes sunRayPulse {
+  0%   { box-shadow: 0 0 0 0  rgba(255, 193, 7, 0.75); }
+  70%  { box-shadow: 0 0 0 14px rgba(255, 193, 7, 0);   }
+  100% { box-shadow: 0 0 0 0  rgba(255, 193, 7, 0);   }
+}
+
+.temperature-label-icon.radiation-label-animate div {
+  animation: labelFadeIn 0.5s ease-out, sunRayPulse 2.5s ease-in-out 0.5s infinite !important;
+  border-color: rgba(249, 168, 37, 0.9) !important;
+  background: rgba(255, 200, 20, 0.95) !important;
+  color: #5d3a00 !important;
+  text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.6) !important;
+}
+
+/* ── Gas / Calidad del Aire — deriva flotante ────────────────── */
+@keyframes gasDriftLabel {
+  0%   { transform: translate(0, 0)     scale(1);    }
+  33%  { transform: translate(1px, -1px) scale(1.02); }
+  66%  { transform: translate(-1px, 1px) scale(0.98); }
+  100% { transform: translate(0, 0)     scale(1);    }
+}
+
+.temperature-label-icon.gas-label-animate div {
+  animation: labelFadeIn 0.5s ease-out, gasDriftLabel 4s ease-in-out 0.5s infinite !important;
+  border-color: rgba(67, 160, 71, 0.9) !important;
+}
+
+/* ── Temperatura alta — calor pulsante (refuerzo) ────────────── */
+.temperature-label-icon.temperature-label-high div {
+  animation: labelFadeIn 0.5s ease-out, humidityPulse 2.5s ease-in-out 0.3s infinite !important;
+  /* reutiliza humidityPulse pero con color rojo del inline-style */
+}
+
+/* ── Temperatura baja — frío pulsante (refuerzo) ─────────────── */
+@keyframes coldPulseLabel {
+  0%   { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7);  }
+  70%  { box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
+  100% { box-shadow: 0 0 0 0  rgba(0, 123, 255, 0);  }
+}
+
+.temperature-label-icon.temperature-label-low div {
+  animation: labelFadeIn 0.5s ease-out, coldPulseLabel 2.5s ease-in-out 0.3s infinite !important;
+}
+
+/* ── Capa de heatmap de temperatura — latido suave ───────────── */
+@keyframes heatBreathing {
+  0%   { opacity: 0.38; filter: saturate(0.9); }
+  50%  { opacity: 0.50; filter: saturate(1.1); }
+  100% { opacity: 0.38; filter: saturate(0.9); }
+}
+
+.heat-breath-effect {
+  animation: heatBreathing 7s ease-in-out infinite;
+}
+
+/* ── Presión — latido de neblina ─────────────────────────────── */
+@keyframes pressureBreathing {
+  0%   { opacity: 0.40; filter: blur(3px) hue-rotate(-5deg); }
+  50%  { opacity: 0.55; filter: blur(5px) hue-rotate(5deg);  }
+  100% { opacity: 0.40; filter: blur(3px) hue-rotate(-5deg); }
+}
+
+.pressure-breath-effect {
+  animation: pressureBreathing 8s ease-in-out infinite;
+}
+
+/* ── Radiación — shimmer dorado ──────────────────────────────── */
+@keyframes radiationShimmer {
+  0%   { opacity: 0.35; filter: saturate(0.8) brightness(1.0); }
+  50%  { opacity: 0.55; filter: saturate(1.3) brightness(1.1); }
+  100% { opacity: 0.35; filter: saturate(0.8) brightness(1.0); }
+}
+
+.radiation-breath-effect {
+  animation: radiationShimmer 5s ease-in-out infinite;
+}
+
+/* ── Gas — deriva invisible ───────────────────────────────────── */
+@keyframes gasBreathing {
+  0%   { opacity: 0.35; filter: blur(4px) saturate(0.9); }
+  50%  { opacity: 0.50; filter: blur(6px) saturate(1.1); }
+  100% { opacity: 0.35; filter: blur(4px) saturate(0.9); }
+}
+
+.gas-breath-effect {
+  animation: gasBreathing 9s ease-in-out infinite;
+}
+
+/* ── Viento — flujo dinámico ─────────────────────────────────── */
+@keyframes windBreathing {
+  0%   { opacity: 0.30; }
+  50%  { opacity: 0.48; }
+  100% { opacity: 0.30; }
+}
+
+.wind-breath-effect {
+  animation: windBreathing 4s ease-in-out infinite;
+}

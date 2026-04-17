@@ -1,0 +1,354 @@
+/* ===================================================================
+   PLATAFORMA IoT METEOROLÓGICA — Biblioteca de Animaciones Climáticas
+   Universidad de Talca — Ingeniería en Computación
+   =================================================================== */
+
+/* ── ANIMACIONES DE ENTRADA ─────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.88); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── TEMPERATURA — Calor y frío pulsante ────────────────────── */
+@keyframes tempHotGlow {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(255, 87, 34, 0);    }
+  50%       { box-shadow: inset 0 0 30px 4px rgba(255, 87, 34, 0.18); }
+}
+
+@keyframes tempColdGlow {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(33, 150, 243, 0);    }
+  50%       { box-shadow: inset 0 0 30px 4px rgba(33, 150, 243, 0.18); }
+}
+
+/* Etiquetas mapa — temperatura alta */
+@keyframes tempHeatPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+  70%  { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+  100% { box-shadow: 0 0 0 0  rgba(220, 53, 69, 0); }
+}
+
+/* Etiquetas mapa — temperatura baja */
+@keyframes tempColdPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.7); }
+  70%  { box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
+  100% { box-shadow: 0 0 0 0  rgba(0, 123, 255, 0); }
+}
+
+/* ── HUMEDAD — Gota de agua ──────────────────────────────────── */
+@keyframes humidityGlow {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(0, 188, 212, 0);    }
+  50%       { box-shadow: inset 0 0 30px 4px rgba(0, 188, 212, 0.2); }
+}
+
+@keyframes rainDropBounce {
+  0%   { transform: translateY(-4px) scaleY(0.9); }
+  60%  { transform: translateY(2px)  scaleY(1.08); }
+  80%  { transform: translateY(0)    scaleY(0.97); }
+  100% { transform: translateY(0)    scaleY(1); }
+}
+
+/* ── PRESIÓN ATMOSFÉRICA — Onda barómetro ───────────────────── */
+@keyframes pressureGlow {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(149, 117, 205, 0);    }
+  50%       { box-shadow: inset 0 0 30px 4px rgba(149, 117, 205, 0.2); }
+}
+
+/* Etiquetas mapa — presión */
+@keyframes pressureRingOut {
+  0%   { box-shadow: 0 0 0 0 rgba(149, 117, 205, 0.65); }
+  70%  { box-shadow: 0 0 0 12px rgba(149, 117, 205, 0); }
+  100% { box-shadow: 0 0 0 0  rgba(149, 117, 205, 0); }
+}
+
+/* ── VIENTO — Flujo de aire ──────────────────────────────────── */
+@keyframes windGlow {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(41, 182, 246, 0);    }
+  50%       { box-shadow: inset 0 0 30px 4px rgba(41, 182, 246, 0.2); }
+}
+
+/* Etiquetas mapa — viento (oscilación lateral) */
+@keyframes windSweepLabel {
+  0%   { transform: translateX(-2px) rotate(-1deg); }
+  50%  { transform: translateX(2px)  rotate(1deg);  }
+  100% { transform: translateX(-2px) rotate(-1deg); }
+}
+
+/* Ícono de viento en tarjetas */
+@keyframes windOscillate {
+  0%   { transform: translateX(-4px); }
+  50%  { transform: translateX(4px);  }
+  100% { transform: translateX(-4px); }
+}
+
+/* ── RADIACIÓN SOLAR — Resplandor dorado ─────────────────────── */
+@keyframes radiationGlow {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(249, 168, 37, 0);    }
+  50%       { box-shadow: inset 0 0 35px 6px rgba(249, 168, 37, 0.22); }
+}
+
+/* Etiquetas mapa — radiación */
+@keyframes sunRayPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); }
+  70%  { box-shadow: 0 0 0 14px rgba(255, 193, 7, 0); }
+  100% { box-shadow: 0 0 0 0  rgba(255, 193, 7, 0); }
+}
+
+/* Ícono de sol girando en tarjetas */
+@keyframes sunSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── GAS / CALIDAD DEL AIRE — Difusión ────────────────────────── */
+@keyframes gasGlow {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(67, 160, 71, 0);    }
+  50%       { box-shadow: inset 0 0 30px 4px rgba(67, 160, 71, 0.2); }
+}
+
+/* Etiquetas mapa — gas (deriva sutil) */
+@keyframes gasDriftLabel {
+  0%   { transform: translate(0, 0)  scale(1);    }
+  33%  { transform: translate(1px, -1px) scale(1.02); }
+  66%  { transform: translate(-1px, 1px) scale(0.98); }
+  100% { transform: translate(0, 0)  scale(1);    }
+}
+
+/* ── DISPOSITIVOS / CONEXIÓN ────────────────────────────────── */
+@keyframes deviceGlow {
+  0%, 100% { box-shadow: inset 0 0 0 0 rgba(0, 188, 212, 0);    }
+  50%       { box-shadow: inset 0 0 30px 4px rgba(0, 188, 212, 0.18); }
+}
+
+@keyframes connectionPingGreen {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.8); }
+  70%  { transform: scale(1.2);  box-shadow: 0 0 0 8px rgba(40, 167, 69, 0); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+}
+
+@keyframes connectionPingYellow {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.8); }
+  70%  { transform: scale(1.2);  box-shadow: 0 0 0 8px rgba(255, 193, 7, 0); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+}
+
+/* ── ÍCONO FLOTANTE (genérico) ───────────────────────────────── */
+@keyframes floatUp {
+  0%   { transform: translateY(0px);  }
+  50%  { transform: translateY(-6px); }
+  100% { transform: translateY(0px);  }
+}
+
+/* ── SHIMMER SKELETON LOADER ─────────────────────────────────── */
+@keyframes shimmerSlide {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmerSlide 1.4s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ── PANTALLA DE CARGA METEOROLÓGICA ─────────────────────────── */
+@keyframes weatherLoaderSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes cloudPulse {
+  0%   { opacity: 0.6; transform: scale(1)    translateX(-4px); }
+  50%  { opacity: 1;   transform: scale(1.08) translateX(4px);  }
+  100% { opacity: 0.6; transform: scale(1)    translateX(-4px); }
+}
+
+@keyframes rainBead {
+  0%   { opacity: 0; transform: translateY(-8px); }
+  40%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(12px); }
+}
+
+/* ── BADGE CONFIANZA ML ──────────────────────────────────────── */
+@keyframes badgeGlowGreen {
+  0%   { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgba(40, 167, 69, 0);  }
+  100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);  }
+}
+
+@keyframes badgeGlowYellow {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgba(255, 193, 7, 0);  }
+  100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0);  }
+}
+
+@keyframes badgeGlowRed {
+  0%   { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0);  }
+  100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);  }
+}
+
+/* ── TARJETAS ESTADÍSTICAS — Clases de aplicación ───────────── */
+
+/* Entrada con stagger (delay vía style inline en el componente) */
+.stat-card-enter {
+  animation: fadeInUp 0.5s ease-out both;
+}
+
+/* Capa de brillo (div hijo absoluto dentro de cada tarjeta) */
+.stat-glow-layer {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.stat-glow-layer.stat-glow-temperature-hot  { animation: tempHotGlow    3.5s ease-in-out 0.6s infinite; }
+.stat-glow-layer.stat-glow-temperature-cold { animation: tempColdGlow   3.5s ease-in-out 0.6s infinite; }
+.stat-glow-layer.stat-glow-humidity         { animation: humidityGlow   3.5s ease-in-out 0.6s infinite; }
+.stat-glow-layer.stat-glow-pressure         { animation: pressureGlow   3.5s ease-in-out 0.6s infinite; }
+.stat-glow-layer.stat-glow-wind             { animation: windGlow       3.5s ease-in-out 0.6s infinite; }
+.stat-glow-layer.stat-glow-radiation        { animation: radiationGlow  3.5s ease-in-out 0.6s infinite; }
+.stat-glow-layer.stat-glow-gas              { animation: gasGlow        3.5s ease-in-out 0.6s infinite; }
+.stat-glow-layer.stat-glow-device           { animation: deviceGlow     3.5s ease-in-out 0.6s infinite; }
+
+/* Íconos animados dentro de las tarjetas */
+.stat-icon-float { animation: floatUp       3s ease-in-out infinite; display: inline-block; }
+.stat-icon-sun   { animation: sunSpin       8s linear infinite;      display: inline-block; }
+.stat-icon-wind  { animation: windOscillate 1.5s ease-in-out infinite; display: inline-block; }
+
+/* ── ETIQUETAS MAPA — Animaciones por métrica ────────────────── */
+
+/* Presión — onda expansiva */
+.temperature-label-icon.pressure-label-animate div {
+  animation: labelFadeIn 0.5s ease-out, pressureRingOut 3s ease-in-out 0.5s infinite !important;
+}
+
+/* Viento — oscilación lateral suave */
+.temperature-label-icon.wind-label-animate div {
+  animation: labelFadeIn 0.5s ease-out, windSweepLabel 2s ease-in-out 0.5s infinite !important;
+}
+
+/* Radiación — resplandor dorado */
+.temperature-label-icon.radiation-label-animate div {
+  animation: labelFadeIn 0.5s ease-out, sunRayPulse 2.5s ease-in-out 0.5s infinite !important;
+}
+
+/* Gas — deriva flotante */
+.temperature-label-icon.gas-label-animate div {
+  animation: labelFadeIn 0.5s ease-out, gasDriftLabel 4s ease-in-out 0.5s infinite !important;
+}
+
+/* Temperatura alta — calor pulsante (refuerza MapaCalor.css) */
+.temperature-label-icon.temperature-label-high div {
+  animation: labelFadeIn 0.5s ease-out, tempHeatPulse 2.5s ease-in-out 0.5s infinite !important;
+}
+
+/* Temperatura baja — frío pulsante */
+.temperature-label-icon.temperature-label-low div {
+  animation: labelFadeIn 0.5s ease-out, tempColdPulse 2.5s ease-in-out 0.5s infinite !important;
+}
+
+/* ── TARJETAS "ACERCA DE" ─────────────────────────────────────── */
+.about-card-animate {
+  animation: fadeInScale 0.6s ease-out both;
+}
+
+.about-icon-float {
+  animation: floatUp 4s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* ── BADGE CONFIANZA ML ─────────────────────────────── ──────── */
+.badge-confianza-Alto    { animation: badgeGlowGreen  2s ease-in-out infinite; }
+.badge-confianza-Medio   { animation: badgeGlowYellow 2s ease-in-out infinite; }
+.badge-confianza-Bajo    { animation: badgeGlowRed    2s ease-in-out infinite; }
+
+/* ── TARJETAS RESUMEN PREDICCIÓN ─────────────────────────────── */
+.resumen-card-animate {
+  animation: fadeInScale 0.4s ease-out both;
+}
+
+/* ── INDICADOR DE CONEXIÓN ───────────────────────────────────── */
+.connection-dot-connected {
+  animation: connectionPingGreen  2s ease-in-out infinite;
+}
+
+.connection-dot-disconnected {
+  animation: connectionPingYellow 2s ease-in-out infinite;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANIMACIÓN DE LLUVIA SOBRE EL MAPA (RainOverlay)
+   Tres capas superpuestas con ángulos y velocidades distintas
+   para simular gotas de diferentes tamaños
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Capa principal — gotas medianas (108°) */
+@keyframes rainFallMain {
+  0%   { background-position: 0 0; }
+  100% { background-position: 300px 600px; }
+}
+
+/* Capa secundaria — gotas finas (105°) */
+@keyframes rainFallSecondary {
+  0%   { background-position: 0 0; }
+  100% { background-position: 200px 400px; }
+}
+
+/* Capa terciaria — gotas gruesas (112°) */
+@keyframes rainFallHeavy {
+  0%   { background-position: 0 0; }
+  100% { background-position: 400px 800px; }
+}
+
+/* Niebla densa (para lluvia muy intensa) */
+@keyframes mistDrift {
+  0%   { opacity: 0.04; transform: translateX(-6px); }
+  50%  { opacity: 0.10; transform: translateX(6px);  }
+  100% { opacity: 0.04; transform: translateX(-6px); }
+}
+
+/* ── Slider de predicción temporal ───────────────────────────── */
+/* Estilo del thumb del range input en modo oscuro */
+.forecast-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width:            16px;
+  height:           16px;
+  border-radius:    50%;
+  background:       #00BCD4;
+  border:           2px solid white;
+  box-shadow:       0 0 6px rgba(0,188,212,0.7);
+  cursor:           pointer;
+}
+
+.forecast-slider input[type="range"]::-moz-range-thumb {
+  width:            16px;
+  height:           16px;
+  border-radius:    50%;
+  background:       #00BCD4;
+  border:           2px solid white;
+  box-shadow:       0 0 6px rgba(0,188,212,0.7);
+  cursor:           pointer;
+}
+
+/* ── Badge de predicción activa sobre el mapa ─────────────────── */
+@keyframes forecastBadgePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0,188,212,0.6); }
+  50%       { box-shadow: 0 0 0 8px rgba(0,188,212,0); }
+}
+
+.forecast-active-badge {
+  animation: forecastBadgePulse 2.5s ease-in-out infinite;
+}

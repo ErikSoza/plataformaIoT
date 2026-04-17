@@ -38,7 +38,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
   return (
     <>
       {/* Sección de bienvenida */}
-      <div style={styles.welcomeSection}>
+      <div className="stat-card-enter" style={{ ...styles.welcomeSection, animationDelay: '0s' }}>
         <div style={styles.welcomeContent}>
           <h2 style={styles.welcomeTitle}>
             🌡️ Bienvenido al Sistema de Monitoreo Meteorológico UTalca
@@ -85,41 +85,42 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
         <div style={styles.aboutContent}>
           <h3 style={styles.aboutTitle}>ℹ️ Acerca de la Plataforma</h3>
           <div style={styles.aboutGrid}>
-            <div style={styles.aboutCard}>
-              <div style={styles.aboutCardIcon}>🎓</div>
-              <h4 style={styles.aboutCardTitle}>Proyecto Universitario</h4>
-              <p style={styles.aboutCardText}>
-                Desarrollado por estudiantes de la Universidad de Talca para el monitoreo 
-                ambiental del campus usando tecnología IoT de última generación.
-              </p>
-            </div>
-            
-            <div style={styles.aboutCard}>
-              <div style={styles.aboutCardIcon}>⚡</div>
-              <h4 style={styles.aboutCardTitle}>Tecnología IoT</h4>
-              <p style={styles.aboutCardText}>
-                Red de sensores conectados que recopilan datos meteorológicos cada minuto, 
-                transmitidos en tiempo real a través de protocolos de comunicación avanzados.
-              </p>
-            </div>
-            
-            <div style={styles.aboutCard}>
-              <div style={styles.aboutCardIcon}>🌱</div>
-              <h4 style={styles.aboutCardTitle}>Impacto Ambiental</h4>
-              <p style={styles.aboutCardText}>
-                Los datos recopilados contribuyen a investigaciones sobre cambio climático 
-                y apoyan la toma de decisiones para un campus más sustentable.
-              </p>
-            </div>
-            
-            <div style={styles.aboutCard}>
-              <div style={styles.aboutCardIcon}>📱</div>
-              <h4 style={styles.aboutCardTitle}>Acceso Abierto</h4>
-              <p style={styles.aboutCardText}>
-                Información disponible 24/7 para la comunidad universitaria y público general. 
-                Regístrate para acceder a funciones avanzadas y reportes detallados.
-              </p>
-            </div>
+            {[
+              {
+                icon: '🎓',
+                title: 'Proyecto Universitario',
+                text: 'Desarrollado por estudiantes de la Universidad de Talca para el monitoreo ambiental del campus usando tecnología IoT de última generación.',
+                delay: '0.1s',
+              },
+              {
+                icon: '⚡',
+                title: 'Tecnología IoT',
+                text: 'Red de sensores conectados que recopilan datos meteorológicos cada minuto, transmitidos en tiempo real a través de protocolos de comunicación avanzados.',
+                delay: '0.2s',
+              },
+              {
+                icon: '🌱',
+                title: 'Impacto Ambiental',
+                text: 'Los datos recopilados contribuyen a investigaciones sobre cambio climático y apoyan la toma de decisiones para un campus más sustentable.',
+                delay: '0.3s',
+              },
+              {
+                icon: '📱',
+                title: 'Acceso Abierto',
+                text: 'Información disponible 24/7 para la comunidad universitaria y público general. Regístrate para acceder a funciones avanzadas y reportes detallados.',
+                delay: '0.4s',
+              },
+            ].map((card) => (
+              <div
+                key={card.title}
+                className="about-card-animate"
+                style={{ ...styles.aboutCard, animationDelay: card.delay }}
+              >
+                <div className="about-icon-float" style={styles.aboutCardIcon}>{card.icon}</div>
+                <h4 style={styles.aboutCardTitle}>{card.title}</h4>
+                <p style={styles.aboutCardText}>{card.text}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>

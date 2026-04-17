@@ -336,9 +336,18 @@ const TemperatureLabels: React.FC<TemperatureLabelProps> = ({ devices, metric, v
         // Obtener colores dinámicos
         const colorInfo = getValueColor(value!, metric);
         
+        // Clase de animación específica por métrica
+        const metricAnimClass: Partial<Record<typeof metric, string>> = {
+          humidity:    'humidity-pulse-effect',
+          pressure:    'pressure-label-animate',
+          wind:        'wind-label-animate',
+          radiation:   'radiation-label-animate',
+          gas:         'gas-label-animate',
+        };
+
         // Crear ícono personalizado con el valor de la métrica
         const labelIcon = L.divIcon({
-          className: `temperature-label-icon ${colorInfo.class} ${metric === 'humidity' ? 'humidity-pulse-effect' : ''}`,
+          className: `temperature-label-icon ${colorInfo.class} ${metricAnimClass[metric] ?? ''}`,
           html: `
             <div style="
               background: ${colorInfo.bg.replace(/0\.\d+\)/, '1)')};

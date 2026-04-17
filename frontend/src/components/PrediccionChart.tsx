@@ -244,6 +244,7 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, estacionN
       {confianza && (
         <div style={styles.badgeRow}>
           <span
+            className={`badge-confianza-${confianza.nivel}`}
             style={{
               ...styles.badge,
               backgroundColor: BADGE_COLOR[confianza.nivel] + '22',
@@ -301,14 +302,21 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, estacionN
 
           {/* Temperatura predicha final */}
           <div style={styles.resumenRow}>
-            <div style={styles.resumenCard}>
+            <div
+              className="resumen-card-animate"
+              style={{ ...styles.resumenCard, animationDelay: '0.05s' }}
+            >
               <span style={styles.resumenLabel}>Temp. actual</span>
               <span style={styles.resumenValor}>
                 {datos!.meta.inputs.temp_actual.toFixed(1)}°C
               </span>
             </div>
-            {Object.entries(datos!.modelo_local.puntos_ancla).map(([key, val]) => (
-              <div key={key} style={styles.resumenCard}>
+            {Object.entries(datos!.modelo_local.puntos_ancla).map(([key, val], i) => (
+              <div
+                key={key}
+                className="resumen-card-animate"
+                style={{ ...styles.resumenCard, animationDelay: `${(i + 1) * 0.1 + 0.05}s` }}
+              >
                 <span style={styles.resumenLabel}>+{key}</span>
                 <span style={{ ...styles.resumenValor, color: '#0288D1' }}>
                   {(val as number).toFixed(1)}°C
