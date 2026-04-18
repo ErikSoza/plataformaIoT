@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+//import 'leaflet/dist/leaflet.js';
 import {TabNavigation, MainLayout, TabItem, DeviceData} from '../components/layout';
 import UserHeader from '../components/UserHeader';
 import { useAuth } from '../contexts/AuthContext';
