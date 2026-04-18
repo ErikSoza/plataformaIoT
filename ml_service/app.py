@@ -153,35 +153,64 @@ def predecir_anchors(X: np.ndarray, horas_max: int) -> dict[int, float]:
 
 
 def interpolar_curva(
-    anclas: dict[int, float], horas_max: int, ahora: datetime
+    anclas: dict[int, float],
+    horas_max: int,
+    ahora: datetime,
+    lags_temp: list[float] | None = None,
 ) -> list[dict]:
     """
-    Genera una predicción horaria interpolando linealmente entre los puntos
-    ancla (0h, 24h, 48h, 72h según disponibilidad).
+    Genera una predicción horaria combinando interpolación lineal entre los
+    puntos ancla con una corrección diurna sinusoidal (ciclo día/noche).
 
-    Retorna lista de {hora_offset, datetime, temperatura}.
+    Los modelos XGBoost predicen T+24h, T+48h, T+72h (misma hora del día),
+    pero la interpolación lineal entre ellos elimina el ciclo diario.
+    La corrección diurna restaura ese comportamiento físico esperado.
+
+    Estrategia:
+      1. Descomponer cada ancla en tendencia_lenta + componente_diurna.
+      2. Interpolar solo la tendencia lenta entre anclas.
+      3. Sumar la componente diurna correspondiente a cada hora futura.
     """
-    puntos_ordenados = sorted(anclas.items())  # [(0, t0), (24, t24), ...]
+    HORA_MAX_DIARIO = 14  # 14h → máximo diario para Curicó (primavera/otoño)
+
+    def diurno(hora_dia: int) -> float:
+        """Desviación sinusoidal respecto a la media para una hora del día."""
+        return float(amplitud * np.cos(2 * np.pi * (hora_dia - HORA_MAX_DIARIO) / 24))
+
+    # Estimar amplitud desde lags + temperatura actual
+    temps_ref: list[float] = [anclas[0]] + (lags_temp or [])
+    rango_obs = max(temps_ref) - min(temps_ref) if len(temps_ref) > 1 else 0.0
+    # Mínimo climatológico para Curicó: 6°C de rango diario en otoño/primavera
+    # Máximo razonable: ±11°C (22°C de rango, días de verano extremos)
+    amplitud = float(np.clip(max(rango_obs, 6.0) / 2.0, 3.0, 11.0))
+
+    # Descomponer anclas → componente tendencia (sin diurno)
+    anclas_tendencia = {
+        h: t - diurno((ahora.hour + h) % 24)
+        for h, t in anclas.items()
+    }
+    puntos_tendencia = sorted(anclas_tendencia.items())
+
     predicciones = []
-
     for i in range(1, horas_max + 1):
-        # Encontrar el segmento que contiene la hora i
-        t_inicio, temp_inicio = puntos_ordenados[0]
-        t_fin, temp_fin = puntos_ordenados[-1]
-
-        for j in range(len(puntos_ordenados) - 1):
-            h_a, temp_a = puntos_ordenados[j]
-            h_b, temp_b = puntos_ordenados[j + 1]
-            if h_a <= i <= h_b:
-                t_inicio, temp_inicio = h_a, temp_a
-                t_fin, temp_fin = h_b, temp_b
+        # Interpolar tendencia lenta
+        t_a, temp_a = puntos_tendencia[0]
+        t_b, temp_b = puntos_tendencia[-1]
+        for j in range(len(puntos_tendencia) - 1):
+            ha, ta = puntos_tendencia[j]
+            hb, tb = puntos_tendencia[j + 1]
+            if ha <= i <= hb:
+                t_a, temp_a, t_b, temp_b = ha, ta, hb, tb
                 break
 
-        if t_fin == t_inicio:
-            temp_i = temp_inicio
+        if t_b == t_a:
+            tendencia_i = temp_a
         else:
-            fraccion = (i - t_inicio) / (t_fin - t_inicio)
-            temp_i = temp_inicio + (temp_fin - temp_inicio) * fraccion
+            tendencia_i = temp_a + (temp_b - temp_a) * (i - t_a) / (t_b - t_a)
+
+        # Añadir ciclo diurno para la hora futura concreta
+        hora_futura = (ahora.hour + i) % 24
+        temp_i = tendencia_i + diurno(hora_futura)
 
         predicciones.append({
             "hora_offset": i,
@@ -361,7 +390,7 @@ async def predict(
     )
 
     anclas = predecir_anchors(X, horas)
-    predicciones_locales = interpolar_curva(anclas, horas, ahora)
+    predicciones_locales = interpolar_curva(anclas, horas, ahora, lags_temp)
 
     # Temperatura predicha en el horizonte solicitado (punto final)
     temp_final_predicha = anclas[horas]
@@ -509,7 +538,7 @@ async def predict_post(body: PredictRequest) -> dict:
     )
 
     anclas = predecir_anchors(X, body.horas)
-    predicciones_locales = interpolar_curva(anclas, body.horas, ahora)
+    predicciones_locales = interpolar_curva(anclas, body.horas, ahora, lags_temp)
     temp_final_predicha = anclas[body.horas]
 
     metricas_modelo = None
