@@ -87,6 +87,23 @@ CREATE TABLE IF NOT EXISTS lecturas (
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Tabla de Zonas del clima (configuracion admin)
+CREATE TABLE IF NOT EXISTS zonas_clima (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ );
+
+-- Tabla estaciones que componen la zona (configuracion admin)
+ CREATE TABLE IF NOT EXISTS zona_estaciones (
+    zona_id INT NOT NULL,
+    estacion_id INT NOT NULL,
+    PRIMARY KEY (zona_id, estacion_id),
+    FOREIGN KEY (zona_id) REFERENCES zonas_clima(id) ON DELETE CASCADE,
+    FOREIGN KEY (estacion_id) REFERENCES estaciones(id) ON DELETE CASCADE
+ );
+
 -- Tabla: ALERTAS
 CREATE TABLE IF NOT EXISTS alertas (
   id INT AUTO_INCREMENT PRIMARY KEY,

@@ -8,7 +8,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { authService } from '../services/api';
 
 // Importar páginas separadas
-import { MonitoringPage, DevicesPage, FavoritesPage, ReportsPage, SettingsPage, StationManagementPage, DeviceManagementPage } from './index';
+import { MonitoringPage, DevicesPage, FavoritesPage, ReportsPage, SettingsPage, StationManagementPage, DeviceManagementPage, ZonasClimaPage } from './index';
 
 // Importar hook unificado para datos de la API
 import { useDeviceData } from '../hooks/useDeviceData';
@@ -196,6 +196,7 @@ const Home: React.FC = () => {
         { id: 'favorites', label: 'FAVORITOS', active: activeTab === 'favorites' },
         { id: 'stations', label: 'ESTACIONES', active: activeTab === 'stations' },
         { id: 'device-management', label: 'GESTIÓN DISPOSITIVOS', active: activeTab === 'device-management' },
+        { id: 'zonas', label: 'ZONAS CLIMA', active: activeTab === 'zonas' },
         { id: 'reports', label: 'REPORTES', active: activeTab === 'reports' },
         { id: 'settings', label: 'CONFIGURACIÓN', active: activeTab === 'settings' },
       ];
@@ -351,6 +352,17 @@ const Home: React.FC = () => {
           );
         }
         return <DeviceManagementPage />;
+
+      case 'zonas':
+        if (!isAuthenticated || user?.rol !== 'admin') {
+          return (
+            <div style={styles.accessDenied}>
+              <h3>🔒 Acceso Restringido</h3>
+              <p>Solo los administradores pueden gestionar zonas de clima.</p>
+            </div>
+          );
+        }
+        return <ZonasClimaPage />;
 
       case 'reports':
         // Para usuarios registrados y administradores

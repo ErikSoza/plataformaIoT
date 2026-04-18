@@ -13,6 +13,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import { prediccionService, PrediccionResponse } from '../services/api';
 
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -25,7 +26,8 @@ ChartJS.register(
 );
 
 interface PrediccionChartProps {
-  estacionId: number;
+  estacionId?: number;
+  zonaId?: number;
   estacionNombre?: string;
 }
 
@@ -38,24 +40,27 @@ const BADGE_COLOR: Record<string, string> = {
   Desconocido: '#6c757d',
 };
 
-const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, estacionNombre }) => {
+const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, estacionNombre }) => {
   const [datos, setDatos] = useState<PrediccionResponse | null>(null);
   const [horizonte, setHorizonte] = useState<Horizonte>(72);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const cargarPrediccion = useCallback(async () => {
+    if (!estacionId && !zonaId) return;
     setCargando(true);
     setError(null);
     try {
-      const resultado = await prediccionService.getByEstacion(estacionId, horizonte);
+      const resultado = zonaId
+        ? await prediccionService.getByZona(zonaId, horizonte)
+        : await prediccionService.getByEstacion(estacionId!, horizonte);
       setDatos(resultado);
     } catch (err: any) {
       setError(err.message || 'Error al cargar la predicción');
     } finally {
       setCargando(false);
     }
-  }, [estacionId, horizonte]);
+  }, [estacionId, zonaId, horizonte]);
 
   useEffect(() => {
     cargarPrediccion();

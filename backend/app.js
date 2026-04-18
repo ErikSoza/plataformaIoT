@@ -6,6 +6,7 @@ import readingRoutes from './src/routes/readingRoutes.js';
 import deviceRoutes from './src/routes/deviceRoutes.js';
 import userRoutes from './src/routes/userRoutes.js';
 import prediccionRoutes from './src/routes/prediccionRoutes.js';
+import zonaRoutes from './src/routes/zonaRoutes.js';
 
 dotenv.config();
 const app = express();
@@ -33,6 +34,7 @@ app.use('/api', readingRoutes);
 app.use('/api', deviceRoutes);
 app.use('/api/auth', userRoutes);
 app.use('/api', prediccionRoutes);
+app.use('/api', zonaRoutes);
 
 // Ruta base
 app.get('/', (req, res) => {

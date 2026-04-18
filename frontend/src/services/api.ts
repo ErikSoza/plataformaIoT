@@ -598,6 +598,63 @@ export const prediccionService = {
       throw new Error(error.response?.data?.error || 'Error al obtener la predicción');
     }
   },
+  getByZona: async (zonaId: number, horas: 24 | 48 | 72 = 72): Promise<PrediccionResponse> => {
+    try {
+      const response = await api.get(`/prediccion/zona/${zonaId}`, { params: { horas } });
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error al obtener predicción de zona:', error.response?.data || error.message);
+      throw new Error(error.response?.data?.error || 'Error al obtener la predicción de zona');
+    }
+  },
+};
+
+// ==================== ZONAS DE CLIMA ====================
+
+export interface ZonaEstacion {
+  id: number;
+  nombre: string;
+  ubicacion?: string;
+  estado: string;
+}
+
+export interface ZonaClima {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  total_estaciones: number;
+  created_at: string;
+  estaciones: ZonaEstacion[];
+}
+
+export const zonaService = {
+  getAll: async (): Promise<ZonaClima[]> => {
+    const response = await api.get('/zonas');
+    return response.data;
+  },
+  getById: async (id: number): Promise<ZonaClima> => {
+    const response = await api.get(`/zonas/${id}`);
+    return response.data;
+  },
+  create: async (nombre: string, descripcion?: string): Promise<ZonaClima> => {
+    const response = await api.post('/zonas', { nombre, descripcion });
+    return response.data;
+  },
+  update: async (id: number, nombre: string, descripcion?: string): Promise<ZonaClima> => {
+    const response = await api.put(`/zonas/${id}`, { nombre, descripcion });
+    return response.data;
+  },
+  delete: async (id: number): Promise<void> => {
+    await api.delete(`/zonas/${id}`);
+  },
+  addEstacion: async (zonaId: number, estacionId: number): Promise<ZonaClima> => {
+    const response = await api.post(`/zonas/${zonaId}/estaciones`, { estacion_id: estacionId });
+    return response.data;
+  },
+  removeEstacion: async (zonaId: number, estacionId: number): Promise<ZonaClima> => {
+    const response = await api.delete(`/zonas/${zonaId}/estaciones/${estacionId}`);
+    return response.data;
+  },
 };
 
 // ==================== UTILIDADES ====================

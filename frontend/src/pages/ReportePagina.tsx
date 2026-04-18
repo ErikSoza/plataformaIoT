@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ContentSection } from '../components/layout';
-import { readingService } from '../services/api';
+import { readingService, zonaService, ZonaClima } from '../services/api';
 import { Lectura } from '../types';
 import PrediccionChart from '../components/PrediccionChart';
 import {
@@ -29,6 +29,9 @@ const ReportsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedPredStation, setSelectedPredStation] = useState<{ id: number; nombre: string } | null>(null);
+  const [predMode, setPredMode] = useState<'estacion' | 'zona'>('estacion');
+  const [zonas, setZonas] = useState<ZonaClima[]>([]);
+  const [selectedPredZona, setSelectedPredZona] = useState<ZonaClima | null>(null);
 
   const normalizeReadingData = useCallback((reading: any): Lectura => ({
     ...reading,
@@ -54,6 +57,10 @@ const ReportsPage: React.FC = () => {
   }, [normalizeReadingData]);
 
   useEffect(() => { loadReadings(); }, [loadReadings]);
+
+  useEffect(() => {
+    zonaService.getAll().then(setZonas).catch(() => setZonas([]));
+  }, []);
 
   const applyFilters = useCallback(() => {
     let filtered = readings;
@@ -271,42 +278,97 @@ const ReportsPage: React.FC = () => {
             <section style={s.section}>
               <h3 style={s.sectionTitle}>Predicción de temperatura</h3>
               <p style={s.sectionDesc}>
-                Selecciona una estación para ver la predicción XGBoost comparada con Open-Meteo como referencia.
+                Visualiza la predicción XGBoost (24 h – 72 h) por estación individual o por zona de clima.
+                Las zonas promedian los datos de múltiples estaciones para una estimación regional.
               </p>
 
-              {stationsWithIds.length > 0 ? (
-                <>
-                  <div style={s.predStationRow}>
-                    <label style={s.inputLabel}>Estación:</label>
-                    <select
-                      style={s.select}
-                      value={selectedPredStation?.id ?? ''}
-                      onChange={e => {
-                        const id = Number(e.target.value);
-                        const st = stationsWithIds.find(s => s.id === id) || null;
-                        setSelectedPredStation(st);
-                      }}
-                    >
-                      <option value="">Seleccionar estación…</option>
-                      {stationsWithIds.map(st => (
-                        <option key={st.id} value={st.id}>{st.nombre}</option>
-                      ))}
-                    </select>
-                  </div>
+              {/* Selector de modo */}
+              <div style={s.modeToggle}>
+                <button
+                  style={{ ...s.modeBtn, ...(predMode === 'estacion' ? s.modeBtnActive : {}) }}
+                  onClick={() => setPredMode('estacion')}
+                >
+                  Por estación
+                </button>
+                <button
+                  style={{ ...s.modeBtn, ...(predMode === 'zona' ? s.modeBtnActive : {}) }}
+                  onClick={() => setPredMode('zona')}
+                >
+                  Por zona de clima
+                </button>
+              </div>
 
-                  {selectedPredStation ? (
-                    <PrediccionChart
-                      estacionId={selectedPredStation.id}
-                      estacionNombre={selectedPredStation.nombre}
-                    />
-                  ) : (
-                    <div style={s.predPlaceholder}>
-                      Selecciona una estación para visualizar la predicción
+              {predMode === 'estacion' && (
+                stationsWithIds.length > 0 ? (
+                  <>
+                    <div style={s.predStationRow}>
+                      <label style={s.inputLabel}>Estación:</label>
+                      <select
+                        style={s.select}
+                        value={selectedPredStation?.id ?? ''}
+                        onChange={e => {
+                          const id = Number(e.target.value);
+                          const st = stationsWithIds.find(st => st.id === id) || null;
+                          setSelectedPredStation(st);
+                        }}
+                      >
+                        <option value="">Seleccionar estación…</option>
+                        {stationsWithIds.map(st => (
+                          <option key={st.id} value={st.id}>{st.nombre}</option>
+                        ))}
+                      </select>
                     </div>
-                  )}
-                </>
-              ) : (
-                <div style={s.predPlaceholder}>No hay estaciones con ID disponibles en las lecturas</div>
+                    {selectedPredStation ? (
+                      <PrediccionChart
+                        estacionId={selectedPredStation.id}
+                        estacionNombre={selectedPredStation.nombre}
+                      />
+                    ) : (
+                      <div style={s.predPlaceholder}>Selecciona una estación para ver la predicción</div>
+                    )}
+                  </>
+                ) : (
+                  <div style={s.predPlaceholder}>No hay estaciones disponibles en las lecturas</div>
+                )
+              )}
+
+              {predMode === 'zona' && (
+                zonas.length > 0 ? (
+                  <>
+                    <div style={s.predStationRow}>
+                      <label style={s.inputLabel}>Zona de clima:</label>
+                      <select
+                        style={s.select}
+                        value={selectedPredZona?.id ?? ''}
+                        onChange={e => {
+                          const id = Number(e.target.value);
+                          const z = zonas.find(z => z.id === id) || null;
+                          setSelectedPredZona(z);
+                        }}
+                      >
+                        <option value="">Seleccionar zona…</option>
+                        {zonas.map(z => (
+                          <option key={z.id} value={z.id}>
+                            {z.nombre} ({z.total_estaciones} estaciones)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {selectedPredZona ? (
+                      <PrediccionChart
+                        zonaId={selectedPredZona.id}
+                        estacionNombre={`Zona: ${selectedPredZona.nombre}`}
+                      />
+                    ) : (
+                      <div style={s.predPlaceholder}>Selecciona una zona para ver la predicción regional</div>
+                    )}
+                  </>
+                ) : (
+                  <div style={s.predPlaceholder}>
+                    No hay zonas de clima configuradas.
+                    Un administrador puede crearlas desde la pestaña <strong>Zonas Clima</strong>.
+                  </div>
+                )
               )}
             </section>
 
@@ -511,6 +573,9 @@ const s = {
 
   // Predicción
   predStationRow: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px', flexWrap: 'wrap' as const },
+  modeToggle: { display: 'flex', gap: '0', marginBottom: '20px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #dee2e6', width: 'fit-content' },
+  modeBtn: { padding: '8px 20px', background: 'white', color: '#495057', border: 'none', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' as const, transition: 'all 0.2s' },
+  modeBtnActive: { background: '#00BCD4', color: 'white' },
   predPlaceholder: {
     padding: '40px', textAlign: 'center' as const, background: '#f8f9fa',
     borderRadius: '8px', color: '#6c757d', fontSize: '0.9rem',
