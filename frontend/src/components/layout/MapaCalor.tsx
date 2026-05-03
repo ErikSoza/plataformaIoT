@@ -16,10 +16,8 @@ import './MapaCalor.css';
 
 // Extender la interfaz de Leaflet para incluir el plugin de heatmap
 declare module 'leaflet' {
-  namespace L {
-    function heatLayer(latlngs: Array<[number, number, number?]>, options?: any): any;
-    function velocityLayer(options?: any): any;
-  }
+  function heatLayer(latlngs: Array<[number, number, number?]>, options?: any): any;
+  function velocityLayer(options?: any): any;
 }
 
 // Función auxiliar para obtener el color estático desde el gradiente de HEATMAP_CONFIG

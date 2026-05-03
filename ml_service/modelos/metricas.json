@@ -1,65 +1,86 @@
 {
-  "proyecto": "Plataforma IoT - Estaciones Meteorológicas",
-  "ubicacion": "Curicó, Región del Maule, Chile",
+  "proyecto": "Plataforma IoT - Estaciones Meteorologicas",
+  "ubicacion": "Curico, Region del Maule, Chile",
+  "version_modelo": "3.0.0",
   "dataset": {
     "fuente": "Open-Meteo Historical Weather API",
     "años": [
+      "2020",
+      "2021",
+      "2022",
       "2023",
-      "2024"
+      "2024",
+      "2025"
     ],
-    "total_registros_originales": 17541,
-    "registros_usados_entrenamiento": 17457,
-    "variables_entrada": 42,
-    "ventana_lag": "12 horas",
-    "split": "80% train / 20% test (temporal, sin shuffle)"
+    "variables_entrada": 80,
+    "lag_temperatura": "24h (incluye lag_24h)",
+    "lag_hum_viento": "12h",
+    "lag_presion": "12h + deltas 1/3/6/12h",
+    "split": "70% train / 10% val (early stopping) / 20% test"
   },
   "algoritmo": {
-    "nombre": "XGBRegressor (XGBoost)",
-    "version": "xgboost >= 2.0",
-    "nota": null,
+    "nombre": "XGBRegressor",
+    "mejoras_v3": [
+      "presion_hPa como feature: actual + 12 lags + deltas 1/3/6/12h",
+      "Auto-descubrimiento de CSVs: todos los años en datos/",
+      "52,000+ registros (vs 17,000 en v1)",
+      "80 features totales (vs 63 en v2, 42 en v1)",
+      "Regularizacion aumentada (colsample=0.65, reg_alpha=0.8, gamma=0.1)"
+    ],
     "hiperparametros": {
-      "n_estimators": 500,
-      "max_depth": 6,
-      "learning_rate": 0.05,
-      "subsample": 0.8,
-      "colsample_bytree": 0.8,
-      "min_child_weight": 5
+      "n_estimators_max": 3000,
+      "early_stopping_rounds": 100,
+      "max_depth": 5,
+      "learning_rate": 0.025,
+      "subsample": 0.85,
+      "colsample_bytree": 0.65,
+      "min_child_weight": 15,
+      "reg_alpha": 0.8,
+      "reg_lambda": 2.5,
+      "gamma": 0.1
     }
   },
   "resultados": {
     "modelo_24h": {
       "horizonte_horas": 24,
-      "mae_celsius": 1.7323,
-      "rmse_celsius": 2.2004,
-      "r2_score": 0.8988,
-      "nivel": "Bueno",
-      "train_size": 13965,
-      "test_size": 3492
+      "mae_celsius": 1.5537,
+      "rmse_celsius": 1.9998,
+      "r2_score": 0.93,
+      "nivel": "Muy bueno",
+      "n_estimators_usados": 788,
+      "train_size": 36758,
+      "val_size": 5251,
+      "test_size": 10503
     },
     "modelo_48h": {
       "horizonte_horas": 48,
-      "mae_celsius": 2.1245,
-      "rmse_celsius": 2.6508,
-      "r2_score": 0.8537,
-      "nivel": "Bueno",
-      "train_size": 13965,
-      "test_size": 3492
+      "mae_celsius": 1.8925,
+      "rmse_celsius": 2.404,
+      "r2_score": 0.8992,
+      "nivel": "Muy bueno",
+      "n_estimators_usados": 554,
+      "train_size": 36758,
+      "val_size": 5251,
+      "test_size": 10503
     },
     "modelo_72h": {
       "horizonte_horas": 72,
-      "mae_celsius": 2.2222,
-      "rmse_celsius": 2.7753,
-      "r2_score": 0.839,
-      "nivel": "Aceptable",
-      "train_size": 13965,
-      "test_size": 3492
+      "mae_celsius": 2.0228,
+      "rmse_celsius": 2.562,
+      "r2_score": 0.886,
+      "nivel": "Bueno",
+      "n_estimators_usados": 621,
+      "train_size": 36758,
+      "val_size": 5251,
+      "test_size": 10503
     }
   },
-  "fecha_entrenamiento": "2026-04-03T19:04:35.764868",
+  "fecha_entrenamiento": "2026-05-03T00:56:18.014517",
   "notas": [
-    "MAE esperable que aumente con el horizonte temporal (comportamiento natural)",
-    "R² de referencia: TinyML en Edge Impulse alcanzó 0.96 para horizonte de 1h",
-    "Sensores AHT20/BMP280 tienen ±0.5°C de error propio",
-    "Modelos entrenados con datos de Open-Meteo como proxy de sensores reales"
+    "presion_delta es el predictor meteorologico mas potente para cambios abruptos",
+    "lag_24h de temperatura captura el patron diurno dominante",
+    "Con 6 años el modelo ha visto suficientes frentes, niñas y heladas atipicas",
+    "MAE naturalmente mayor a mayor horizonte temporal",
+    "Sensores AHT20/BMP280 tienen ±0.5C de error propio"
   ]
 }

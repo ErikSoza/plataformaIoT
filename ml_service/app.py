@@ -42,7 +42,10 @@ CURICO_LAT = -34.9853
 CURICO_LON = -71.2368
 
 HORIZONTES_VALIDOS = [24, 48, 72]
-LAG_WINDOW = 12
+LAG_WINDOW_TEMP       = 24   # temperatura: lags 1h–24h
+LAG_WINDOW_HUM_VIENTO = 12   # humedad y viento: lags 1h–12h
+LAG_WINDOW_PRESION    = 12   # presión: lags 1h–12h
+PRESION_CURICO_MEDIA  = 993.0  # hPa — valor por defecto si el sensor no tiene presión
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(message)s")
 logger = logging.getLogger(__name__)
@@ -108,32 +111,108 @@ def construir_features(
     temp: float,
     humedad: float,
     viento: float,
+    presion: float,
     hora: int,
     dia_semana: int,
     mes: int,
     lags_temp: list[float],
     lags_hum: list[float],
     lags_viento: list[float],
+    lags_presion: list[float],
 ) -> np.ndarray:
     """
-    Construye el vector de 42 features en el mismo orden que el modelo espera.
+    Construye el vector de 80 features v3 en el mismo orden que el modelo espera.
 
-    lags_* deben tener LAG_WINDOW (12) valores: índice 0 = lag_1h (más reciente),
-    índice 11 = lag_12h (más antiguo).
+    lags_temp:    24 valores — índice 0 = T-1h, índice 23 = T-24h (ayer)
+    lags_hum/viento/presion: 12 valores — índice 0 = T-1h, índice 11 = T-12h
+
+    Estructura (debe coincidir con obtener_features() en train_model.py):
+      [A] 4 actuales:   temp, humedad, viento, presion
+      [B] 5 cíclicos:   hour_sin/cos, mes_sin/cos, dia_semana
+      [C] 24 lags temp
+      [D] 12 lags humedad
+      [E] 12 lags viento
+      [F] 12 lags presión
+      [G] 4 deltas temperatura
+      [H] 4 deltas presión
+      [I] 3 rolling temperatura
     """
     feature_names = paquete_modelo["feature_names"]  # type: ignore[index]
+
+    def _lag(lst: list[float], idx: int, fallback: float) -> float:
+        return lst[idx] if idx < len(lst) else fallback
+
+    # [B] Codificación cíclica
+    hour_sin = float(np.sin(2 * np.pi * hora / 24))
+    hour_cos = float(np.cos(2 * np.pi * hora / 24))
+    mes_sin  = float(np.sin(2 * np.pi * mes / 12))
+    mes_cos  = float(np.cos(2 * np.pi * mes / 12))
+
+    # [G] Deltas temperatura
+    delta_temp_1h  = temp - _lag(lags_temp, 0,  temp)
+    delta_temp_3h  = temp - _lag(lags_temp, 2,  temp)
+    delta_temp_6h  = temp - _lag(lags_temp, 5,  temp)
+    delta_temp_24h = temp - _lag(lags_temp, 23, temp)
+
+    # [H] Deltas presión (clave: caída rápida = frente de tormenta)
+    delta_pres_1h  = presion - _lag(lags_presion, 0,  presion)
+    delta_pres_3h  = presion - _lag(lags_presion, 2,  presion)
+    delta_pres_6h  = presion - _lag(lags_presion, 5,  presion)
+    delta_pres_12h = presion - _lag(lags_presion, 11, presion)
+
+    # [I] Rolling temperatura
+    temps_6h  = [temp] + [_lag(lags_temp, i, temp) for i in range(5)]
+    temps_12h = [temp] + [_lag(lags_temp, i, temp) for i in range(11)]
+    mean_6h  = float(np.mean(temps_6h))
+    mean_12h = float(np.mean(temps_12h))
+    std_6h   = float(np.std(temps_6h)) if len(temps_6h) > 1 else 0.0
+
     vector: dict[str, float] = {
-        "air_temperature_C": temp,
+        # [A]
+        "air_temperature_C":       temp,
         "relative_humidity_percent": humedad,
-        "wind_speed_kmh": viento,
-        "hour": float(hora),
+        "wind_speed_kmh":          viento,
+        "presion_hPa":             presion,
+        # [B]
+        "hour_sin":   hour_sin,
+        "hour_cos":   hour_cos,
+        "mes_sin":    mes_sin,
+        "mes_cos":    mes_cos,
         "dia_semana": float(dia_semana),
-        "mes": float(mes),
     }
-    for i in range(LAG_WINDOW):
-        vector[f"temp_lag_{i+1}h"] = lags_temp[i]
-        vector[f"hum_lag_{i+1}h"] = lags_hum[i]
-        vector[f"viento_lag_{i+1}h"] = lags_viento[i]
+
+    # [C] Lags temperatura 1-24h
+    for i in range(LAG_WINDOW_TEMP):
+        vector[f"temp_lag_{i+1}h"] = _lag(lags_temp, i, temp)
+
+    # [D] Lags humedad 1-12h
+    for i in range(LAG_WINDOW_HUM_VIENTO):
+        vector[f"hum_lag_{i+1}h"] = _lag(lags_hum, i, humedad)
+
+    # [E] Lags viento 1-12h
+    for i in range(LAG_WINDOW_HUM_VIENTO):
+        vector[f"viento_lag_{i+1}h"] = _lag(lags_viento, i, viento)
+
+    # [F] Lags presión 1-12h
+    for i in range(LAG_WINDOW_PRESION):
+        vector[f"presion_lag_{i+1}h"] = _lag(lags_presion, i, presion)
+
+    # [G] Deltas temperatura
+    vector["temp_delta_1h"]  = delta_temp_1h
+    vector["temp_delta_3h"]  = delta_temp_3h
+    vector["temp_delta_6h"]  = delta_temp_6h
+    vector["temp_delta_24h"] = delta_temp_24h
+
+    # [H] Deltas presión
+    vector["presion_delta_1h"]  = delta_pres_1h
+    vector["presion_delta_3h"]  = delta_pres_3h
+    vector["presion_delta_6h"]  = delta_pres_6h
+    vector["presion_delta_12h"] = delta_pres_12h
+
+    # [I] Rolling temperatura
+    vector["temp_mean_6h"]  = mean_6h
+    vector["temp_mean_12h"] = mean_12h
+    vector["temp_std_6h"]   = std_6h
 
     return np.array([[vector[f] for f in feature_names]])
 
@@ -157,61 +236,94 @@ def interpolar_curva(
     horas_max: int,
     ahora: datetime,
     lags_temp: list[float] | None = None,
+    pred_om: Optional[list[dict]] = None,
 ) -> list[dict]:
     """
-    Genera una predicción horaria combinando interpolación lineal entre los
-    puntos ancla con una corrección diurna sinusoidal (ciclo día/noche).
+    Genera la curva horaria de predicción usando dos estrategias:
 
-    Los modelos XGBoost predicen T+24h, T+48h, T+72h (misma hora del día),
-    pero la interpolación lineal entre ellos elimina el ciclo diario.
-    La corrección diurna restaura ese comportamiento físico esperado.
+    Estrategia A — Open-Meteo disponible (preferida):
+      Usa la forma horaria de Open-Meteo como base y aplica una corrección
+      de sesgo lineal derivada de los puntos ancla de XGBoost (T+24h, T+48h, T+72h).
+      Esto combina la forma meteorológica real de OM con la calibración local de XGB.
+      El sesgo se interpola linealmente entre anclas para una transición suave.
 
-    Estrategia:
-      1. Descomponer cada ancla en tendencia_lenta + componente_diurna.
-      2. Interpolar solo la tendencia lenta entre anclas.
-      3. Sumar la componente diurna correspondiente a cada hora futura.
+    Estrategia B — fallback sinusoidal (sin conexión a OM):
+      Ciclo diurno centrado en la media empírica de los últimos 24 lags.
+      Menos preciso en la madrugada porque usa un coseno simétrico.
     """
-    HORA_MAX_DIARIO = 14  # 14h → máximo diario para Curicó (primavera/otoño)
+    om_por_offset: dict[int, float] = {}
+    if pred_om:
+        om_por_offset = {p["hora_offset"]: p["temperatura"] for p in pred_om}
+
+    # ── Estrategia A: Open-Meteo como forma base ────────────────────────────
+    anclas_futuras = {h: t for h, t in anclas.items() if h > 0}
+    if om_por_offset and anclas_futuras:
+        # Calcular sesgo XGBoost−OM en cada hora ancla que OM tiene dato
+        sesgos: dict[int, float] = {}
+        for h, t_xgb in sorted(anclas_futuras.items()):
+            if h in om_por_offset:
+                sesgos[h] = t_xgb - om_por_offset[h]
+
+        if sesgos:
+            puntos_sesgo = sorted(sesgos.items())
+            h_min, b_min = puntos_sesgo[0]
+            h_max, b_max = puntos_sesgo[-1]
+
+            def interpolar_sesgo(i: int) -> float:
+                if i <= h_min:
+                    return b_min
+                if i >= h_max:
+                    return b_max
+                for j in range(len(puntos_sesgo) - 1):
+                    ha, ba = puntos_sesgo[j]
+                    hb, bb = puntos_sesgo[j + 1]
+                    if ha <= i <= hb:
+                        return ba + (bb - ba) * (i - ha) / (hb - ha)
+                return b_max
+
+            predicciones = []
+            for i in range(1, horas_max + 1):
+                om_t = om_por_offset.get(i)
+                if om_t is None:
+                    continue
+                temp_i = om_t + interpolar_sesgo(i)
+                predicciones.append({
+                    "hora_offset": i,
+                    "datetime": (ahora + timedelta(hours=i)).strftime("%Y-%m-%dT%H:%M"),
+                    "temperatura": round(temp_i, 2),
+                })
+            if predicciones:
+                return predicciones
+
+    # ── Estrategia B: fallback sinusoidal ───────────────────────────────────
+    HORA_MAX_DIARIO = 15
+    temps_hist: list[float] = (lags_temp or [])[:24]
+    if len(temps_hist) >= 6:
+        daily_mean = float(np.mean(temps_hist))
+        amplitud   = float(np.clip((float(np.max(temps_hist)) - float(np.min(temps_hist))) / 2.0, 3.0, 9.0))
+    else:
+        daily_mean = float(anclas.get(0, 15.0))
+        amplitud   = 5.0
 
     def diurno(hora_dia: int) -> float:
-        """Desviación sinusoidal respecto a la media para una hora del día."""
         return float(amplitud * np.cos(2 * np.pi * (hora_dia - HORA_MAX_DIARIO) / 24))
 
-    # Estimar amplitud desde lags + temperatura actual
-    temps_ref: list[float] = [anclas[0]] + (lags_temp or [])
-    rango_obs = max(temps_ref) - min(temps_ref) if len(temps_ref) > 1 else 0.0
-    # Mínimo climatológico para Curicó: 6°C de rango diario en otoño/primavera
-    # Máximo razonable: ±11°C (22°C de rango, días de verano extremos)
-    amplitud = float(np.clip(max(rango_obs, 6.0) / 2.0, 3.0, 11.0))
-
-    # Descomponer anclas → componente tendencia (sin diurno)
-    anclas_tendencia = {
-        h: t - diurno((ahora.hour + h) % 24)
-        for h, t in anclas.items()
-    }
-    puntos_tendencia = sorted(anclas_tendencia.items())
+    diurno_actual = diurno(ahora.hour)
+    ajuste: dict[int, float] = {h: t - daily_mean - diurno_actual for h, t in anclas.items()}
+    puntos_ajuste = sorted(ajuste.items())
 
     predicciones = []
     for i in range(1, horas_max + 1):
-        # Interpolar tendencia lenta
-        t_a, temp_a = puntos_tendencia[0]
-        t_b, temp_b = puntos_tendencia[-1]
-        for j in range(len(puntos_tendencia) - 1):
-            ha, ta = puntos_tendencia[j]
-            hb, tb = puntos_tendencia[j + 1]
-            if ha <= i <= hb:
-                t_a, temp_a, t_b, temp_b = ha, ta, hb, tb
+        ha, aa = puntos_ajuste[0]
+        hb, ab = puntos_ajuste[-1]
+        for j in range(len(puntos_ajuste) - 1):
+            ha2, aa2 = puntos_ajuste[j]
+            hb2, ab2 = puntos_ajuste[j + 1]
+            if ha2 <= i <= hb2:
+                ha, aa, hb, ab = ha2, aa2, hb2, ab2
                 break
-
-        if t_b == t_a:
-            tendencia_i = temp_a
-        else:
-            tendencia_i = temp_a + (temp_b - temp_a) * (i - t_a) / (t_b - t_a)
-
-        # Añadir ciclo diurno para la hora futura concreta
-        hora_futura = (ahora.hour + i) % 24
-        temp_i = tendencia_i + diurno(hora_futura)
-
+        ajuste_i = aa if hb == ha else aa + (ab - aa) * (i - ha) / (hb - ha)
+        temp_i = daily_mean + ajuste_i + diurno((ahora.hour + i) % 24)
         predicciones.append({
             "hora_offset": i,
             "datetime": (ahora + timedelta(hours=i)).strftime("%Y-%m-%dT%H:%M"),
@@ -221,10 +333,17 @@ def interpolar_curva(
     return predicciones
 
 
-async def consultar_openmeteo(horas: int, lat: float, lon: float) -> Optional[list[dict]]:
+async def consultar_openmeteo(
+    horas: int, lat: float, lon: float, ahora: datetime
+) -> Optional[list[dict]]:
     """
     Consulta Open-Meteo Forecast API para las próximas `horas` horas
-    en las coordenadas dadas.
+    en las coordenadas dadas, empezando desde la hora actual (no desde medianoche).
+
+    El array de Open-Meteo siempre empieza a las 00:00 del día actual.
+    Sin alinear, a las 14:00 los primeros 14 índices son del pasado y
+    hora_offset=1 apuntaría a las 01:00 en lugar de a las 15:00, lo que
+    produce una divergencia artificial con las predicciones de XGBoost.
 
     Retorna lista de {hora_offset, datetime, temperatura} o None si falla.
     """
@@ -233,7 +352,7 @@ async def consultar_openmeteo(horas: int, lat: float, lon: float) -> Optional[li
         "latitude": lat,
         "longitude": lon,
         "hourly": "temperature_2m",
-        "forecast_days": max(4, (horas // 24) + 1),
+        "forecast_days": max(4, (horas // 24) + 2),  # +2 para garantizar datos hasta T+72h
         "timezone": "America/Santiago",
     }
     try:
@@ -245,13 +364,28 @@ async def consultar_openmeteo(horas: int, lat: float, lon: float) -> Optional[li
         tiempos = data["hourly"]["time"]
         temps = data["hourly"]["temperature_2m"]
 
+        # Encontrar el índice que corresponde a la hora actual
+        hora_actual_str = ahora.strftime("%Y-%m-%dT%H:00")
+        start_idx = 0
+        for i, t in enumerate(tiempos):
+            if t >= hora_actual_str:
+                start_idx = i
+                break
+        # hora_offset=1 debe ser T+1h (la siguiente hora), no T+0h
+        start_idx += 1
+
+        disponibles = len(tiempos) - start_idx
+        if disponibles <= 0:
+            logger.warning("Open-Meteo: no hay datos futuros suficientes")
+            return None
+
         return [
             {
                 "hora_offset": i + 1,
-                "datetime": tiempos[i],
-                "temperatura": round(temps[i], 1),
+                "datetime": tiempos[start_idx + i],
+                "temperatura": round(temps[start_idx + i], 1),
             }
-            for i in range(min(horas, len(tiempos)))
+            for i in range(min(horas, disponibles))
         ]
     except Exception as exc:
         logger.warning(f"Open-Meteo no disponible: {exc}")
@@ -259,11 +393,13 @@ async def consultar_openmeteo(horas: int, lat: float, lon: float) -> Optional[li
 
 
 def calcular_confianza(
-    pred_local: list[dict], pred_om: Optional[list[dict]]
+    anclas: dict[int, float], pred_om: Optional[list[dict]]
 ) -> dict:
     """
-    Compara predicciones locales vs Open-Meteo.
-    Clasifica la confianza según el MAE entre ambas fuentes.
+    Compara los puntos ancla de XGBoost (T+24h, T+48h, T+72h) contra Open-Meteo
+    en esas mismas horas. Medir la confianza solo en los anclas es correcto porque:
+      - Son las predicciones reales del modelo, no interpolaciones.
+      - Comparar la curva horaria completa penaliza la interpolación (no el modelo).
     """
     if not pred_om:
         return {
@@ -273,11 +409,13 @@ def calcular_confianza(
             "descripcion": "No se pudo conectar con Open-Meteo para validar",
         }
 
-    temps_local = np.array([p["temperatura"] for p in pred_local])
-    temps_om = np.array([p["temperatura"] for p in pred_om[: len(pred_local)]])
-    n = min(len(temps_local), len(temps_om))
+    om_por_offset = {p["hora_offset"]: p["temperatura"] for p in pred_om}
+    diffs = []
+    for h, t_xgb in anclas.items():
+        if h > 0 and h in om_por_offset:
+            diffs.append(abs(t_xgb - om_por_offset[h]))
 
-    if n == 0:
+    if not diffs:
         return {
             "nivel": "Desconocido",
             "badge": "⚪",
@@ -285,7 +423,7 @@ def calcular_confianza(
             "descripcion": "Datos insuficientes para calcular confianza",
         }
 
-    mae = float(np.mean(np.abs(temps_local[:n] - temps_om[:n])))
+    mae = float(np.mean(diffs))
 
     if mae <= 1.5:
         nivel, badge = "Alto", "🟢"
@@ -371,28 +509,28 @@ async def predict(
     ahora = datetime.now()
 
     # Lags aproximados con valor constante cuando no hay historial real.
-    # El backend (Paso 3) sobreescribirá esto con lecturas de MySQL.
-    lags_temp = [temp_actual] * LAG_WINDOW
-    lags_hum = [humedad] * LAG_WINDOW
-    lags_viento = [viento] * LAG_WINDOW
+    # El backend (Node.js) sobreescribirá esto con lecturas de MySQL.
+    lags_temp     = [temp_actual] * LAG_WINDOW_TEMP
+    lags_hum      = [humedad]     * LAG_WINDOW_HUM_VIENTO
+    lags_viento   = [viento]      * LAG_WINDOW_HUM_VIENTO
+    lags_presion  = [presion]     * LAG_WINDOW_PRESION
 
     # Construir vector de features y obtener predicciones ancla
     X = construir_features(
         temp=temp_actual,
         humedad=humedad,
         viento=viento,
+        presion=presion,
         hora=ahora.hour,
         dia_semana=ahora.weekday(),
         mes=ahora.month,
         lags_temp=lags_temp,
         lags_hum=lags_hum,
         lags_viento=lags_viento,
+        lags_presion=lags_presion,
     )
 
     anclas = predecir_anchors(X, horas)
-    predicciones_locales = interpolar_curva(anclas, horas, ahora, lags_temp)
-
-    # Temperatura predicha en el horizonte solicitado (punto final)
     temp_final_predicha = anclas[horas]
 
     # Métricas del modelo principal
@@ -406,13 +544,17 @@ async def predict(
             "nivel": m["nivel"],
         }
 
-    # Consulta Open-Meteo
+    # Open-Meteo primero: la curva usa OM como forma base
     lat_om = lat if lat is not None else CURICO_LAT
     lon_om = lon if lon is not None else CURICO_LON
-    pred_openmeteo = await consultar_openmeteo(horas, lat_om, lon_om)
+    pred_openmeteo = await consultar_openmeteo(horas, lat_om, lon_om, ahora)
 
-    # Confianza
-    confianza = calcular_confianza(predicciones_locales, pred_openmeteo)
+    # Interpolación con corrección de sesgo sobre OM (o fallback sinusoidal)
+    predicciones_locales = interpolar_curva(anclas, horas, ahora, lags_temp, pred_openmeteo)
+
+    # Confianza: MAE solo en los puntos ancla (predicciones reales del modelo)
+    anclas_futuras = {h: t for h, t in anclas.items() if h > 0}
+    confianza = calcular_confianza(anclas_futuras, pred_openmeteo)
 
     return {
         "modelo_local": {
@@ -463,6 +605,7 @@ class LecturaHistorial(BaseModel):
     temperatura: float
     humedad: float
     velocidad_viento: float
+    presion: Optional[float] = None   # BMP280 — None si el sensor no tiene presión
 
 
 class PredictRequest(BaseModel):
@@ -480,8 +623,9 @@ class PredictRequest(BaseModel):
     historial: Optional[list[LecturaHistorial]] = Field(
         None,
         description=(
-            "Últimas lecturas históricas, de más reciente (T-1h) a más antigua (T-12h). "
-            "Si se omite o tiene menos de 12 elementos, se rellena con valores actuales."
+            "Últimas lecturas históricas, de más reciente (T-1h) a más antigua (T-24h). "
+            "Se necesitan hasta 24 entradas para activar lag_24h. "
+            "Si se omiten o hay menos de 24, se rellena con los valores actuales."
         ),
     )
 
@@ -513,32 +657,39 @@ async def predict_post(body: PredictRequest) -> dict:
     n_hist = len(historial)
 
     lags_temp = [
-        historial[i].temperatura if i < n_hist else body.temp_actual
-        for i in range(LAG_WINDOW)
+        historial[i].temperatura      if i < n_hist else body.temp_actual
+        for i in range(LAG_WINDOW_TEMP)
     ]
     lags_hum = [
-        historial[i].humedad if i < n_hist else body.humedad
-        for i in range(LAG_WINDOW)
+        historial[i].humedad          if i < n_hist else body.humedad
+        for i in range(LAG_WINDOW_HUM_VIENTO)
     ]
     lags_viento = [
         historial[i].velocidad_viento if i < n_hist else body.viento
-        for i in range(LAG_WINDOW)
+        for i in range(LAG_WINDOW_HUM_VIENTO)
+    ]
+    presion_actual = body.presion if body.presion is not None else PRESION_CURICO_MEDIA
+    lags_presion = [
+        historial[i].presion          if i < n_hist and historial[i].presion is not None
+        else presion_actual
+        for i in range(LAG_WINDOW_PRESION)
     ]
 
     X = construir_features(
         temp=body.temp_actual,
         humedad=body.humedad,
         viento=body.viento,
+        presion=presion_actual,
         hora=ahora.hour,
         dia_semana=ahora.weekday(),
         mes=ahora.month,
         lags_temp=lags_temp,
         lags_hum=lags_hum,
         lags_viento=lags_viento,
+        lags_presion=lags_presion,
     )
 
     anclas = predecir_anchors(X, body.horas)
-    predicciones_locales = interpolar_curva(anclas, body.horas, ahora, lags_temp)
     temp_final_predicha = anclas[body.horas]
 
     metricas_modelo = None
@@ -551,10 +702,17 @@ async def predict_post(body: PredictRequest) -> dict:
             "nivel": m["nivel"],
         }
 
+    # Open-Meteo primero: la curva usa OM como forma base
     lat_om = body.lat if body.lat is not None else CURICO_LAT
     lon_om = body.lon if body.lon is not None else CURICO_LON
-    pred_openmeteo = await consultar_openmeteo(body.horas, lat_om, lon_om)
-    confianza = calcular_confianza(predicciones_locales, pred_openmeteo)
+    pred_openmeteo = await consultar_openmeteo(body.horas, lat_om, lon_om, ahora)
+
+    # Interpolación con corrección de sesgo sobre OM (o fallback sinusoidal)
+    predicciones_locales = interpolar_curva(anclas, body.horas, ahora, lags_temp, pred_openmeteo)
+
+    # Confianza: MAE solo en los puntos ancla (predicciones reales del modelo)
+    anclas_futuras = {h: t for h, t in anclas.items() if h > 0}
+    confianza = calcular_confianza(anclas_futuras, pred_openmeteo)
 
     return {
         "modelo_local": {

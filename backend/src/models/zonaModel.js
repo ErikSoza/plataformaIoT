@@ -100,7 +100,7 @@ export const removeEstacionFromZona = async (zonaId, estacionId) => {
  * Devuelve el mismo formato que getHistorialEstacion para ser compatible
  * con el controlador de predicción.
  */
-export const getHistorialZona = async (zonaId, limit = 13) => {
+export const getHistorialZona = async (zonaId, limit = 25) => {
     const zona = await getZonaById(zonaId);
     if (!zona || zona.estaciones.length === 0) return [];
 

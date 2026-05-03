@@ -1,16 +1,30 @@
 """
 ============================================================
-  ENTRENAMIENTO MODELO XGBOOST — PREDICCIÓN METEOROLÓGICA
+  ENTRENAMIENTO MODELO XGBOOST v3 — PREDICCIÓN METEOROLÓGICA
   Plataforma IoT - Estaciones Meteorológicas Curicó/Maule
 ============================================================
 
-Este script entrena 3 modelos XGBoost independientes para predecir
-la temperatura a horizontes de 24h, 48h y 72h, utilizando datos
-históricos de Open-Meteo para la zona de Curicó, Chile.
+Mejoras v3 sobre v2:
+  - Auto-descubrimiento de todos los CSVs en datos/ (2020-2025)
+    → 52,000+ registros vs 17,000 anteriores
+  - presion_hPa como feature y sus lags/deltas
+    → la tendencia de presión es el mejor predictor de cambio climático:
+      presión bajando = frente de tormenta = temperatura cae
+      presión subiendo = despejado = temperatura sube
+  - 80 features en total (vs 63 en v2)
 
-Datasets: 2023 + 2024 (combinados = ~17,500 registros horarios)
-Features: 42 columnas (6 actuales + 36 time-lag de 12h)
-Output:   modelo_xgboost.pkl + metricas.json
+Features v3 (80 total):
+  [A]  4  actuales:       temp, humedad, viento, presion
+  [B]  5  cíclicos:       hour_sin/cos, mes_sin/cos, dia_semana
+  [C] 24  lags temp:      T-1h … T-24h
+  [D] 12  lags humedad:   T-1h … T-12h
+  [E] 12  lags viento:    T-1h … T-12h
+  [F] 12  lags presión:   T-1h … T-12h
+  [G]  4  deltas temp:    Δ1h, Δ3h, Δ6h, Δ24h
+  [H]  4  deltas presión: Δ1h, Δ3h, Δ6h, Δ12h
+  [I]  3  rolling temp:   mean_6h, mean_12h, std_6h
+  [J]  0  (reservado para futuras variables)
+  Total: 4+5+24+12+12+12+4+4+3 = 80
 
 Autor: Erik Soza — Universidad de Talca
 Proyecto: Memoria Universitaria - Red IoT Meteorológica
@@ -18,6 +32,7 @@ Proyecto: Memoria Universitaria - Red IoT Meteorológica
 
 import os
 import sys
+import glob
 import json
 import warnings
 from datetime import datetime
@@ -25,10 +40,8 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import joblib
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-# Intentar importar XGBoost; si no está, usar HistGradientBoosting de sklearn
 try:
     from xgboost import XGBRegressor
     USE_XGBOOST = True
@@ -39,290 +52,331 @@ except ImportError:
 warnings.filterwarnings('ignore')
 
 # ============================================================
-# SECCIÓN 1 — RUTAS ABSOLUTAS
+# SECCIÓN 1 — RUTAS
 # ============================================================
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATOS_DIR = os.path.join(SCRIPT_DIR, "datos")
+DATOS_DIR  = os.path.join(SCRIPT_DIR, "datos")
 MODELOS_DIR = os.path.join(SCRIPT_DIR, "modelos")
 
-# Archivos de entrada (ambos datasets)
-CSV_2023 = os.path.join(DATOS_DIR, "openmeteo_curico_2023.csv")
-CSV_2024 = os.path.join(DATOS_DIR, "openmeteo_curico_2024.csv")
-
-# Archivos de salida
-MODELO_PATH = os.path.join(MODELOS_DIR, "modelo_xgboost.pkl")
+MODELO_PATH   = os.path.join(MODELOS_DIR, "modelo_xgboost.pkl")
 METRICAS_PATH = os.path.join(MODELOS_DIR, "metricas.json")
 
-# Crear carpeta de modelos si no existe
 os.makedirs(MODELOS_DIR, exist_ok=True)
 
-# Columnas requeridas del CSV
+# Columnas mínimas que debe tener cada CSV
 COLUMNAS_REQUERIDAS = [
     'time_index',
     'air_temperature_C',
     'relative_humidity_percent',
     'wind_speed_kmh',
-    'hour'
+    'hour',
 ]
+# Presión: columna opcional (se rellena con media climatológica si falta)
+PRESION_CURICO_MEDIA = 993.0   # hPa — media histórica de Curicó a 225 msnm
 
-# Horizontes de predicción (en horas)
 HORIZONTES = [24, 48, 72]
 
-# Ventana de time-lag (en horas)
-LAG_WINDOW = 12
+# Ventanas de lag por variable
+LAG_WINDOW_TEMP    = 24   # captura "misma hora de ayer"
+LAG_WINDOW_HUM_VIENTO = 12
+LAG_WINDOW_PRESION = 12   # 12h de historial de presión
 
-# Proporción train/test
-TEST_SIZE = 0.20
+# Split temporal
+TEST_SIZE = 0.20   # último 20% para evaluación final
+VAL_SIZE  = 0.10   # 10% previo al test para early stopping
 
 
 def print_header():
     print("\n" + "=" * 60)
-    print("  ENTRENAMIENTO MODELO XGBOOST — PREDICCIÓN METEOROLÓGICA")
+    print("  ENTRENAMIENTO XGBOOST v3 — PREDICCION METEOROLOGICA")
     print("=" * 60)
 
 
 # ============================================================
-# SECCIÓN 2 — CARGA DEL DATASET
+# SECCIÓN 2 — CARGA AUTOMÁTICA DE TODOS LOS CSVs
 # ============================================================
-def cargar_datasets():
-    """Carga y combina los CSVs de 2023 y 2024."""
-    print("\n📂 Cargando datasets...")
+def cargar_datasets() -> pd.DataFrame:
+    """
+    Auto-descubre todos los openmeteo_curico_YYYY.csv en datos/
+    y los combina en orden cronológico.
+    """
+    print("\n[1/5] Cargando datasets...")
 
-    dfs = []
-    for csv_path, year in [(CSV_2023, "2023"), (CSV_2024, "2024")]:
-        if not os.path.exists(csv_path):
-            print(f"   ⚠️  Archivo {year} no encontrado: {csv_path}")
-            print(f"       Continuando sin datos de {year}...")
-            continue
+    patron = os.path.join(DATOS_DIR, "openmeteo_curico_*.csv")
+    archivos = sorted(glob.glob(patron))
 
-        df = pd.read_csv(csv_path)
-        print(f"   ✅ {year}: {len(df)} registros cargados")
-
-        # Verificar columnas
-        faltantes = [c for c in COLUMNAS_REQUERIDAS if c not in df.columns]
-        if faltantes:
-            print(f"   ❌ Columnas faltantes en {year}: {faltantes}")
-            sys.exit(1)
-
-        dfs.append(df)
-
-    if not dfs:
-        print("   ❌ No se encontró ningún archivo CSV.")
+    if not archivos:
+        print(f"  ERROR: No se encontraron CSVs en {DATOS_DIR}")
+        print(f"  Ejecuta primero: python descargar_datos.py")
         sys.exit(1)
 
-    # Combinar datasets
-    df = pd.concat(dfs, ignore_index=True)
-    print(f"\n   Columnas detectadas : {list(df.columns)}")
-    print(f"   Total de registros  : {len(df)}")
-    print(f"   Rango temporal      : {df['time_index'].iloc[0]} → {df['time_index'].iloc[-1]}")
+    print(f"  Archivos encontrados: {len(archivos)}")
 
-    return df
+    dfs = []
+    for ruta in archivos:
+        nombre = os.path.basename(ruta)
+        df = pd.read_csv(ruta)
+
+        # Validar columnas mínimas
+        faltantes = [c for c in COLUMNAS_REQUERIDAS if c not in df.columns]
+        if faltantes:
+            print(f"  ERROR en {nombre}: columnas faltantes {faltantes}")
+            sys.exit(1)
+
+        # presion_hPa: agregar con media climatológica si el CSV no la tiene
+        if 'presion_hPa' not in df.columns:
+            print(f"  AVISO {nombre}: sin presion_hPa — relleno con {PRESION_CURICO_MEDIA} hPa")
+            df['presion_hPa'] = PRESION_CURICO_MEDIA
+
+        print(f"  {nombre}: {len(df):>6,} registros  "
+              f"[{df['time_index'].iloc[0]} ... {df['time_index'].iloc[-1]}]")
+        dfs.append(df)
+
+    df_total = pd.concat(dfs, ignore_index=True)
+    print(f"\n  Total combinado : {len(df_total):,} registros")
+    return df_total
 
 
 # ============================================================
 # SECCIÓN 3 — LIMPIEZA
 # ============================================================
-def limpiar_datos(df):
-    """Convierte tipos, ordena cronológicamente, rellena nulos."""
-    print("\n🧹 Limpiando datos...")
+def limpiar_datos(df: pd.DataFrame) -> pd.DataFrame:
+    print("\n[2/5] Limpiando datos...")
 
     nulos_antes = df.isnull().sum().sum()
-
-    # Convertir time_index a datetime
     df['time_index'] = pd.to_datetime(df['time_index'])
-
-    # Ordenar cronológicamente (obligatorio en series temporales)
     df = df.sort_values('time_index').reset_index(drop=True)
 
-    # Rellenar nulos con forward-fill + backward-fill (mismo que Edge Impulse)
+    # Eliminar duplicados en tiempo (puede ocurrir en años bisiestos)
+    duplicados = df.duplicated(subset=['time_index']).sum()
+    if duplicados:
+        df = df.drop_duplicates(subset=['time_index']).reset_index(drop=True)
+        print(f"  Duplicados eliminados: {duplicados}")
+
     df = df.ffill().bfill()
-
     nulos_despues = df.isnull().sum().sum()
-    print(f"   Valores nulos corregidos: {nulos_antes} → {nulos_despues}")
-    print(f"   Registros tras limpieza : {len(df)}")
-
+    print(f"  Nulos: {nulos_antes} -> {nulos_despues}")
+    print(f"  Registros tras limpieza: {len(df):,}")
     return df
 
 
 # ============================================================
-# SECCIÓN 4 — FEATURE ENGINEERING (TIME-LAG)
+# SECCIÓN 4 — FEATURE ENGINEERING v3
 # ============================================================
-def generar_features(df):
+def generar_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Genera features con time-lag y targets para cada horizonte.
+    Genera las 80 features en el orden definido por obtener_features().
 
-    Features creados (42 total):
-    - 6 valores actuales: temp, humedad, viento, hora, día_semana, mes
-    - 36 valores históricos: 12h × 3 variables (temp, humedad, viento)
-
-    Targets:
-    - target_24h: temperatura 24 horas adelante
-    - target_48h: temperatura 48 horas adelante
-    - target_72h: temperatura 72 horas adelante
+    Grupos:
+      [A] Valores actuales (temp, humedad, viento, presion)
+      [B] Codificación cíclica de tiempo
+      [C] Lags temperatura 1-24h
+      [D] Lags humedad 1-12h
+      [E] Lags viento 1-12h
+      [F] Lags presión 1-12h
+      [G] Deltas temperatura (tendencia de subida/bajada)
+      [H] Deltas presión (tendencia → predictor de frentes)
+      [I] Estadísticas rodantes de temperatura
     """
-    print("\n⚙️  Generando features con time-lag...")
+    print("\n[3/5] Generando features v3 (80 variables)...")
 
-    # --- Features temporales adicionales ---
-    df['dia_semana'] = df['time_index'].dt.dayofweek    # 0=Lunes ... 6=Domingo
-    df['mes'] = df['time_index'].dt.month               # 1-12
+    # [B] Codificación cíclica
+    df['hour_sin']   = np.sin(2 * np.pi * df['hour'] / 24)
+    df['hour_cos']   = np.cos(2 * np.pi * df['hour'] / 24)
+    mes = df['time_index'].dt.month
+    df['mes_sin']    = np.sin(2 * np.pi * mes / 12)
+    df['mes_cos']    = np.cos(2 * np.pi * mes / 12)
+    df['dia_semana'] = df['time_index'].dt.dayofweek
 
-    # --- Time-lag features (ventana de 12 horas) ---
-    variables_lag = {
-        'air_temperature_C': 'temp',
-        'relative_humidity_percent': 'hum',
-        'wind_speed_kmh': 'viento'
-    }
+    # [C] Lags temperatura 1-24h
+    for lag in range(1, LAG_WINDOW_TEMP + 1):
+        df[f'temp_lag_{lag}h'] = df['air_temperature_C'].shift(lag)
 
-    for col_original, prefijo in variables_lag.items():
-        for lag in range(1, LAG_WINDOW + 1):
-            df[f'{prefijo}_lag_{lag}h'] = df[col_original].shift(lag)
+    # [D] Lags humedad 1-12h
+    for lag in range(1, LAG_WINDOW_HUM_VIENTO + 1):
+        df[f'hum_lag_{lag}h'] = df['relative_humidity_percent'].shift(lag)
 
-    # --- Targets: temperatura N horas hacia adelante ---
+    # [E] Lags viento 1-12h
+    for lag in range(1, LAG_WINDOW_HUM_VIENTO + 1):
+        df[f'viento_lag_{lag}h'] = df['wind_speed_kmh'].shift(lag)
+
+    # [F] Lags presión 1-12h
+    for lag in range(1, LAG_WINDOW_PRESION + 1):
+        df[f'presion_lag_{lag}h'] = df['presion_hPa'].shift(lag)
+
+    # [G] Deltas de temperatura (¿sube o baja? y a qué velocidad)
+    df['temp_delta_1h']  = df['air_temperature_C'] - df['air_temperature_C'].shift(1)
+    df['temp_delta_3h']  = df['air_temperature_C'] - df['air_temperature_C'].shift(3)
+    df['temp_delta_6h']  = df['air_temperature_C'] - df['air_temperature_C'].shift(6)
+    df['temp_delta_24h'] = df['air_temperature_C'] - df['air_temperature_C'].shift(24)
+
+    # [H] Deltas de presión (clave meteorológica: caída = frente, subida = despejado)
+    df['presion_delta_1h']  = df['presion_hPa'] - df['presion_hPa'].shift(1)
+    df['presion_delta_3h']  = df['presion_hPa'] - df['presion_hPa'].shift(3)
+    df['presion_delta_6h']  = df['presion_hPa'] - df['presion_hPa'].shift(6)
+    df['presion_delta_12h'] = df['presion_hPa'] - df['presion_hPa'].shift(12)
+
+    # [I] Estadísticas rodantes de temperatura
+    df['temp_mean_6h']  = df['air_temperature_C'].rolling(window=6,  min_periods=1).mean()
+    df['temp_mean_12h'] = df['air_temperature_C'].rolling(window=12, min_periods=1).mean()
+    df['temp_std_6h']   = df['air_temperature_C'].rolling(window=6,  min_periods=2).std().fillna(0)
+
+    # Targets
     for h in HORIZONTES:
         df[f'target_{h}h'] = df['air_temperature_C'].shift(-h)
 
-    # --- Eliminar filas incompletas ---
     registros_antes = len(df)
     df = df.dropna().reset_index(drop=True)
-    registros_despues = len(df)
-
-    print(f"   Filas eliminadas (bordes): {registros_antes - registros_despues}")
-    print(f"   Registros válidos p/ entrenar: {registros_despues}")
-
+    print(f"  Filas eliminadas (bordes lag_24h + targets): {registros_antes - len(df):,}")
+    print(f"  Registros validos para entrenar: {len(df):,}")
     return df
 
 
 # ============================================================
-# SECCIÓN 5 — DEFINICIÓN DE FEATURES
+# SECCIÓN 5 — LISTA DE FEATURES (debe coincidir con app.py)
 # ============================================================
-def obtener_features():
+def obtener_features() -> list[str]:
     """
-    Retorna la lista de 42 columnas que el modelo recibe como entrada.
-
-    6 valores actuales:
-      - air_temperature_C, relative_humidity_percent, wind_speed_kmh
-      - hour, dia_semana, mes
-
-    36 valores históricos (12h × 3 variables):
-      - temp_lag_1h ... temp_lag_12h
-      - hum_lag_1h ... hum_lag_12h
-      - viento_lag_1h ... viento_lag_12h
+    80 features en orden exacto. app.py construye el vector en el mismo orden.
+    Cualquier cambio aquí debe replicarse en construir_features() de app.py.
     """
     features = [
+        # [A] Actuales
         'air_temperature_C',
         'relative_humidity_percent',
         'wind_speed_kmh',
-        'hour',
+        'presion_hPa',
+        # [B] Cíclicos
+        'hour_sin', 'hour_cos',
+        'mes_sin',  'mes_cos',
         'dia_semana',
-        'mes'
     ]
+    # [C] Lags temp 1-24h
+    for lag in range(1, LAG_WINDOW_TEMP + 1):
+        features.append(f'temp_lag_{lag}h')
+    # [D] Lags humedad 1-12h
+    for lag in range(1, LAG_WINDOW_HUM_VIENTO + 1):
+        features.append(f'hum_lag_{lag}h')
+    # [E] Lags viento 1-12h
+    for lag in range(1, LAG_WINDOW_HUM_VIENTO + 1):
+        features.append(f'viento_lag_{lag}h')
+    # [F] Lags presión 1-12h
+    for lag in range(1, LAG_WINDOW_PRESION + 1):
+        features.append(f'presion_lag_{lag}h')
+    # [G] Deltas temperatura
+    features += ['temp_delta_1h', 'temp_delta_3h', 'temp_delta_6h', 'temp_delta_24h']
+    # [H] Deltas presión
+    features += ['presion_delta_1h', 'presion_delta_3h', 'presion_delta_6h', 'presion_delta_12h']
+    # [I] Rolling temperatura
+    features += ['temp_mean_6h', 'temp_mean_12h', 'temp_std_6h']
 
-    for prefijo in ['temp', 'hum', 'viento']:
-        for lag in range(1, LAG_WINDOW + 1):
-            features.append(f'{prefijo}_lag_{lag}h')
-
+    # Verificación: 4+5+24+12+12+12+4+4+3 = 80
+    assert len(features) == 80, f"Error en conteo de features: {len(features)} != 80"
     return features
 
 
 # ============================================================
 # SECCIÓN 6 — ENTRENAMIENTO
 # ============================================================
-def entrenar_modelos(df):
+def entrenar_modelos(df: pd.DataFrame):
     """
-    Entrena 3 modelos XGBoost independientes (24h, 48h, 72h).
-
-    - Split 80/20 con shuffle=False (series temporales)
-    - XGBRegressor con hiperparámetros ajustados para meteorología
-    - Métricas: MAE, RMSE, R²
+    Entrena 3 modelos XGBoost (24h, 48h, 72h) con split temporal:
+      70% train efectivo | 10% validación (early stopping) | 20% test final
     """
-    print("\n🤖 Entrenando modelos...")
+    print("\n[4/5] Entrenando modelos v3...")
     if USE_XGBOOST:
-        print("   Motor: XGBRegressor (XGBoost)")
+        print("  Motor: XGBRegressor (XGBoost)")
     else:
-        print("   Motor: HistGradientBoostingRegressor (sklearn)")
-        print("   ℹ️  Para usar XGBoost: pip install xgboost")
+        print("  Motor: HistGradientBoostingRegressor (sklearn fallback)")
 
     feature_names = obtener_features()
     X = df[feature_names]
+    n = len(X)
 
-    modelos = {}
+    test_idx = int(n * (1 - TEST_SIZE))
+    val_idx  = int(n * (1 - TEST_SIZE - VAL_SIZE))
+
+    modelos  = {}
     metricas = {}
 
     for h in HORIZONTES:
-        target_col = f'target_{h}h'
-        y = df[target_col]
+        y = df[f'target_{h}h']
 
-        # Split temporal: 80% train (cronológicamente primero), 20% test (último)
-        split_idx = int(len(X) * (1 - TEST_SIZE))
-        X_train, X_test = X.iloc[:split_idx], X.iloc[split_idx:]
-        y_train, y_test = y.iloc[:split_idx], y.iloc[split_idx:]
+        X_train, y_train = X.iloc[:val_idx],    y.iloc[:val_idx]
+        X_val,   y_val   = X.iloc[val_idx:test_idx], y.iloc[val_idx:test_idx]
+        X_test,  y_test  = X.iloc[test_idx:],   y.iloc[test_idx:]
 
-        # Crear modelo según disponibilidad
         if USE_XGBOOST:
             modelo = XGBRegressor(
-                n_estimators=500,
-                max_depth=6,
-                learning_rate=0.05,
-                subsample=0.8,
-                colsample_bytree=0.8,
-                min_child_weight=5,
-                reg_alpha=0.1,
-                reg_lambda=1.0,
+                n_estimators=3000,
+                max_depth=5,
+                learning_rate=0.025,
+                subsample=0.85,
+                colsample_bytree=0.65,
+                min_child_weight=15,
+                reg_alpha=0.8,
+                reg_lambda=2.5,
+                gamma=0.1,
                 random_state=42,
                 n_jobs=-1,
-                verbosity=0
+                verbosity=0,
+                early_stopping_rounds=100,
+                eval_metric='mae',
             )
             modelo.fit(
                 X_train, y_train,
-                eval_set=[(X_test, y_test)],
-                verbose=False
+                eval_set=[(X_val, y_val)],
+                verbose=False,
             )
+            n_trees = modelo.best_iteration
         else:
             modelo = HistGradientBoostingRegressor(
-                max_iter=500,
-                max_depth=6,
-                learning_rate=0.05,
-                min_samples_leaf=5,
-                l2_regularization=1.0,
+                max_iter=3000,
+                max_depth=5,
+                learning_rate=0.025,
+                min_samples_leaf=15,
+                l2_regularization=2.5,
                 random_state=42,
-                validation_fraction=0.1,
-                n_iter_no_change=20,
-                early_stopping=True
+                validation_fraction=VAL_SIZE / (1 - TEST_SIZE),
+                n_iter_no_change=100,
+                early_stopping=True,
             )
             modelo.fit(X_train, y_train)
+            n_trees = modelo.n_iter_
 
-        # Predecir y evaluar
         y_pred = modelo.predict(X_test)
-        mae = mean_absolute_error(y_test, y_pred)
+        mae  = mean_absolute_error(y_test, y_pred)
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
-        r2 = r2_score(y_test, y_pred)
+        r2   = r2_score(y_test, y_pred)
 
-        # Clasificar rendimiento
-        if r2 >= 0.90:
-            nivel = "🟢 Excelente"
-        elif r2 >= 0.85:
-            nivel = "🟡 Bueno"
-        elif r2 >= 0.75:
-            nivel = "🟠 Aceptable"
+        if r2 >= 0.93:
+            nivel = "Excelente"
+        elif r2 >= 0.89:
+            nivel = "Muy bueno"
+        elif r2 >= 0.82:
+            nivel = "Bueno"
         else:
-            nivel = "🔴 Revisar"
+            nivel = "Revisar"
 
         modelos[f'modelo_{h}h'] = modelo
         metricas[f'modelo_{h}h'] = {
             'horizonte_horas': h,
-            'mae_celsius': round(mae, 4),
+            'mae_celsius':  round(mae, 4),
             'rmse_celsius': round(rmse, 4),
-            'r2_score': round(r2, 4),
-            'nivel': nivel.split(' ')[1],  # Solo texto sin emoji
+            'r2_score':     round(r2, 4),
+            'nivel':        nivel,
+            'n_estimators_usados': int(n_trees) if n_trees else 3000,
             'train_size': len(X_train),
-            'test_size': len(X_test)
+            'val_size':   len(X_val),
+            'test_size':  len(X_test),
         }
 
-        print(f"\n   ✅ Modelo {h}h  ({nivel})")
-        print(f"      MAE  = {mae:.2f} °C")
-        print(f"      RMSE = {rmse:.2f} °C")
-        print(f"      R²   = {r2:.4f}")
-        print(f"      Train: {len(X_train)} | Test: {len(X_test)}")
+        print(f"\n  Modelo {h}h — {nivel}")
+        print(f"    MAE  = {mae:.4f} C")
+        print(f"    RMSE = {rmse:.4f} C")
+        print(f"    R2   = {r2:.4f}")
+        print(f"    Arboles usados : {n_trees}")
+        print(f"    Train/Val/Test : {len(X_train):,}/{len(X_val):,}/{len(X_test):,}")
 
     return modelos, metricas
 
@@ -331,63 +385,83 @@ def entrenar_modelos(df):
 # SECCIÓN 7 — GUARDADO
 # ============================================================
 def guardar_resultados(modelos, metricas, feature_names):
-    """Guarda modelos en .pkl y métricas en .json."""
-    print("\n💾 Guardando resultados...")
+    print("\n[5/5] Guardando resultados...")
 
-    # Guardar modelos con joblib
     paquete = {
-        'modelos': modelos,
-        'feature_names': feature_names,
-        'horizontes': HORIZONTES,
-        'lag_window': LAG_WINDOW,
-        'version': '1.0.0',
-        'fecha_entrenamiento': datetime.now().isoformat(),
-        'descripcion': 'Modelos XGBoost para predicción de temperatura a 24h, 48h y 72h - Curicó, Chile'
+        'modelos':              modelos,
+        'feature_names':        feature_names,
+        'horizontes':           HORIZONTES,
+        'lag_window_temp':      LAG_WINDOW_TEMP,
+        'lag_window_hum_viento': LAG_WINDOW_HUM_VIENTO,
+        'lag_window_presion':   LAG_WINDOW_PRESION,
+        'version':              '3.0.0',
+        'fecha_entrenamiento':  datetime.now().isoformat(),
+        'descripcion': (
+            'XGBoost v3 — 80 features: presion_hPa + lags/deltas, '
+            'lag_24h, cod. ciclica, rolling stats. '
+            '2020-2025 (52k registros). Curico, Chile.'
+        )
     }
     joblib.dump(paquete, MODELO_PATH)
-    modelo_size = os.path.getsize(MODELO_PATH) / (1024 * 1024)
-    print(f"   📦 Modelo guardado: {MODELO_PATH}")
-    print(f"      Tamaño: {modelo_size:.2f} MB")
+    tam = os.path.getsize(MODELO_PATH) / (1024 * 1024)
+    print(f"  Modelo  : {MODELO_PATH}  ({tam:.2f} MB)")
 
-    # Guardar métricas
+    # Contar CSVs usados
+    patron = os.path.join(DATOS_DIR, "openmeteo_curico_*.csv")
+    años_usados = [
+        os.path.basename(f).replace('openmeteo_curico_','').replace('.csv','')
+        for f in sorted(glob.glob(patron))
+    ]
+
     metricas_completas = {
-        'proyecto': 'Plataforma IoT - Estaciones Meteorológicas',
-        'ubicacion': 'Curicó, Región del Maule, Chile',
+        'proyecto':  'Plataforma IoT - Estaciones Meteorologicas',
+        'ubicacion': 'Curico, Region del Maule, Chile',
+        'version_modelo': '3.0.0',
         'dataset': {
-            'fuente': 'Open-Meteo Historical Weather API',
-            'años': ['2023', '2024'],
-            'total_registros_originales': 17541,
-            'registros_usados_entrenamiento': sum(m['train_size'] + m['test_size'] for m in metricas.values()) // len(metricas),
-            'variables_entrada': 42,
-            'ventana_lag': f'{LAG_WINDOW} horas',
-            'split': f'{int((1-TEST_SIZE)*100)}% train / {int(TEST_SIZE*100)}% test (temporal, sin shuffle)'
+            'fuente':   'Open-Meteo Historical Weather API',
+            'años':     años_usados,
+            'variables_entrada': len(feature_names),
+            'lag_temperatura':   f'{LAG_WINDOW_TEMP}h (incluye lag_24h)',
+            'lag_hum_viento':    f'{LAG_WINDOW_HUM_VIENTO}h',
+            'lag_presion':       f'{LAG_WINDOW_PRESION}h + deltas 1/3/6/12h',
+            'split': '70% train / 10% val (early stopping) / 20% test',
         },
         'algoritmo': {
-            'nombre': 'XGBRegressor (XGBoost)' if USE_XGBOOST else 'HistGradientBoostingRegressor (sklearn)',
-            'version': 'xgboost >= 2.0' if USE_XGBOOST else 'sklearn >= 1.3',
-            'nota': 'Ambos motores son gradient boosted trees con rendimiento comparable' if not USE_XGBOOST else None,
+            'nombre': 'XGBRegressor' if USE_XGBOOST else 'HistGradientBoostingRegressor',
+            'mejoras_v3': [
+                'presion_hPa como feature: actual + 12 lags + deltas 1/3/6/12h',
+                'Auto-descubrimiento de CSVs: todos los años en datos/',
+                '52,000+ registros (vs 17,000 en v1)',
+                '80 features totales (vs 63 en v2, 42 en v1)',
+                'Regularizacion aumentada (colsample=0.65, reg_alpha=0.8, gamma=0.1)',
+            ],
             'hiperparametros': {
-                'n_estimators': 500,
-                'max_depth': 6,
-                'learning_rate': 0.05,
-                'subsample': 0.8,
-                'colsample_bytree': 0.8,
-                'min_child_weight': 5,
+                'n_estimators_max':      3000,
+                'early_stopping_rounds': 100,
+                'max_depth':            5,
+                'learning_rate':        0.025,
+                'subsample':            0.85,
+                'colsample_bytree':     0.65,
+                'min_child_weight':     15,
+                'reg_alpha':            0.8,
+                'reg_lambda':           2.5,
+                'gamma':                0.1,
             }
         },
         'resultados': metricas,
         'fecha_entrenamiento': datetime.now().isoformat(),
         'notas': [
-            'MAE esperable que aumente con el horizonte temporal (comportamiento natural)',
-            'R² de referencia: TinyML en Edge Impulse alcanzó 0.96 para horizonte de 1h',
-            'Sensores AHT20/BMP280 tienen ±0.5°C de error propio',
-            'Modelos entrenados con datos de Open-Meteo como proxy de sensores reales'
+            'presion_delta es el predictor meteorologico mas potente para cambios abruptos',
+            'lag_24h de temperatura captura el patron diurno dominante',
+            'Con 6 años el modelo ha visto suficientes frentes, niñas y heladas atipicas',
+            'MAE naturalmente mayor a mayor horizonte temporal',
+            'Sensores AHT20/BMP280 tienen ±0.5C de error propio',
         ]
     }
 
     with open(METRICAS_PATH, 'w', encoding='utf-8') as f:
         json.dump(metricas_completas, f, indent=2, ensure_ascii=False)
-    print(f"   📊 Métricas guardadas: {METRICAS_PATH}")
+    print(f"  Metricas: {METRICAS_PATH}")
 
 
 # ============================================================
@@ -396,34 +470,23 @@ def guardar_resultados(modelos, metricas, feature_names):
 def main():
     print_header()
 
-    # Paso 1: Cargar datos
     df = cargar_datasets()
-
-    # Paso 2: Limpiar
     df = limpiar_datos(df)
-
-    # Paso 3: Feature engineering
     df = generar_features(df)
 
-    # Paso 4: Obtener lista de features
     feature_names = obtener_features()
-    print(f"\n   Features totales: {len(feature_names)}")
+    print(f"\n  Features totales : {len(feature_names)}")
+    print(f"  Lags temp        : 1h-{LAG_WINDOW_TEMP}h")
+    print(f"  Lags hum/viento  : 1h-{LAG_WINDOW_HUM_VIENTO}h")
+    print(f"  Lags presion     : 1h-{LAG_WINDOW_PRESION}h + deltas")
 
-    # Paso 5: Entrenar
     modelos, metricas = entrenar_modelos(df)
-
-    # Paso 6: Guardar
     guardar_resultados(modelos, metricas, feature_names)
 
-    # Resumen final
     print("\n" + "=" * 60)
-    print("  🎉 ENTRENAMIENTO COMPLETADO EXITOSAMENTE")
+    print("  ENTRENAMIENTO v3 COMPLETADO")
     print("=" * 60)
-    print(f"\n   Archivos generados:")
-    print(f"   • {MODELO_PATH}")
-    print(f"   • {METRICAS_PATH}")
-    print(f"\n   Siguiente paso: Crear microservicio FastAPI (Paso 2)")
-    print(f"   → El archivo modelo_xgboost.pkl será cargado por app.py\n")
+    print(f"\n  Siguiente: reiniciar app.py para cargar el nuevo modelo\n")
 
 
 if __name__ == '__main__':

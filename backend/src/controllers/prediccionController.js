@@ -2,13 +2,14 @@ import { getHistorialEstacion } from '../models/prediccionModel.js';
 import { getHistorialZona, getZonaById } from '../models/zonaModel.js';
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5001';
-const LAG_WINDOW = 12;
+// v2: temperatura usa lags 1-24h → necesitamos 24 lecturas históricas + 1 actual
+const LAG_WINDOW = 24;
 
 /**
  * GET /api/prediccion/:estacion_id?horas=72
  *
  * Proxy entre el frontend y el microservicio FastAPI:
- *   1. Lee las últimas 13 lecturas de MySQL (1 actual + 12 lags)
+ *   1. Lee las últimas 25 lecturas de MySQL (1 actual + 24 lags)
  *   2. Llama internamente a ml_service /predict con el historial real
  *   3. Retorna la respuesta enriquecida con datos de la estación
  */
@@ -40,8 +41,8 @@ export const getPrediccion = async (req, res) => {
 
     // 2 ── Extraer lectura actual y lags
     const actual = historial[0];
-    // Los lags van de T-1h (índice 1) a T-12h (índice 12)
-    // Si hay menos lecturas históricas, se rellena con la lectura más antigua disponible
+    // Los lags van de T-1h (índice 1) a T-24h (índice 24)
+    // Si hay menos lecturas, se rellena con la lectura más antigua disponible
     const lags = [];
     for (let i = 1; i <= LAG_WINDOW; i++) {
         lags.push(historial[i] ?? historial[historial.length - 1]);
@@ -56,9 +57,10 @@ export const getPrediccion = async (req, res) => {
         lat: actual.latitud,
         lon: actual.longitud,
         historial: lags.map((l) => ({
-            temperatura: l.temperatura,
-            humedad: l.humedad,
+            temperatura:      l.temperatura,
+            humedad:          l.humedad,
             velocidad_viento: l.velocidad_viento,
+            presion:          l.presion_at ?? null,   // BMP280 — null si no disponible
         })),
     };
 
@@ -145,9 +147,10 @@ export const getPrediccionZona = async (req, res) => {
         lat: actual.latitud,
         lon: actual.longitud,
         historial: lags.map((l) => ({
-            temperatura: l.temperatura,
-            humedad: l.humedad,
+            temperatura:      l.temperatura,
+            humedad:          l.humedad,
             velocidad_viento: l.velocidad_viento,
+            presion:          l.presion_at ?? null,
         })),
     };
 
