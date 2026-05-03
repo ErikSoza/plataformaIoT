@@ -236,94 +236,81 @@ def interpolar_curva(
     horas_max: int,
     ahora: datetime,
     lags_temp: list[float] | None = None,
-    pred_om: Optional[list[dict]] = None,
 ) -> list[dict]:
     """
-    Genera la curva horaria de predicción usando dos estrategias:
+    Genera la curva horaria XGBoost usando los lags reales de la estación
+    para calibrar el ciclo diurno propio (independiente de Open-Meteo).
 
-    Estrategia A — Open-Meteo disponible (preferida):
-      Usa la forma horaria de Open-Meteo como base y aplica una corrección
-      de sesgo lineal derivada de los puntos ancla de XGBoost (T+24h, T+48h, T+72h).
-      Esto combina la forma meteorológica real de OM con la calibración local de XGB.
-      El sesgo se interpola linealmente entre anclas para una transición suave.
+    Algoritmo:
+      1. Calcula media, amplitud y hora del pico desde los últimos 24 lags reales.
+         Así el ciclo diurno refleja el comportamiento histórico de ESTA estación,
+         no un valor genérico de Curicó.
+      2. En cada ancla XGBoost (T+0h, T+24h, T+48h, T+72h) calcula el "residuo
+         de tendencia": cuánto se aleja la predicción del ciclo diurno puro.
+         Este residuo captura eventos de escala diaria (frentes, ondas de calor).
+      3. Interpola linealmente el residuo entre anclas.
+      4. Temperatura final = media + residuo_interpolado + ciclo_diurno(hora).
 
-    Estrategia B — fallback sinusoidal (sin conexión a OM):
-      Ciclo diurno centrado en la media empírica de los últimos 24 lags.
-      Menos preciso en la madrugada porque usa un coseno simétrico.
+    La curva pasa exactamente por los 3 puntos ancla de XGBoost y tiene la
+    forma diurna real de la estación. Open-Meteo se mantiene como línea
+    de referencia separada, NO como base de esta curva.
     """
-    om_por_offset: dict[int, float] = {}
-    if pred_om:
-        om_por_offset = {p["hora_offset"]: p["temperatura"] for p in pred_om}
-
-    # ── Estrategia A: Open-Meteo como forma base ────────────────────────────
-    anclas_futuras = {h: t for h, t in anclas.items() if h > 0}
-    if om_por_offset and anclas_futuras:
-        # Calcular sesgo XGBoost−OM en cada hora ancla que OM tiene dato
-        sesgos: dict[int, float] = {}
-        for h, t_xgb in sorted(anclas_futuras.items()):
-            if h in om_por_offset:
-                sesgos[h] = t_xgb - om_por_offset[h]
-
-        if sesgos:
-            puntos_sesgo = sorted(sesgos.items())
-            h_min, b_min = puntos_sesgo[0]
-            h_max, b_max = puntos_sesgo[-1]
-
-            def interpolar_sesgo(i: int) -> float:
-                if i <= h_min:
-                    return b_min
-                if i >= h_max:
-                    return b_max
-                for j in range(len(puntos_sesgo) - 1):
-                    ha, ba = puntos_sesgo[j]
-                    hb, bb = puntos_sesgo[j + 1]
-                    if ha <= i <= hb:
-                        return ba + (bb - ba) * (i - ha) / (hb - ha)
-                return b_max
-
-            predicciones = []
-            for i in range(1, horas_max + 1):
-                om_t = om_por_offset.get(i)
-                if om_t is None:
-                    continue
-                temp_i = om_t + interpolar_sesgo(i)
-                predicciones.append({
-                    "hora_offset": i,
-                    "datetime": (ahora + timedelta(hours=i)).strftime("%Y-%m-%dT%H:%M"),
-                    "temperatura": round(temp_i, 2),
-                })
-            if predicciones:
-                return predicciones
-
-    # ── Estrategia B: fallback sinusoidal ───────────────────────────────────
-    HORA_MAX_DIARIO = 15
     temps_hist: list[float] = (lags_temp or [])[:24]
+
+    HORA_MAX_MIN, HORA_MAX_MAX = 11, 18   # rango plausible para Curicó (Chile central)
+    HORA_MAX_DEFAULT = 15                 # valor por defecto otoño/primavera
+
     if len(temps_hist) >= 6:
         daily_mean = float(np.mean(temps_hist))
-        amplitud   = float(np.clip((float(np.max(temps_hist)) - float(np.min(temps_hist))) / 2.0, 3.0, 9.0))
+        amplitud   = float(np.clip(
+            (float(np.max(temps_hist)) - float(np.min(temps_hist))) / 2.0,
+            2.5, 10.0,
+        ))
+        # Hora real del pico diario: lags[i] corresponde a la hora (ahora.hour - 1 - i) % 24
+        idx_max  = int(np.argmax(temps_hist))
+        hora_max = (ahora.hour - 1 - idx_max) % 24
+
+        # Plausibilidad: si el pico cae fuera del rango diurno esperado para
+        # la región (ocurre cuando los lags solo cubren pocas horas o el
+        # sensor fue instalado recientemente), se usa el valor por defecto
+        # para evitar que un hora_max incorrecto distorsione toda la curva.
+        if not (HORA_MAX_MIN <= hora_max <= HORA_MAX_MAX):
+            hora_max = HORA_MAX_DEFAULT
     else:
         daily_mean = float(anclas.get(0, 15.0))
         amplitud   = 5.0
+        hora_max   = HORA_MAX_DEFAULT
 
     def diurno(hora_dia: int) -> float:
-        return float(amplitud * np.cos(2 * np.pi * (hora_dia - HORA_MAX_DIARIO) / 24))
+        return float(amplitud * np.cos(2 * np.pi * (hora_dia - hora_max) / 24))
 
-    diurno_actual = diurno(ahora.hour)
-    ajuste: dict[int, float] = {h: t - daily_mean - diurno_actual for h, t in anclas.items()}
-    puntos_ajuste = sorted(ajuste.items())
+    # Las anclas futuras ocurren siempre a la misma hora del día (ahora.hour),
+    # por lo que tienen idéntica componente diurna. El residuo captura
+    # exclusivamente la tendencia inter-diaria (cuánto sube o baja el nivel
+    # base de temperatura de un día al siguiente).
+    diurno_hora_ancla = diurno(ahora.hour)
+    residuos: dict[int, float] = {
+        h: t - daily_mean - diurno_hora_ancla
+        for h, t in anclas.items()
+    }
+    puntos_residuo = sorted(residuos.items())
+
+    def interp_residuo(i: int) -> float:
+        if i <= puntos_residuo[0][0]:
+            return puntos_residuo[0][1]
+        if i >= puntos_residuo[-1][0]:
+            return puntos_residuo[-1][1]
+        for j in range(len(puntos_residuo) - 1):
+            ha, ra = puntos_residuo[j]
+            hb, rb = puntos_residuo[j + 1]
+            if ha <= i <= hb:
+                return ra + (rb - ra) * (i - ha) / (hb - ha)
+        return puntos_residuo[-1][1]
 
     predicciones = []
     for i in range(1, horas_max + 1):
-        ha, aa = puntos_ajuste[0]
-        hb, ab = puntos_ajuste[-1]
-        for j in range(len(puntos_ajuste) - 1):
-            ha2, aa2 = puntos_ajuste[j]
-            hb2, ab2 = puntos_ajuste[j + 1]
-            if ha2 <= i <= hb2:
-                ha, aa, hb, ab = ha2, aa2, hb2, ab2
-                break
-        ajuste_i = aa if hb == ha else aa + (ab - aa) * (i - ha) / (hb - ha)
-        temp_i = daily_mean + ajuste_i + diurno((ahora.hour + i) % 24)
+        hora_futura = (ahora.hour + i) % 24
+        temp_i = daily_mean + interp_residuo(i) + diurno(hora_futura)
         predicciones.append({
             "hora_offset": i,
             "datetime": (ahora + timedelta(hours=i)).strftime("%Y-%m-%dT%H:%M"),
@@ -544,13 +531,13 @@ async def predict(
             "nivel": m["nivel"],
         }
 
-    # Open-Meteo primero: la curva usa OM como forma base
+    # Curva XGBoost: ciclo diurno calibrado desde lags reales de la estación
+    predicciones_locales = interpolar_curva(anclas, horas, ahora, lags_temp)
+
+    # Open-Meteo: referencia independiente (no da forma a la curva XGBoost)
     lat_om = lat if lat is not None else CURICO_LAT
     lon_om = lon if lon is not None else CURICO_LON
     pred_openmeteo = await consultar_openmeteo(horas, lat_om, lon_om, ahora)
-
-    # Interpolación con corrección de sesgo sobre OM (o fallback sinusoidal)
-    predicciones_locales = interpolar_curva(anclas, horas, ahora, lags_temp, pred_openmeteo)
 
     # Confianza: MAE solo en los puntos ancla (predicciones reales del modelo)
     anclas_futuras = {h: t for h, t in anclas.items() if h > 0}
@@ -702,13 +689,13 @@ async def predict_post(body: PredictRequest) -> dict:
             "nivel": m["nivel"],
         }
 
-    # Open-Meteo primero: la curva usa OM como forma base
+    # Curva XGBoost: ciclo diurno calibrado desde lags reales de la estación
+    predicciones_locales = interpolar_curva(anclas, body.horas, ahora, lags_temp)
+
+    # Open-Meteo: referencia independiente (no da forma a la curva XGBoost)
     lat_om = body.lat if body.lat is not None else CURICO_LAT
     lon_om = body.lon if body.lon is not None else CURICO_LON
     pred_openmeteo = await consultar_openmeteo(body.horas, lat_om, lon_om, ahora)
-
-    # Interpolación con corrección de sesgo sobre OM (o fallback sinusoidal)
-    predicciones_locales = interpolar_curva(anclas, body.horas, ahora, lags_temp, pred_openmeteo)
 
     # Confianza: MAE solo en los puntos ancla (predicciones reales del modelo)
     anclas_futuras = {h: t for h, t in anclas.items() if h > 0}
