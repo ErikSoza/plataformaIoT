@@ -11,7 +11,7 @@ LONGITUD = -71.2394
 SENSORES = ['UTALCA_A4CF12', 'UTALCA_B788AA', 'UTALCA_ASDFGH']
 
 # Endpoint ajustado: past_days=3 y forecast_days=1 para limitar la data
-url = f"https://api.open-meteo.com/v1/forecast?latitude={LATITUD}&longitude={LONGITUD}&past_days=3&forecast_days=1&hourly=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m&timezone=America%2FSantiago"
+url = f"https://api.open-meteo.com/v1/forecast?latitude={LATITUD}&longitude={LONGITUD}&past_days=5&forecast_days=1&hourly=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m&timezone=America%2FSantiago"
 
 response = requests.get(url)
 
