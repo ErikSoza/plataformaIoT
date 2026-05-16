@@ -51,19 +51,10 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
   };
   return (
     <>
-      {/* Sección de bienvenida */}
-      <div className="stat-card-enter" style={{ ...styles.welcomeSection, animationDelay: '0s' }}>
-        <div style={styles.welcomeContent}>
-          <h2 style={styles.welcomeTitle}>
-            🌡️ Bienvenido al Sistema de Monitoreo Meteorológico UTalca
-          </h2>
-          <p style={styles.welcomeText}>
-            Accede a información meteorológica en tiempo real de nuestra red de estaciones distribuidas 
-            por el campus universitario. Monitorea temperatura, humedad, presión atmosférica y más datos 
-            ambientales recolectados por nuestros sensores IoT de alta precisión.
-          </p>
-        </div>
-      </div>
+      {/* Sección de estadísticas */}
+      <ContentSection title="📊 Resumen Estadisticas Actuales Curico">
+        <StatsGrid stats={stats} onCardClick={onStatCardClick} />
+      </ContentSection>
 
       {/* Sección del mapa general */}
       <ContentSection title="🌐 Red de Sensores Ambientales - Campus UTalca">
@@ -91,15 +82,12 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
       </ContentSection>
 
       {/* Panel de condiciones actuales */}
-      {estacionMostrada && (
-        <div style={{ margin: '0 20px' }}>
+      <ContentSection title="🌍 Panel de Condiciones Actuales - Estacion Seleccionada">
+        {estacionMostrada && (
+        <div>
           <ResumenEstacion device={estacionMostrada} esDefecto={esDefecto} />
         </div>
       )}
-
-      {/* Sección de estadísticas */}
-      <ContentSection title="📊 Panel de Control - Estadísticas en Tiempo Real">
-        <StatsGrid stats={stats} onCardClick={onStatCardClick} />
       </ContentSection>
 
       {/* Panel Acerca de */}
