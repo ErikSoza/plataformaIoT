@@ -29,9 +29,16 @@ export interface Station {
   temperature?: number;
   humidity?: number;
   pressure?: number;
-  gas?: number | null; // Campo obsoleto - no existe en BD actual
-  radiation?: number | null; // Campo obsoleto - no existe en BD actual
   wind?: number;
+  gas?: number | null;       // alias de gas_co2 para mapa de calor
+  radiation?: number | null; // sin sensor físico — siempre null
+  // Gases individuales MQ135
+  gas_co2?: number | null;
+  gas_nh3?: number | null;
+  gas_alcohol?: number | null;
+  gas_humo?: number | null;
+  gas_benceno?: number | null;
+  gas_acetona?: number | null;
 }
 
 export interface Reading {
@@ -45,10 +52,17 @@ export interface Reading {
   velocidad_viento?: number;
   prediccion_temp?: number;
   // Campos mapeados para compatibilidad
-  pressure?: number; // alias de presion_at
-  wind?: number; // alias de velocidad_viento
-  gas?: number | null; // no existe en BD actual
-  radiation?: number | null; // no existe en BD actual
+  pressure?: number;     // alias de presion_at
+  wind?: number;         // alias de velocidad_viento
+  gas?: number | null;   // alias de gas_co2 para mapa de calor
+  radiation?: number | null;
+  // Gases individuales MQ135
+  gas_co2?: number | null;
+  gas_nh3?: number | null;
+  gas_alcohol?: number | null;
+  gas_humo?: number | null;
+  gas_benceno?: number | null;
+  gas_acetona?: number | null;
   // Campos adicionales de JOIN
   device_id_dispositivo?: string;
   modelo?: string;
@@ -176,11 +190,17 @@ export const normalizeStationData = (rawStation: any): Station => {
     const reading = rawStation.latestReading;
     station.temperature = reading.temperatura;
     station.humidity = reading.humedad;
-    station.pressure = reading.presion_at || reading.pressure;
-    station.wind = reading.velocidad_viento || reading.wind;
-    // TODO: Implementar en dispositivo - valores temporales por ahora
-    station.gas = 0.040; // Valor temporal representativo
-    station.radiation = 650; // Valor temporal representativo
+    station.pressure = reading.presion_at ?? reading.pressure;
+    station.wind = reading.velocidad_viento ?? reading.wind;
+    // Gases MQ135 — null cuando la lectura no tiene sensor (lecturas históricas)
+    station.gas_co2     = reading.gas_co2     ?? null;
+    station.gas_nh3     = reading.gas_nh3     ?? null;
+    station.gas_alcohol = reading.gas_alcohol ?? null;
+    station.gas_humo    = reading.gas_humo    ?? null;
+    station.gas_benceno = reading.gas_benceno ?? null;
+    station.gas_acetona = reading.gas_acetona ?? null;
+    station.gas         = reading.gas_co2     ?? null; // alias CO2 para mapa de calor
+    station.radiation   = null; // sin sensor de radiación
   }
 
   return station;

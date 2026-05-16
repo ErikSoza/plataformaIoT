@@ -399,13 +399,23 @@ async def consultar_openmeteo(
 
 
 def calcular_confianza(
-    anclas: dict[int, float], pred_om: Optional[list[dict]]
+    anclas: dict[int, float],
+    pred_om: Optional[list[dict]],
+    horizonte: int = 72,
+    mae_entrenamiento: Optional[float] = None,
 ) -> dict:
     """
-    Compara los puntos ancla de XGBoost (T+24h, T+48h, T+72h) contra Open-Meteo
-    en esas mismas horas. Medir la confianza solo en los anclas es correcto porque:
-      - Son las predicciones reales del modelo, no interpolaciones.
-      - Comparar la curva horaria completa penaliza la interpolación (no el modelo).
+    Compara los puntos ancla de XGBoost (T+24h, T+48h, T+72h) contra Open-Meteo.
+
+    Estrategia: MAE ponderado por horizonte (mayor peso a anclas más lejanas),
+    evaluado como ratio respecto al MAE de entrenamiento del modelo.
+
+    Ratio = MAE_acuerdo / MAE_entrenamiento:
+      < 1.5  → Alto   (acuerdo dentro del error habitual del modelo)
+      < 3.0  → Medio  (divergencia moderada — puede ser clima variable)
+      ≥ 3.0  → Bajo   (desacuerdo significativo — evento atípico o límite del modelo)
+
+    Fallback sin mae_entrenamiento: umbrales absolutos escalados por horizonte.
     """
     if not pred_om:
         return {
@@ -415,13 +425,20 @@ def calcular_confianza(
             "descripcion": "No se pudo conectar con Open-Meteo para validar",
         }
 
+    # Pesos: los horizontes más lejanos determinan la utilidad real de la predicción
+    PESOS: dict[int, float] = {24: 0.20, 48: 0.35, 72: 0.45}
+
     om_por_offset = {p["hora_offset"]: p["temperatura"] for p in pred_om}
-    diffs = []
+    sum_pond = 0.0
+    sum_peso = 0.0
     for h, t_xgb in anclas.items():
         if h > 0 and h in om_por_offset:
-            diffs.append(abs(t_xgb - om_por_offset[h]))
+            diff = abs(t_xgb - om_por_offset[h])
+            peso = PESOS.get(h, 1.0 / max(len(anclas), 1))
+            sum_pond += diff * peso
+            sum_peso += peso
 
-    if not diffs:
+    if sum_peso == 0:
         return {
             "nivel": "Desconocido",
             "badge": "⚪",
@@ -429,17 +446,37 @@ def calcular_confianza(
             "descripcion": "Datos insuficientes para calcular confianza",
         }
 
-    mae = float(np.mean(diffs))
+    mae = sum_pond / sum_peso
 
-    if mae <= 1.5:
-        nivel, badge = "Alto", "🟢"
-        desc = f"Diferencia promedio de {mae:.2f}°C con Open-Meteo — predicción confiable"
-    elif mae <= 3.0:
-        nivel, badge = "Medio", "🟡"
-        desc = f"Diferencia promedio de {mae:.2f}°C con Open-Meteo — revisar condiciones locales"
+    if mae_entrenamiento and mae_entrenamiento > 0:
+        # Enfoque relativo: qué tan bien coincide respecto al error conocido del modelo
+        ratio = mae / mae_entrenamiento
+        if ratio < 1.5:
+            nivel, badge = "Alto", "🟢"
+            desc = f"Δ{mae:.2f}°C vs Open-Meteo ({ratio:.1f}× MAE entrenamiento) — predicción coherente"
+        elif ratio < 3.0:
+            nivel, badge = "Medio", "🟡"
+            desc = f"Δ{mae:.2f}°C vs Open-Meteo ({ratio:.1f}× MAE entrenamiento) — divergencia dentro de lo esperable"
+        else:
+            nivel, badge = "Bajo", "🔴"
+            desc = f"Δ{mae:.2f}°C vs Open-Meteo ({ratio:.1f}× MAE entrenamiento) — desacuerdo significativo con referencia"
     else:
-        nivel, badge = "Bajo", "🔴"
-        desc = f"Diferencia de {mae:.2f}°C con Open-Meteo — posible evento meteorológico inusual"
+        # Fallback: umbrales absolutos escalados por horizonte
+        UMBRALES: dict[int, tuple[float, float]] = {
+            24: (1.5, 2.5),
+            48: (2.0, 4.0),
+            72: (2.5, 5.0),
+        }
+        u_alto, u_medio = UMBRALES.get(horizonte, (2.5, 5.0))
+        if mae <= u_alto:
+            nivel, badge = "Alto", "🟢"
+            desc = f"Diferencia promedio de {mae:.2f}°C con Open-Meteo — predicción confiable"
+        elif mae <= u_medio:
+            nivel, badge = "Medio", "🟡"
+            desc = f"Diferencia promedio de {mae:.2f}°C con Open-Meteo — revisar condiciones locales"
+        else:
+            nivel, badge = "Bajo", "🔴"
+            desc = f"Diferencia de {mae:.2f}°C con Open-Meteo — posible evento meteorológico inusual"
 
     return {
         "nivel": nivel,
@@ -560,7 +597,8 @@ async def predict(
 
     # Confianza: MAE en los horizontes clave (24h, 48h, 72h)
     horas_clave = {h: pred_horario[h] for h in [24, 48, 72] if h in pred_horario}
-    confianza = calcular_confianza(horas_clave, pred_openmeteo)
+    mae_train = metricas_modelo["mae_celsius"] if metricas_modelo else None
+    confianza = calcular_confianza(horas_clave, pred_openmeteo, horizonte=horas, mae_entrenamiento=mae_train)
 
     return {
         "modelo_local": {
@@ -716,7 +754,8 @@ async def predict_post(body: PredictRequest) -> dict:
 
     # Confianza: MAE en los horizontes clave (24h, 48h, 72h)
     horas_clave = {h: pred_horario[h] for h in [24, 48, 72] if h in pred_horario}
-    confianza = calcular_confianza(horas_clave, pred_openmeteo)
+    mae_train = metricas_modelo["mae_celsius"] if metricas_modelo else None
+    confianza = calcular_confianza(horas_clave, pred_openmeteo, horizonte=body.horas, mae_entrenamiento=mae_train)
 
     return {
         "modelo_local": {

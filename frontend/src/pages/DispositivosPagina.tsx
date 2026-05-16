@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ContentSection, DeviceList, UnifiedMap, DeviceData } from '../components/layout';
 import CitySearch from '../components/CitySearch';
 import PrediccionChart from '../components/PrediccionChart';
+import ResumenEstacion from '../components/ResumenEstacion';
 
 interface DevicesPageProps {
   devices: DeviceData[];
@@ -105,6 +106,9 @@ const DevicesPage: React.FC<DevicesPageProps> = ({
       </div>
     </div>
 
+    {/* Panel de datos actuales + gases (solo cuando hay dispositivo seleccionado) */}
+    {selectedDevice && <ResumenEstacion device={selectedDevice} />}
+
     {/* Sección de predicción ML */}
     <div style={styles.prediccionContainer}>
       {selectedDevice ? (
@@ -126,6 +130,7 @@ const DevicesPage: React.FC<DevicesPageProps> = ({
     </div>
   );
 };
+
 
 // Componente SmartMap que extiende UnifiedMap con funcionalidad de búsqueda
 interface SmartMapProps {

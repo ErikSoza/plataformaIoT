@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ContentSection, StatsGrid, UnifiedMap, DeviceData, StatCardData } from '../components/layout';
 import CitySearch from '../components/CitySearch';
+import ResumenEstacion from '../components/ResumenEstacion';
 
 interface MonitoringPageProps {
   devices: DeviceData[];
@@ -19,6 +20,19 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
 }) => {
   const [mapCenter, setMapCenter] = useState<[number, number] | null>(null);
   const [shouldCenterToSearch, setShouldCenterToSearch] = useState(false);
+  // Estado local: estación activa en el panel de Monitoreo (independiente del estado global)
+  const [panelDevice, setPanelDevice] = useState<DeviceData | null>(null);
+
+  // Click en marcador del mapa: actualiza panel local sin cambiar de pestaña
+  const handleMapMarkerClick = (device: DeviceData) => {
+    setPanelDevice(device);
+  };
+
+  // Estación a mostrar: selección local → global → central UTalca por defecto
+  const estacionCentral =
+    devices.find(d => /central|los niches|campus/i.test(d.name)) ?? devices[0] ?? null;
+  const estacionMostrada = panelDevice ?? selectedDevice ?? estacionCentral;
+  const esDefecto = !panelDevice && !selectedDevice && estacionMostrada != null;
 
   // Manejar selección de ubicación desde la búsqueda
   const handleLocationSelect = (coordinates: [number, number], cityName: string) => {
@@ -62,10 +76,10 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
           />
         </div>
         
-        <UnifiedMap 
+        <UnifiedMap
           devices={devices}
-          selectedDevice={selectedDevice}
-          onDeviceMarkerClick={onDeviceMarkerClick}
+          selectedDevice={panelDevice ?? selectedDevice}
+          onDeviceMarkerClick={handleMapMarkerClick}
           height="75vh"
           showHeatmapControls={true}
           defaultHeatmapVisible={true}
@@ -74,6 +88,13 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
           shouldCenterToSearch={shouldCenterToSearch}
         />
       </ContentSection>
+
+      {/* Panel de condiciones actuales */}
+      {estacionMostrada && (
+        <div style={{ margin: '0 20px' }}>
+          <ResumenEstacion device={estacionMostrada} esDefecto={esDefecto} />
+        </div>
+      )}
 
       {/* Sección de estadísticas */}
       <ContentSection title="📊 Panel de Control - Estadísticas en Tiempo Real">
