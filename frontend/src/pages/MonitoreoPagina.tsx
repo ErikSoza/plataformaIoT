@@ -80,6 +80,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
           devices={devices}
           selectedDevice={panelDevice ?? selectedDevice}
           onDeviceMarkerClick={handleMapMarkerClick}
+          enableRedirection={true}
           height="75vh"
           showHeatmapControls={true}
           defaultHeatmapVisible={true}
