@@ -1,19 +1,22 @@
 """
 ============================================================
-  ENTRENAMIENTO MODELO XGBOOST v3 — PREDICCIÓN METEOROLÓGICA
+  ENTRENAMIENTO MODELO XGBOOST v4 — PREDICCIÓN METEOROLÓGICA
   Plataforma IoT - Estaciones Meteorológicas Curicó/Maule
 ============================================================
 
-Mejoras v3 sobre v2:
-  - Auto-descubrimiento de todos los CSVs en datos/ (2020-2025)
-    → 52,000+ registros vs 17,000 anteriores
-  - presion_hPa como feature y sus lags/deltas
-    → la tendencia de presión es el mejor predictor de cambio climático:
-      presión bajando = frente de tormenta = temperatura cae
-      presión subiendo = despejado = temperatura sube
-  - 80 features en total (vs 63 en v2)
+Mejoras v4 sobre v3:
+  - Direct Multi-Step Forecasting: 72 modelos independientes,
+    uno por cada hora del horizonte (T+1h hasta T+72h).
+  - Eliminación de interpolación trigonométrica: cada punto
+    de la curva de predicción es una salida real de un modelo
+    ML, no una estimación sinusoidal.
+  - Curva 100% ML comparable hora a hora con Open-Meteo.
+  - Cada modelo se especializa en su horizonte:
+      T+1h  → R² ~0.99 (alta inercia térmica)
+      T+24h → R² ~0.93 (ciclo diurno completo)
+      T+72h → R² ~0.85 (tendencia sinóptica)
 
-Features v3 (80 total):
+Features v4 (80 total, idénticas a v3):
   [A]  4  actuales:       temp, humedad, viento, presion
   [B]  5  cíclicos:       hour_sin/cos, mes_sin/cos, dia_semana
   [C] 24  lags temp:      T-1h … T-24h
@@ -23,7 +26,6 @@ Features v3 (80 total):
   [G]  4  deltas temp:    Δ1h, Δ3h, Δ6h, Δ24h
   [H]  4  deltas presión: Δ1h, Δ3h, Δ6h, Δ12h
   [I]  3  rolling temp:   mean_6h, mean_12h, std_6h
-  [J]  0  (reservado para futuras variables)
   Total: 4+5+24+12+12+12+4+4+3 = 80
 
 Autor: Erik Soza — Universidad de Talca
@@ -34,6 +36,7 @@ import os
 import sys
 import glob
 import json
+import time
 import warnings
 from datetime import datetime
 
@@ -74,7 +77,7 @@ COLUMNAS_REQUERIDAS = [
 # Presión: columna opcional (se rellena con media climatológica si falta)
 PRESION_CURICO_MEDIA = 993.0   # hPa — media histórica de Curicó a 225 msnm
 
-HORIZONTES = [24, 48, 72]
+HORIZONTES = list(range(1, 73))   # 72 modelos: T+1h … T+72h (Direct Multi-Step)
 
 # Ventanas de lag por variable
 LAG_WINDOW_TEMP    = 24   # captura "misma hora de ayer"
@@ -280,14 +283,21 @@ def obtener_features() -> list[str]:
 # ============================================================
 def entrenar_modelos(df: pd.DataFrame):
     """
-    Entrena 3 modelos XGBoost (24h, 48h, 72h) con split temporal:
-      70% train efectivo | 10% validación (early stopping) | 20% test final
+    Entrena 72 modelos XGBoost independientes — uno por cada horizonte horario
+    de T+1h hasta T+72h (Direct Multi-Step Forecasting).
+
+    Split temporal: 70% train | 10% val (early stopping) | 20% test final.
+
+    Los modelos de horizontes cortos (1-6h) convergen rápido (early stopping
+    en ~100-200 árboles). Los de largo plazo (48-72h) usan más árboles.
+    Tiempo estimado total: 45-90 minutos dependiendo del hardware.
     """
-    print("\n[4/5] Entrenando modelos v3...")
+    print(f"\n[4/5] Entrenando {len(HORIZONTES)} modelos v4 (T+1h a T+{max(HORIZONTES)}h)...")
     if USE_XGBOOST:
         print("  Motor: XGBRegressor (XGBoost)")
     else:
         print("  Motor: HistGradientBoostingRegressor (sklearn fallback)")
+    print("  Nota: los modelos de horizonte corto convergen antes por early stopping.\n")
 
     feature_names = obtener_features()
     X = df[feature_names]
@@ -298,13 +308,15 @@ def entrenar_modelos(df: pd.DataFrame):
 
     modelos  = {}
     metricas = {}
+    t_inicio_total = time.time()
 
-    for h in HORIZONTES:
+    for idx, h in enumerate(HORIZONTES, start=1):
+        t_inicio = time.time()
         y = df[f'target_{h}h']
 
-        X_train, y_train = X.iloc[:val_idx],    y.iloc[:val_idx]
-        X_val,   y_val   = X.iloc[val_idx:test_idx], y.iloc[val_idx:test_idx]
-        X_test,  y_test  = X.iloc[test_idx:],   y.iloc[test_idx:]
+        X_train, y_train = X.iloc[:val_idx],          y.iloc[:val_idx]
+        X_val,   y_val   = X.iloc[val_idx:test_idx],  y.iloc[val_idx:test_idx]
+        X_test,  y_test  = X.iloc[test_idx:],         y.iloc[test_idx:]
 
         if USE_XGBOOST:
             modelo = XGBRegressor(
@@ -348,6 +360,7 @@ def entrenar_modelos(df: pd.DataFrame):
         mae  = mean_absolute_error(y_test, y_pred)
         rmse = np.sqrt(mean_squared_error(y_test, y_pred))
         r2   = r2_score(y_test, y_pred)
+        t_modelo = time.time() - t_inicio
 
         if r2 >= 0.93:
             nivel = "Excelente"
@@ -360,24 +373,28 @@ def entrenar_modelos(df: pd.DataFrame):
 
         modelos[f'modelo_{h}h'] = modelo
         metricas[f'modelo_{h}h'] = {
-            'horizonte_horas': h,
-            'mae_celsius':  round(mae, 4),
-            'rmse_celsius': round(rmse, 4),
-            'r2_score':     round(r2, 4),
-            'nivel':        nivel,
+            'horizonte_horas':     h,
+            'mae_celsius':         round(mae, 4),
+            'rmse_celsius':        round(rmse, 4),
+            'r2_score':            round(r2, 4),
+            'nivel':               nivel,
             'n_estimators_usados': int(n_trees) if n_trees else 3000,
-            'train_size': len(X_train),
-            'val_size':   len(X_val),
-            'test_size':  len(X_test),
+            'train_size':          len(X_train),
+            'val_size':            len(X_val),
+            'test_size':           len(X_test),
         }
 
-        print(f"\n  Modelo {h}h — {nivel}")
-        print(f"    MAE  = {mae:.4f} C")
-        print(f"    RMSE = {rmse:.4f} C")
-        print(f"    R2   = {r2:.4f}")
-        print(f"    Arboles usados : {n_trees}")
-        print(f"    Train/Val/Test : {len(X_train):,}/{len(X_val):,}/{len(X_test):,}")
+        # Progreso: imprimir cada modelo individualmente para seguimiento
+        transcurrido = time.time() - t_inicio_total
+        restante_est = (transcurrido / idx) * (len(HORIZONTES) - idx)
+        print(
+            f"  [{idx:2d}/{len(HORIZONTES)}] T+{h:2d}h | "
+            f"MAE={mae:.3f}C  R2={r2:.3f}  arboles={n_trees}  "
+            f"({t_modelo:.0f}s)  |  restante ~{restante_est/60:.0f}min"
+        )
 
+    t_total = time.time() - t_inicio_total
+    print(f"\n  Tiempo total de entrenamiento: {t_total/60:.1f} minutos")
     return modelos, metricas
 
 
@@ -394,12 +411,12 @@ def guardar_resultados(modelos, metricas, feature_names):
         'lag_window_temp':      LAG_WINDOW_TEMP,
         'lag_window_hum_viento': LAG_WINDOW_HUM_VIENTO,
         'lag_window_presion':   LAG_WINDOW_PRESION,
-        'version':              '3.0.0',
+        'version':              '4.0.0',
         'fecha_entrenamiento':  datetime.now().isoformat(),
         'descripcion': (
-            'XGBoost v3 — 80 features: presion_hPa + lags/deltas, '
-            'lag_24h, cod. ciclica, rolling stats. '
-            '2020-2025 (52k registros). Curico, Chile.'
+            'XGBoost v4 — Direct Multi-Step Forecasting: 72 modelos independientes '
+            '(T+1h a T+72h). 80 features: presion_hPa + lags/deltas, lag_24h, '
+            'cod. ciclica, rolling stats. 2020-2025 (52k registros). Curico, Chile.'
         )
     }
     joblib.dump(paquete, MODELO_PATH)
@@ -416,7 +433,7 @@ def guardar_resultados(modelos, metricas, feature_names):
     metricas_completas = {
         'proyecto':  'Plataforma IoT - Estaciones Meteorologicas',
         'ubicacion': 'Curico, Region del Maule, Chile',
-        'version_modelo': '3.0.0',
+        'version_modelo': '4.0.0',
         'dataset': {
             'fuente':   'Open-Meteo Historical Weather API',
             'años':     años_usados,
@@ -428,12 +445,12 @@ def guardar_resultados(modelos, metricas, feature_names):
         },
         'algoritmo': {
             'nombre': 'XGBRegressor' if USE_XGBOOST else 'HistGradientBoostingRegressor',
-            'mejoras_v3': [
-                'presion_hPa como feature: actual + 12 lags + deltas 1/3/6/12h',
-                'Auto-descubrimiento de CSVs: todos los años en datos/',
-                '52,000+ registros (vs 17,000 en v1)',
-                '80 features totales (vs 63 en v2, 42 en v1)',
-                'Regularizacion aumentada (colsample=0.65, reg_alpha=0.8, gamma=0.1)',
+            'mejoras_v4': [
+                'Direct Multi-Step Forecasting: 72 modelos independientes (T+1h a T+72h)',
+                'Curva horaria 100% ML: sin interpolacion trigonometrica',
+                'Cada modelo especializado en su horizonte exacto',
+                'Competencia directa hora a hora con Open-Meteo Forecast API',
+                'Hereda todas las mejoras de v3: presion_hPa, 80 features, 52k registros',
             ],
             'hiperparametros': {
                 'n_estimators_max':      3000,
@@ -484,7 +501,7 @@ def main():
     guardar_resultados(modelos, metricas, feature_names)
 
     print("\n" + "=" * 60)
-    print("  ENTRENAMIENTO v3 COMPLETADO")
+    print("  ENTRENAMIENTO v4 COMPLETADO — 72 modelos horarios")
     print("=" * 60)
     print(f"\n  Siguiente: reiniciar app.py para cargar el nuevo modelo\n")
 

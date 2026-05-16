@@ -1,0 +1,2 @@
+# Ignorar modelos pesados de Machine Learning
+ml_service/modelos/*.pkl

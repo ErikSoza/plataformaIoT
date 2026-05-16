@@ -217,21 +217,40 @@ def construir_features(
     return np.array([[vector[f] for f in feature_names]])
 
 
-def predecir_anchors(X: np.ndarray, horas_max: int) -> dict[int, float]:
+def predecir_horario(X: np.ndarray, horas_max: int) -> dict[int, float]:
     """
-    Ejecuta los modelos disponibles hasta horas_max y retorna
-    un dict {horizonte: temperatura_predicha}.
-    Incluye el punto 0 (temperatura actual, tomada del feature vector).
+    Ejecuta los 72 modelos independientes (T+1h … T+horas_max) sobre el
+    mismo vector de features X y retorna un dict {hora: temperatura}.
+
+    Direct Multi-Step Forecasting: cada modelo está especializado en su
+    horizonte exacto. No hay interpolación — cada punto es una predicción
+    real del modelo correspondiente.
     """
-    anclas: dict[int, float] = {0: float(X[0][0])}  # feature 0 = air_temperature_C
-    for h in HORIZONTES_VALIDOS:
-        if h <= horas_max:
-            modelo = paquete_modelo["modelos"][f"modelo_{h}h"]  # type: ignore[index]
-            anclas[h] = float(modelo.predict(X)[0])
-    return anclas
+    modelos_pkg = paquete_modelo["modelos"]  # type: ignore[index]
+    return {
+        h: float(modelos_pkg[f"modelo_{h}h"].predict(X)[0])
+        for h in range(1, horas_max + 1)
+        if f"modelo_{h}h" in modelos_pkg
+    }
 
 
-def interpolar_curva(
+def formatear_predicciones(pred_horario: dict[int, float], ahora: datetime) -> list[dict]:
+    """Convierte el dict {hora: temp} al formato de lista que espera el frontend."""
+    return [
+        {
+            "hora_offset": h,
+            "datetime": (ahora + timedelta(hours=h)).strftime("%Y-%m-%dT%H:%M"),
+            "temperatura": round(t, 2),
+        }
+        for h, t in sorted(pred_horario.items())
+    ]
+
+
+# interpolar_curva eliminada en v4: reemplazada por Direct Multi-Step Forecasting.
+# Cada hora tiene su propio modelo XGBoost, no se interpola entre anclas.
+
+
+def _interpolar_curva_legacy(
     anclas: dict[int, float],
     horas_max: int,
     ahora: datetime,
@@ -517,38 +536,39 @@ async def predict(
         lags_presion=lags_presion,
     )
 
-    anclas = predecir_anchors(X, horas)
-    temp_final_predicha = anclas[horas]
+    # 72 predicciones horarias — una por modelo (Direct Multi-Step)
+    pred_horario = predecir_horario(X, horas)
+    predicciones_locales = formatear_predicciones(pred_horario, ahora)
+    temp_final_predicha = pred_horario.get(horas, 0.0)
 
-    # Métricas del modelo principal
+    # Métricas del horizonte máximo solicitado
     metricas_modelo = None
     if metricas_globales:
-        m = metricas_globales["resultados"][f"modelo_{horas}h"]
-        metricas_modelo = {
-            "mae_celsius": m["mae_celsius"],
-            "rmse_celsius": m["rmse_celsius"],
-            "r2_score": m["r2_score"],
-            "nivel": m["nivel"],
-        }
+        m = metricas_globales["resultados"].get(f"modelo_{horas}h", {})
+        if m:
+            metricas_modelo = {
+                "mae_celsius":  m["mae_celsius"],
+                "rmse_celsius": m["rmse_celsius"],
+                "r2_score":     m["r2_score"],
+                "nivel":        m["nivel"],
+            }
 
-    # Curva XGBoost: ciclo diurno calibrado desde lags reales de la estación
-    predicciones_locales = interpolar_curva(anclas, horas, ahora, lags_temp)
-
-    # Open-Meteo: referencia independiente (no da forma a la curva XGBoost)
+    # Open-Meteo: referencia independiente hora a hora
     lat_om = lat if lat is not None else CURICO_LAT
     lon_om = lon if lon is not None else CURICO_LON
     pred_openmeteo = await consultar_openmeteo(horas, lat_om, lon_om, ahora)
 
-    # Confianza: MAE solo en los puntos ancla (predicciones reales del modelo)
-    anclas_futuras = {h: t for h, t in anclas.items() if h > 0}
-    confianza = calcular_confianza(anclas_futuras, pred_openmeteo)
+    # Confianza: MAE en los horizontes clave (24h, 48h, 72h)
+    horas_clave = {h: pred_horario[h] for h in [24, 48, 72] if h in pred_horario}
+    confianza = calcular_confianza(horas_clave, pred_openmeteo)
 
     return {
         "modelo_local": {
             "horizonte_horas": horas,
             "temperatura_predicha_final": round(temp_final_predicha, 2),
             "puntos_ancla": {
-                f"{h}h": round(t, 2) for h, t in sorted(anclas.items()) if h > 0
+                f"{h}h": round(pred_horario[h], 2)
+                for h in [24, 48, 72] if h in pred_horario
             },
             "predicciones": predicciones_locales,
             "metricas_entrenamiento": metricas_modelo,
@@ -568,10 +588,7 @@ async def predict(
                 "presion": presion,
                 "viento": viento,
             },
-            "nota_lags": (
-                "Lags aproximados con valor actual — "
-                "el backend enviará historial real desde MySQL (Paso 3)"
-            ),
+            "modelos_ejecutados": len(pred_horario),
         },
     }
 
@@ -676,37 +693,38 @@ async def predict_post(body: PredictRequest) -> dict:
         lags_presion=lags_presion,
     )
 
-    anclas = predecir_anchors(X, body.horas)
-    temp_final_predicha = anclas[body.horas]
+    # 72 predicciones horarias — una por modelo (Direct Multi-Step)
+    pred_horario = predecir_horario(X, body.horas)
+    predicciones_locales = formatear_predicciones(pred_horario, ahora)
+    temp_final_predicha = pred_horario.get(body.horas, 0.0)
 
     metricas_modelo = None
     if metricas_globales:
-        m = metricas_globales["resultados"][f"modelo_{body.horas}h"]
-        metricas_modelo = {
-            "mae_celsius": m["mae_celsius"],
-            "rmse_celsius": m["rmse_celsius"],
-            "r2_score": m["r2_score"],
-            "nivel": m["nivel"],
-        }
+        m = metricas_globales["resultados"].get(f"modelo_{body.horas}h", {})
+        if m:
+            metricas_modelo = {
+                "mae_celsius":  m["mae_celsius"],
+                "rmse_celsius": m["rmse_celsius"],
+                "r2_score":     m["r2_score"],
+                "nivel":        m["nivel"],
+            }
 
-    # Curva XGBoost: ciclo diurno calibrado desde lags reales de la estación
-    predicciones_locales = interpolar_curva(anclas, body.horas, ahora, lags_temp)
-
-    # Open-Meteo: referencia independiente (no da forma a la curva XGBoost)
+    # Open-Meteo: referencia independiente hora a hora
     lat_om = body.lat if body.lat is not None else CURICO_LAT
     lon_om = body.lon if body.lon is not None else CURICO_LON
     pred_openmeteo = await consultar_openmeteo(body.horas, lat_om, lon_om, ahora)
 
-    # Confianza: MAE solo en los puntos ancla (predicciones reales del modelo)
-    anclas_futuras = {h: t for h, t in anclas.items() if h > 0}
-    confianza = calcular_confianza(anclas_futuras, pred_openmeteo)
+    # Confianza: MAE en los horizontes clave (24h, 48h, 72h)
+    horas_clave = {h: pred_horario[h] for h in [24, 48, 72] if h in pred_horario}
+    confianza = calcular_confianza(horas_clave, pred_openmeteo)
 
     return {
         "modelo_local": {
             "horizonte_horas": body.horas,
             "temperatura_predicha_final": round(temp_final_predicha, 2),
             "puntos_ancla": {
-                f"{h}h": round(t, 2) for h, t in sorted(anclas.items()) if h > 0
+                f"{h}h": round(pred_horario[h], 2)
+                for h in [24, 48, 72] if h in pred_horario
             },
             "predicciones": predicciones_locales,
             "metricas_entrenamiento": metricas_modelo,
@@ -726,8 +744,9 @@ async def predict_post(body: PredictRequest) -> dict:
                 "presion": body.presion,
                 "viento": body.viento,
             },
-            "lags_reales": n_hist > 0,
-            "lags_usados": n_hist,
+            "lags_reales":       n_hist > 0,
+            "lags_usados":       n_hist,
+            "modelos_ejecutados": len(pred_horario),
         },
     }
 
