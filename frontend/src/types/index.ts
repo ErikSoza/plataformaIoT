@@ -50,10 +50,17 @@ export interface Lectura {
   presion_at?: number;
   velocidad_viento?: number;
   prediccion_temp?: number;
+  // Gases MQ135 (null en lecturas sin sensor)
+  gas_co2?: number | null;
+  gas_nh3?: number | null;
+  gas_alcohol?: number | null;
+  gas_humo?: number | null;
+  gas_benceno?: number | null;
+  gas_acetona?: number | null;
   // Mapeo de compatibilidad
   pressure?: number;
   wind?: number;
-  gas?: number | null;
+  gas?: number | null;       // alias de gas_co2 para mapa de calor
   radiation?: number | null;
   // Campos adicionales de JOIN
   estacion_nombre?: string;
@@ -62,18 +69,24 @@ export interface Lectura {
   modelo?: string;
 }
 
-// Tipo para los datos que envía el ESP32
+// Tipo para los datos que envía el ESP32 (JSON v2.1)
 export interface ESP32Data {
-  id_estacion: number;
-  timestamp: string;
-  data: {
-    temperatura: number;
-    humedad: number;
-    presion: number;
-    viento: number;
-    bateria: number;
-    gas?: number; // TODO: Implementar
-    radiacion?: number; // TODO: Implementar
+  id: string;
+  timestamp: number;
+  datos: {
+    temperatura: string;
+    humedad: string;
+    presionAT: string;
+    velocidadViento: string;
+    prediccionTemp: string;
+    gases?: {
+      co2?: string;
+      nh3?: string;
+      alcohol?: string;
+      humo?: string;
+      benceno?: string;
+      acetona?: string;
+    };
   };
 }
 
@@ -108,8 +121,16 @@ export interface DeviceData {
   battery?: number;
   pressure?: number;
   wind?: number;
-  gas?: number; // TODO: Implementar en dispositivo
-  radiation?: number; // TODO: Implementar en dispositivo
+  // gas = CO2 (usado por mapa de calor con métrica 'gas')
+  gas?: number | null;
+  // Gases individuales MQ135
+  gas_co2?: number | null;
+  gas_nh3?: number | null;
+  gas_alcohol?: number | null;
+  gas_humo?: number | null;
+  gas_benceno?: number | null;
+  gas_acetona?: number | null;
+  radiation?: number | null;
 }
 
 export interface StatCardData {
@@ -157,6 +178,8 @@ export const transformEstacionToDevice = (estacion: EstacionCompleta): DeviceDat
   // Extraer datos de la última lectura si existe
   const latestReading = estacion.latestReading;
 
+  const co2 = latestReading?.gas_co2 ?? null;
+
   return {
     id: estacion.id,
     name: estacion.nombre,
@@ -164,16 +187,22 @@ export const transformEstacionToDevice = (estacion: EstacionCompleta): DeviceDat
     status: mapStatus(estacion.estado),
     lastUpdate: latestReading?.fecha_registro || estacion.created_at,
     location: estacion.ubicacion || 'Sin ubicación',
-    coordinates: estacion.latitud && estacion.longitud 
-      ? [estacion.latitud, estacion.longitud] 
+    coordinates: estacion.latitud && estacion.longitud
+      ? [estacion.latitud, estacion.longitud]
       : [0, 0],
-    temperature: latestReading?.temperatura,
-    humidity: latestReading?.humedad,
-    battery: estacion.bateria,
-    pressure: latestReading?.presion_at,
-    wind: latestReading?.velocidad_viento,
-    gas: 0.040, // TODO: Implementar en dispositivo
-    radiation: 650, // TODO: Implementar en dispositivo
+    temperature:  latestReading?.temperatura,
+    humidity:     latestReading?.humedad,
+    battery:      estacion.bateria,
+    pressure:     latestReading?.presion_at,
+    wind:         latestReading?.velocidad_viento,
+    gas:          co2,          // CO2 como proxy de calidad del aire (mapa de calor)
+    gas_co2:      co2,
+    gas_nh3:      latestReading?.gas_nh3    ?? null,
+    gas_alcohol:  latestReading?.gas_alcohol ?? null,
+    gas_humo:     latestReading?.gas_humo    ?? null,
+    gas_benceno:  latestReading?.gas_benceno ?? null,
+    gas_acetona:  latestReading?.gas_acetona ?? null,
+    radiation:    null,
   };
 };
 
@@ -212,7 +241,11 @@ export interface NuevaLecturaForm {
     presion: number;
     viento: number;
     bateria: number;
-    gas?: number; // TODO: Implementar en dispositivo
-    radiacion?: number; // TODO: Implementar en dispositivo
+    gas_co2?: number;
+    gas_nh3?: number;
+    gas_alcohol?: number;
+    gas_humo?: number;
+    gas_benceno?: number;
+    gas_acetona?: number;
   };
 }

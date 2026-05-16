@@ -435,21 +435,34 @@ export const deviceService = {
 
 // Función auxiliar para normalizar datos de lecturas
 const normalizeReadingData = (reading: any) => {
+  const toNum = (v: any) => (v !== null && v !== undefined ? Number(v) : null);
+
+  const gas_co2     = toNum(reading.gas_co2);
+  const gas_nh3     = toNum(reading.gas_nh3);
+  const gas_alcohol = toNum(reading.gas_alcohol);
+  const gas_humo    = toNum(reading.gas_humo);
+  const gas_benceno = toNum(reading.gas_benceno);
+  const gas_acetona = toNum(reading.gas_acetona);
+
   return {
     ...reading,
-    temperatura: reading.temperatura ? Number(reading.temperatura) : null,
-    humedad: reading.humedad ? Number(reading.humedad) : null,
-    presion_at: reading.presion_at ? Number(reading.presion_at) : null,
-    // Mapear presion_at a pressure para compatibilidad con frontend
-    pressure: reading.presion_at ? Number(reading.presion_at) : null,
-    velocidad_viento: reading.velocidad_viento ? Number(reading.velocidad_viento) : null,
-    // Mapear velocidad_viento a wind para compatibilidad con frontend
-    wind: reading.velocidad_viento ? Number(reading.velocidad_viento) : null,
-    prediccion_temp: reading.prediccion_temp ? Number(reading.prediccion_temp) : null,
-    raw_timestamp: reading.raw_timestamp ? Number(reading.raw_timestamp) : null,
-    // TODO: Implementar en dispositivo - valores temporales por ahora
-    gas: 0.040, // Valor temporal representativo
-    radiation: 650, // Valor temporal representativo
+    temperatura:      toNum(reading.temperatura),
+    humedad:          toNum(reading.humedad),
+    presion_at:       toNum(reading.presion_at),
+    pressure:         toNum(reading.presion_at),
+    velocidad_viento: toNum(reading.velocidad_viento),
+    wind:             toNum(reading.velocidad_viento),
+    prediccion_temp:  toNum(reading.prediccion_temp),
+    raw_timestamp:    toNum(reading.raw_timestamp),
+    // Gases MQ135 — null si la lectura no tiene sensor
+    gas_co2,
+    gas_nh3,
+    gas_alcohol,
+    gas_humo,
+    gas_benceno,
+    gas_acetona,
+    gas:       gas_co2,  // alias CO2 para mapa de calor
+    radiation: null,
   };
 };
 

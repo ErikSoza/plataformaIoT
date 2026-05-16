@@ -52,13 +52,14 @@ export const HEATMAP_CONFIG: Record<string, any> = {
     legendLabel: 'Velocidad del viento'
   },
   gas: {
-    gradient: { 0.0: '#00ff00', 0.25: '#66ff66', 0.4: '#ffff00', 0.8: '#ff0000', 1.0: '#7e0023' },
+    // CO2 en ppm: < 600 bueno, 600-1000 moderado, > 1000 elevado
+    gradient: { 0.0: '#00c853', 0.33: '#80cc28', 0.58: '#ffee58', 0.83: '#ff8f00', 1.0: '#d50000' },
     radius: 80,
     blur: 45,
-    min: 0,
-    max: 0.1,
-    unit: 'ppm',
-    legendLabel: 'Concentración de gases'
+    min: 400,
+    max: 1200,
+    unit: 'ppm CO₂',
+    legendLabel: 'CO₂ — Calidad del Aire'
   },
   radiation: {
     gradient: { 0.0: '#66ccff', 0.3: '#99ff99', 0.5: '#ffff66', 0.8: '#ff9966', 1.0: '#ff6666' },

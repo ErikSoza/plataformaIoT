@@ -122,10 +122,10 @@ const MetricaVariables = {
     id: 'gas',
     name: 'Calidad del Aire',
     icon: '🌪️',
-    unit: 'ppm',
-    description: 'Calidad del aire y gases (temporal)',
+    unit: 'ppm CO₂',
+    description: 'CO₂ como indicador de calidad del aire',
     color: '#4CAF50',
-    gradient: ['#00ff00', '#80ff00', '#ffff00', '#ff8000', '#ff0000']
+    gradient: ['#00c853', '#80cc28', '#ffee58', '#ff8f00', '#d50000']
   },
   radiation: {
     id: 'radiation',
@@ -1127,7 +1127,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                     {heatmapMetric === 'humidity' && '0%'}
                     {heatmapMetric === 'pressure' && '1000 hPa'}
                     {heatmapMetric === 'wind' && '0 m/s'}
-                    {heatmapMetric === 'gas' && '0 ppm'}
+                    {heatmapMetric === 'gas' && '400 ppm'}
                     {heatmapMetric === 'radiation' && '0 W/m²'}
                   </span>
                   <span>
@@ -1135,7 +1135,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                     {heatmapMetric === 'humidity' && '100%'}
                     {heatmapMetric === 'pressure' && '1020 hPa'}
                     {heatmapMetric === 'wind' && '20 m/s'}
-                    {heatmapMetric === 'gas' && '0.1 ppm'}
+                    {heatmapMetric === 'gas' && '1200+ ppm'}
                     {heatmapMetric === 'radiation' && '1000 W/m²'}
                   </span>
                 </div>
@@ -1241,10 +1241,10 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                       {formatLastUpdate(device)}
                     </div>
 
-                    {/* Métricas adicionales */}
+                    {/* Métricas ambientales principales */}
                     {(device.temperature !== undefined || device.pressure !== undefined || device.wind !== undefined) && (
-                      <div style={{ 
-                        borderTop: '1px solid #e9ecef', 
+                      <div style={{
+                        borderTop: '1px solid #e9ecef',
                         paddingTop: '8px',
                         display: 'flex',
                         flexWrap: 'wrap' as const,
@@ -1270,16 +1270,6 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                             💨 {device.wind} m/s
                           </span>
                         )}
-                        {device.gas !== undefined && (
-                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
-                            🌪️ {device.gas} ppm
-                          </span>
-                        )}
-                        {device.radiation !== undefined && (
-                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
-                            ☀️ {device.radiation} W/m²
-                          </span>
-                        )}
                         {device.battery !== undefined && (
                           <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
                             🔋 {device.battery}%
@@ -1287,6 +1277,62 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                         )}
                       </div>
                     )}
+
+                    {/* Sección Calidad del Aire MQ135 */}
+                    {(() => {
+                      const gasFields: Array<{
+                        key: keyof typeof device;
+                        label: string;
+                        low: number;
+                        mid: number;
+                      }> = [
+                        { key: 'gas_co2',     label: 'CO₂',      low: 800,  mid: 1200 },
+                        { key: 'gas_nh3',     label: 'NH₃',      low: 25,   mid: 50   },
+                        { key: 'gas_alcohol', label: 'Alcohol',   low: 10,   mid: 50   },
+                        { key: 'gas_humo',    label: 'Humo',      low: 50,   mid: 150  },
+                        { key: 'gas_benceno', label: 'Benceno',   low: 5,    mid: 25   },
+                        { key: 'gas_acetona', label: 'Acetona',   low: 50,   mid: 200  },
+                      ];
+                      const hasAnyGas = gasFields.some(f => device[f.key] !== undefined && device[f.key] !== null);
+                      if (!hasAnyGas) return null;
+
+                      const getBadgeColor = (val: number | null | undefined, low: number, mid: number) => {
+                        if (val === null || val === undefined) return { bg: '#e9ecef', text: '#6c757d', border: '#dee2e6' };
+                        if (val < low)  return { bg: '#d4edda', text: '#155724', border: '#c3e6cb' };
+                        if (val < mid)  return { bg: '#fff3cd', text: '#856404', border: '#ffeeba' };
+                        return              { bg: '#f8d7da', text: '#721c24', border: '#f5c6cb' };
+                      };
+
+                      return (
+                        <div style={{ borderTop: '1px solid #e9ecef', paddingTop: '8px', marginTop: '4px' }}>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#495057', marginBottom: '6px' }}>
+                            🌪️ Calidad del Aire (MQ135)
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '5px' }}>
+                            {gasFields.map(({ key, label, low, mid }) => {
+                              const val = device[key] as number | null | undefined;
+                              const colors = getBadgeColor(val, low, mid);
+                              return (
+                                <span
+                                  key={key}
+                                  style={{
+                                    background: colors.bg,
+                                    color: colors.text,
+                                    border: `1px solid ${colors.border}`,
+                                    padding: '2px 7px',
+                                    borderRadius: '4px',
+                                    fontSize: '0.78rem',
+                                    fontWeight: 500,
+                                  }}
+                                >
+                                  {label}: {val !== null && val !== undefined ? `${Number(val).toFixed(1)} ppm` : 'Sin datos'}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </Popup>
               </Marker>

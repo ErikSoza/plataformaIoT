@@ -3,18 +3,26 @@ import React from 'react';
 export interface DeviceData {
   id: number;
   name: string;
-  type: string; // Siempre será "Sensor Ambiental IoT" 
+  type: string;
   status: 'Activo' | 'Inactivo' | 'Mantenimiento' | 'Error';
   lastUpdate: string;
   location: string;
   coordinates: [number, number];
-  temperature?: number; // Todos los sensores miden temperatura
-  humidity?: number;    // Todos los sensores miden humedad
-  battery?: number;     // Todos los sensores tienen batería
-  pressure?: number;    // Todos los sensores miden presión
-  wind?: number;        // Todos los sensores miden velocidad del viento
-  gas?: number;         // TODO: Implementar en dispositivo
-  radiation?: number;   // TODO: Implementar en dispositivo 
+  temperature?: number;
+  humidity?: number;
+  battery?: number;
+  pressure?: number;
+  wind?: number;
+  // gas = CO2 (alias para mapa de calor)
+  gas?: number | null;
+  // Gases individuales MQ135
+  gas_co2?: number | null;
+  gas_nh3?: number | null;
+  gas_alcohol?: number | null;
+  gas_humo?: number | null;
+  gas_benceno?: number | null;
+  gas_acetona?: number | null;
+  radiation?: number | null;
 }
 
 interface DeviceListProps {

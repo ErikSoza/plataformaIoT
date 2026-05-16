@@ -23,7 +23,8 @@ DB_CONFIG = {
 
 def guardar_en_bd(data):
     """
-    Recibe el diccionario JSON, asegura que el dispositivo exista y luego inserta la lectura.
+    Recibe el diccionario JSON (v2.1), asegura que el dispositivo exista e inserta la lectura.
+    Compatible con JSON v2.1 (subobjeto 'gases') y versiones anteriores (sin gases).
     """
     connection = None
     try:
@@ -33,47 +34,59 @@ def guardar_en_bd(data):
         # 1. Extraer datos del JSON
         device_id = data['id']
         raw_ts = data['timestamp']
-        
+
         # Convertir timestamp Unix a formato Fecha MySQL
         fecha_legible = datetime.fromtimestamp(raw_ts).strftime('%Y-%m-%d %H:%M:%S')
 
         # Extraer el objeto anidado "datos"
         valores = data['datos']
-        temp = valores['temperatura']
-        hum = valores['humedad']
-        pres = valores['presionAT']
-        viento = valores['velocidadViento']
-        pred = valores['prediccionTemp']
+        temp   = valores.get('temperatura')
+        hum    = valores.get('humedad')
+        pres   = valores.get('presionAT')
+        viento = valores.get('velocidadViento')
+        pred   = valores.get('prediccionTemp')
+
+        # Extraer subobjeto "gases" (JSON v2.1 — dict vacío si no viene)
+        gases      = valores.get('gases', {})
+        gas_co2    = gases.get('co2')
+        gas_nh3    = gases.get('nh3')
+        gas_alcohol = gases.get('alcohol')
+        gas_humo   = gases.get('humo')
+        gas_benceno = gases.get('benceno')
+        gas_acetona = gases.get('acetona')
 
         # ==============================================================================
-        # [NUEVA LÓGICA] AUTO-REGISTRO DEL DISPOSITIVO (Auto-Provisioning)
+        # AUTO-REGISTRO DEL DISPOSITIVO (Auto-Provisioning)
+        # Crea el dispositivo si no existe; si ya existe, actualiza ultima_conexion.
         # ==============================================================================
-        # Esta consulta hace dos cosas:
-        # 1. Intenta CREAR el dispositivo si no existe.
-        # 2. Si ya existe, actualiza su 'ultima_conexion' (ON DUPLICATE KEY UPDATE).
-        
         sql_device = """
             INSERT INTO dispositivos (device_id, modelo, estado, ultima_conexion, created_at)
-            VALUES (%s, 'Auto-Detectado', 'disponible', %s, NOW())
+            VALUES (%s, 'ZY-ESP32', 'disponible', %s, NOW())
             ON DUPLICATE KEY UPDATE ultima_conexion = VALUES(ultima_conexion)
         """
-        
-        # Ejecutamos el registro/actualización del dispositivo PRIMERO
         cursor.execute(sql_device, (device_id, fecha_legible))
 
         # ==============================================================================
-        # 2. INSERTAR LA LECTURA (Ahora es seguro porque el dispositivo existe)
+        # INSERTAR LECTURA con los 6 campos de gases (NULL si el JSON no los trae)
         # ==============================================================================
-        sql_lectura = """INSERT INTO lecturas 
-                         (device_id, fecha_registro, raw_timestamp, temperatura, humedad, presion_at, velocidad_viento, prediccion_temp) 
-                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
-        
-        val_lectura = (device_id, fecha_legible, raw_ts, temp, hum, pres, viento, pred)
+        sql_lectura = """
+            INSERT INTO lecturas
+              (device_id, fecha_registro, raw_timestamp,
+               temperatura, humedad, presion_at, velocidad_viento, prediccion_temp,
+               gas_co2, gas_nh3, gas_alcohol, gas_humo, gas_benceno, gas_acetona)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        val_lectura = (
+            device_id, fecha_legible, raw_ts,
+            temp, hum, pres, viento, pred,
+            gas_co2, gas_nh3, gas_alcohol, gas_humo, gas_benceno, gas_acetona
+        )
 
         cursor.execute(sql_lectura, val_lectura)
         connection.commit()
-        
-        print(f"✅ [{device_id}] Dato guardado: {fecha_legible} | Temp: {temp}°C")
+
+        gases_str = f"CO2={gas_co2}" if gas_co2 is not None else "sin gases"
+        print(f"✅ [{device_id}] Dato guardado: {fecha_legible} | Temp: {temp}°C | {gases_str}")
 
     except mysql.connector.Error as err:
         print(f"❌ Error SQL: {err}")

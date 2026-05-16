@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS usuarios_estaciones_favoritas (
 -- Tabla: DISPOSITIVOS (Hardware / Edges)
 CREATE TABLE IF NOT EXISTS dispositivos (
   device_id VARCHAR(50) PRIMARY KEY,
-  modelo VARCHAR(50) DEFAULT 'TTGO T3 v1.6',
+  modelo VARCHAR(50) DEFAULT 'ZY-ESP32',
   estado ENUM('disponible', 'asignado', 'mantenimiento') DEFAULT 'disponible',
   bateria DECIMAL(5,2),
   ultima_conexion DATETIME,
@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS dispositivos (
 -- Tabla: LECTURAS
 CREATE TABLE IF NOT EXISTS lecturas (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    device_id VARCHAR(50) NOT NULL, 
+    device_id VARCHAR(50) NOT NULL,
     fecha_registro DATETIME,
     raw_timestamp BIGINT,
     temperatura DECIMAL(5, 2),
@@ -82,6 +82,13 @@ CREATE TABLE IF NOT EXISTS lecturas (
     presion_at DECIMAL(6, 1),
     velocidad_viento DECIMAL(5, 2),
     prediccion_temp DECIMAL(5, 2),
+    -- Gases MQ135 (JSON v2.1 — NULL en lecturas anteriores al sensor)
+    gas_co2     FLOAT NULL DEFAULT NULL COMMENT 'CO2 en ppm (400-5000)',
+    gas_nh3     FLOAT NULL DEFAULT NULL COMMENT 'Amoniaco NH3 en ppm (10-300)',
+    gas_alcohol FLOAT NULL DEFAULT NULL COMMENT 'Alcohol en ppm (10-300)',
+    gas_humo    FLOAT NULL DEFAULT NULL COMMENT 'Humo en ppm (10-500)',
+    gas_benceno FLOAT NULL DEFAULT NULL COMMENT 'Benceno en ppm (10-100)',
+    gas_acetona FLOAT NULL DEFAULT NULL COMMENT 'Acetona en ppm (10-500)',
     CONSTRAINT fk_lectura_dispositivo
         FOREIGN KEY (device_id) REFERENCES dispositivos(device_id)
         ON UPDATE CASCADE

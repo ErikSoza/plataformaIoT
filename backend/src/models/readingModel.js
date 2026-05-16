@@ -102,20 +102,34 @@ export const getReadingById = async (id) => {
 
 // Agregar nueva lectura desde ESP32
 export const addReading = async (reading) => {
-    const { 
-        device_id, 
-        fecha_registro, 
-        raw_timestamp, 
-        temperatura, 
-        humedad, 
-        presion_at, 
-        velocidad_viento, 
-        prediccion_temp 
+    const {
+        device_id,
+        fecha_registro,
+        raw_timestamp,
+        temperatura,
+        humedad,
+        presion_at,
+        velocidad_viento,
+        prediccion_temp,
+        gas_co2     = null,
+        gas_nh3     = null,
+        gas_alcohol = null,
+        gas_humo    = null,
+        gas_benceno = null,
+        gas_acetona = null,
     } = reading;
-    
+
     const [result] = await pool.query(
-        'INSERT INTO lecturas (device_id, fecha_registro, raw_timestamp, temperatura, humedad, presion_at, velocidad_viento, prediccion_temp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [device_id, fecha_registro || new Date(), raw_timestamp, temperatura, humedad, presion_at, velocidad_viento, prediccion_temp]
+        `INSERT INTO lecturas
+           (device_id, fecha_registro, raw_timestamp,
+            temperatura, humedad, presion_at, velocidad_viento, prediccion_temp,
+            gas_co2, gas_nh3, gas_alcohol, gas_humo, gas_benceno, gas_acetona)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+            device_id, fecha_registro || new Date(), raw_timestamp,
+            temperatura, humedad, presion_at, velocidad_viento, prediccion_temp,
+            gas_co2, gas_nh3, gas_alcohol, gas_humo, gas_benceno, gas_acetona,
+        ]
     );
     return result.insertId;
 };
@@ -190,7 +204,7 @@ export const getReadingsForReports = async (limit = 100, offset = 0, filters = {
     queryParams.push(limit, offset);
 
     const [rows] = await pool.query(`
-        SELECT 
+        SELECT
             l.id,
             l.device_id,
             l.fecha_registro,
@@ -199,9 +213,16 @@ export const getReadingsForReports = async (limit = 100, offset = 0, filters = {
             l.presion_at,
             l.velocidad_viento,
             l.prediccion_temp,
+            l.gas_co2,
+            l.gas_nh3,
+            l.gas_alcohol,
+            l.gas_humo,
+            l.gas_benceno,
+            l.gas_acetona,
             d.modelo,
             e.nombre as estacion_nombre,
             e.ubicacion,
+            e.id as estacion_id,
             e.estado as estacion_estado
         FROM lecturas l
         INNER JOIN dispositivos d ON l.device_id = d.device_id

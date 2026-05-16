@@ -154,6 +154,12 @@ const ReportsPage: React.FC = () => {
       'Presión (hPa)': typeof r.presion_at === 'number' ? r.presion_at.toFixed(2) : 'N/A',
       'Viento (m/s)': typeof r.velocidad_viento === 'number' ? r.velocidad_viento.toFixed(2) : 'N/A',
       'Pred. Temp (°C)': typeof r.prediccion_temp === 'number' ? r.prediccion_temp.toFixed(2) : 'N/A',
+      'CO₂ (ppm)': typeof r.gas_co2 === 'number' ? r.gas_co2.toFixed(1) : 'N/A',
+      'NH₃ (ppm)': typeof r.gas_nh3 === 'number' ? r.gas_nh3.toFixed(1) : 'N/A',
+      'Alcohol (ppm)': typeof r.gas_alcohol === 'number' ? r.gas_alcohol.toFixed(1) : 'N/A',
+      'Humo (ppm)': typeof r.gas_humo === 'number' ? r.gas_humo.toFixed(1) : 'N/A',
+      'Benceno (ppm)': typeof r.gas_benceno === 'number' ? r.gas_benceno.toFixed(1) : 'N/A',
+      'Acetona (ppm)': typeof r.gas_acetona === 'number' ? r.gas_acetona.toFixed(1) : 'N/A',
     }));
 
   const downloadExcel = () => {
@@ -184,11 +190,17 @@ const ReportsPage: React.FC = () => {
 
   // ── Gráfico temporal ──────────────────────────────────────
   const variableOptions = [
-    { key: 'temperatura', label: 'Temperatura (°C)', color: '#FF6384' },
-    { key: 'humedad', label: 'Humedad (%)', color: '#36A2EB' },
-    { key: 'presion', label: 'Presión (hPa)', color: '#FFCE56' },
-    { key: 'viento', label: 'Viento (m/s)', color: '#9966FF' },
+    { key: 'temperatura',    label: 'Temperatura (°C)',    color: '#FF6384' },
+    { key: 'humedad',        label: 'Humedad (%)',          color: '#36A2EB' },
+    { key: 'presion',        label: 'Presión (hPa)',        color: '#FFCE56' },
+    { key: 'viento',         label: 'Viento (m/s)',         color: '#9966FF' },
     { key: 'prediccion_temp', label: 'Predicción Temp (°C)', color: '#FF9F40' },
+    { key: 'gas_co2',        label: 'CO₂ (ppm)',            color: '#4CAF50' },
+    { key: 'gas_nh3',        label: 'NH₃ Amoníaco (ppm)',   color: '#8BC34A' },
+    { key: 'gas_alcohol',    label: 'Alcohol (ppm)',         color: '#FFC107' },
+    { key: 'gas_humo',       label: 'Humo (ppm)',            color: '#795548' },
+    { key: 'gas_benceno',    label: 'Benceno (ppm)',         color: '#F44336' },
+    { key: 'gas_acetona',    label: 'Acetona (ppm)',         color: '#9C27B0' },
   ];
 
   const getChartData = () => {
@@ -201,11 +213,17 @@ const ReportsPage: React.FC = () => {
     const selVar = variableOptions.find(v => v.key === selectedVariable);
     const getValue = (r: Lectura): number | null => {
       switch (selectedVariable) {
-        case 'temperatura': return r.temperatura ?? null;
-        case 'humedad': return r.humedad ?? null;
-        case 'presion': return r.presion_at ?? null;
-        case 'viento': return r.velocidad_viento ?? null;
+        case 'temperatura':    return r.temperatura ?? null;
+        case 'humedad':        return r.humedad ?? null;
+        case 'presion':        return r.presion_at ?? null;
+        case 'viento':         return r.velocidad_viento ?? null;
         case 'prediccion_temp': return r.prediccion_temp ?? null;
+        case 'gas_co2':        return r.gas_co2 ?? null;
+        case 'gas_nh3':        return r.gas_nh3 ?? null;
+        case 'gas_alcohol':    return r.gas_alcohol ?? null;
+        case 'gas_humo':       return r.gas_humo ?? null;
+        case 'gas_benceno':    return r.gas_benceno ?? null;
+        case 'gas_acetona':    return r.gas_acetona ?? null;
         default: return null;
       }
     };
