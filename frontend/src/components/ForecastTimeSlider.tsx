@@ -175,8 +175,6 @@ const ForecastTimeSlider: React.FC<ForecastTimeSliderProps> = ({
         <div style={styles.loadingOverlay}>
           <span style={{ fontSize: '1.3rem', animation: 'spin 1s linear infinite' }}>⏳</span>
           <span>Cargando predicciones para todas las estaciones…</span>
-          {/* Keyframe de spin (reutiliza el de prediccionChart) */}
-          <style>{`@keyframes spin { to { transform:rotate(360deg); } }`}</style>
         </div>
       )}
     </div>

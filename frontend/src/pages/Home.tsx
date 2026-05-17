@@ -69,15 +69,6 @@ const WeatherLoader: React.FC = () => (
       ))}
     </div>
 
-    {/* Keyframes inyectados una sola vez */}
-    <style>{`
-      @keyframes weatherLoaderSpin { to { transform: rotate(360deg); } }
-      @keyframes rainBead {
-        0%   { opacity:0; transform:translateY(-8px); }
-        40%  { opacity:1; }
-        100% { opacity:0; transform:translateY(10px); }
-      }
-    `}</style>
   </div>
 );
 

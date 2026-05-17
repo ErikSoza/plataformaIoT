@@ -62,15 +62,4 @@ const styles = {
   }
 };
 
-// Agregar CSS para la animación de spin
-const styleSheet = document.createElement("style");
-styleSheet.type = "text/css";
-styleSheet.innerText = `
-  @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-  }
-`;
-document.head.appendChild(styleSheet);
-
 export default ProtectedRoute;

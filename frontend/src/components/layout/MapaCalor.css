@@ -13,18 +13,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
 }
 
-/* Animación sutil para las etiquetas */
-@keyframes labelFadeIn {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
+/* labelFadeIn definido globalmente en weatherAnimations.css */
 .temperature-label-icon div {
   animation: labelFadeIn 0.5s ease-out;
 }
@@ -117,37 +106,19 @@
    (Complementa weatherAnimations.css que define los keyframes)
    ═══════════════════════════════════════════════════════════════ */
 
-/* ── Presión — onda expansiva anular ─────────────────────────── */
-@keyframes pressureRingOut {
-  0%   { box-shadow: 0 0 0 0 rgba(149, 117, 205, 0.65); }
-  70%  { box-shadow: 0 0 0 12px rgba(149, 117, 205, 0);  }
-  100% { box-shadow: 0 0 0 0  rgba(149, 117, 205, 0);  }
-}
-
+/* ── Presión — onda expansiva anular (keyframe en weatherAnimations.css) ── */
 .temperature-label-icon.pressure-label-animate div {
   animation: labelFadeIn 0.5s ease-out, pressureRingOut 3s ease-in-out 0.5s infinite !important;
   border-color: rgba(149, 117, 205, 0.9) !important;
 }
 
-/* ── Viento — oscilación lateral suave ───────────────────────── */
-@keyframes windSweepLabel {
-  0%   { transform: translateX(-2px) rotate(-1deg); }
-  50%  { transform: translateX(2px)  rotate(1deg);  }
-  100% { transform: translateX(-2px) rotate(-1deg); }
-}
-
+/* ── Viento — oscilación lateral suave (keyframe en weatherAnimations.css) ── */
 .temperature-label-icon.wind-label-animate div {
   animation: labelFadeIn 0.5s ease-out, windSweepLabel 2s ease-in-out 0.5s infinite !important;
   border-color: rgba(2, 136, 209, 0.9) !important;
 }
 
-/* ── Radiación Solar — resplandor dorado pulsante ────────────── */
-@keyframes sunRayPulse {
-  0%   { box-shadow: 0 0 0 0  rgba(255, 193, 7, 0.75); }
-  70%  { box-shadow: 0 0 0 14px rgba(255, 193, 7, 0);   }
-  100% { box-shadow: 0 0 0 0  rgba(255, 193, 7, 0);   }
-}
-
+/* ── Radiación Solar — resplandor dorado pulsante (keyframe en weatherAnimations.css) ── */
 .temperature-label-icon.radiation-label-animate div {
   animation: labelFadeIn 0.5s ease-out, sunRayPulse 2.5s ease-in-out 0.5s infinite !important;
   border-color: rgba(249, 168, 37, 0.9) !important;
@@ -156,14 +127,7 @@
   text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.6) !important;
 }
 
-/* ── Gas / Calidad del Aire — deriva flotante ────────────────── */
-@keyframes gasDriftLabel {
-  0%   { transform: translate(0, 0)     scale(1);    }
-  33%  { transform: translate(1px, -1px) scale(1.02); }
-  66%  { transform: translate(-1px, 1px) scale(0.98); }
-  100% { transform: translate(0, 0)     scale(1);    }
-}
-
+/* ── Gas / Calidad del Aire — deriva flotante (keyframe en weatherAnimations.css) ── */
 .temperature-label-icon.gas-label-animate div {
   animation: labelFadeIn 0.5s ease-out, gasDriftLabel 4s ease-in-out 0.5s infinite !important;
   border-color: rgba(67, 160, 71, 0.9) !important;

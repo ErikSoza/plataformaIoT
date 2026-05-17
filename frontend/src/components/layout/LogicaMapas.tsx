@@ -330,19 +330,6 @@ const MetricSelector: React.FC<MetricSelectorProps> = ({ selectedMetric, onMetri
         </div>
       )}
 
-      {/* Estilos CSS para animación */}
-      <style>{`
-        @keyframes slideDown {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   );
 };
