@@ -30,8 +30,9 @@ export interface Station {
   humidity?: number;
   pressure?: number;
   wind?: number;
-  gas?: number | null;       // alias de gas_co2 para mapa de calor
-  radiation?: number | null; // sin sensor físico — siempre null
+  gas?: number | null;          // alias de gas_co2 para mapa de calor
+  radiation?: number | null;    // sin sensor físico — siempre null
+  prediccion_temp?: number | null; // predicción TinyML 1h del ESP32
   // Gases individuales MQ135
   gas_co2?: number | null;
   gas_nh3?: number | null;
@@ -200,8 +201,9 @@ export const normalizeStationData = (rawStation: any): Station => {
     station.gas_humo    = reading.gas_humo    ?? null;
     station.gas_benceno = reading.gas_benceno ?? null;
     station.gas_acetona = reading.gas_acetona ?? null;
-    station.gas         = reading.gas_co2     ?? null; // alias CO2 para mapa de calor
-    station.radiation   = null; // sin sensor de radiación
+    station.gas           = reading.gas_co2     ?? null; // alias CO2 para mapa de calor
+    station.radiation     = null;                        // sin sensor de radiación
+    station.prediccion_temp = reading.prediccion_temp ?? null; // TinyML 1h
   }
 
   return station;

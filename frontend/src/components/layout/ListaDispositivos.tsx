@@ -23,6 +23,8 @@ export interface DeviceData {
   gas_benceno?: number | null;
   gas_acetona?: number | null;
   radiation?: number | null;
+  prediccion_temp?: number | null;
+  latestReading?: { prediccion_temp?: number | null; [key: string]: any } | null;
 }
 
 interface DeviceListProps {

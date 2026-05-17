@@ -429,7 +429,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   searchCenter = null, // Centro de búsqueda
   shouldCenterToSearch = false // Si debe centrar hacia búsqueda
 }) => {
-  const [showHeatmap, setShowHeatmap] = useState(defaultHeatmapVisible);
+  const [showHeatmap] = useState(true);
   const [showTemperatureLabels, setShowTemperatureLabels] = useState(true); // Nuevo estado para etiquetas
   const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation'>(defaultHeatmapMetric);
   const [shouldCenterMap, setShouldCenterMap] = useState(false); // Nuevo estado para controlar cuándo centrar el mapa
@@ -546,13 +546,12 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
       setForecastOffset(0);
       // En modo predicción forzamos temperatura (es lo que el modelo predice)
       setHeatmapMetric('temperature');
-      if (!showHeatmap) setShowHeatmap(true);
     } catch (e) {
       console.error('[Forecast] Error cargando predicciones:', e);
     } finally {
       setForecastLoading(false);
     }
-  }, [devices, showHeatmap]);
+  }, [devices]);
 
   // ── Auto-avance de la línea de tiempo ────────────────────────────
   useEffect(() => {
@@ -867,14 +866,23 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
           top: '10px',
           right: '10px',
           zIndex: 1000,
-          background: 'white',
-          padding: '10px',
-          borderRadius: '10px',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-          minWidth: '200px'
+          background: 'rgba(255,255,255,0.97)',
+          padding: '14px 16px',
+          borderRadius: '14px',
+          boxShadow: '0 4px 24px rgba(0,0,0,0.16)',
+          width: '285px',
+          border: '1px solid rgba(0,188,212,0.2)',
         }}>
-          <div style={{ marginBottom: '10px' }}>
-            <strong style={{ color: '#00BCD4' }}>🗺️ Mapa de Calor</strong>
+          <div style={{
+            marginBottom: '14px',
+            paddingBottom: '10px',
+            borderBottom: '2px solid rgba(0,188,212,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}>
+            <span style={{ fontSize: '1.2rem' }}>🗺️</span>
+            <strong style={{ color: '#00BCD4', fontSize: '1.05rem' }}>Mapa de Calor</strong>
           </div>
 
           {/* Control de actualización manual */}
@@ -936,68 +944,47 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
             </div>
           )}
 
-          {/* Controles de activación */}
-          <div style={{ marginBottom: '15px' }}>
-            {/* Toggle Mapa de Calor */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px',
-              marginBottom: '8px' 
+          {/* Toggle Etiquetas */}
+          <div style={{
+            marginBottom: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '8px 12px',
+            background: '#f8f9fa',
+            borderRadius: '8px',
+            border: '1px solid #e9ecef',
+          }}>
+            <input
+              type="checkbox"
+              id="labels-toggle"
+              checked={showTemperatureLabels}
+              onChange={(e) => setShowTemperatureLabels(e.target.checked)}
+              style={{
+                accentColor: '#FF6B35',
+                transform: 'scale(1.2)',
+                cursor: 'pointer',
+              }}
+            />
+            <label htmlFor="labels-toggle" style={{
+              fontSize: '0.85rem',
+              fontWeight: '500',
+              cursor: 'pointer',
+              color: '#444',
+              userSelect: 'none' as const,
             }}>
-              <input 
-                type="checkbox" 
-                id="heatmap-toggle"
-                checked={showHeatmap} 
-                onChange={(e) => setShowHeatmap(e.target.checked)}
-                style={{
-                  accentColor: '#00BCD4',
-                  transform: 'scale(1.2)'
-                }}
-              />
-              <label htmlFor="heatmap-toggle" style={{ 
-                fontSize: '0.9rem', 
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}>
-                Mostrar círculos de temperatura
-              </label>
-            </div>
-            
-            {/* Toggle Etiquetas de Temperatura */}
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px' 
-            }}>
-              <input 
-                type="checkbox" 
-                id="labels-toggle"
-                checked={showTemperatureLabels} 
-                onChange={(e) => setShowTemperatureLabels(e.target.checked)}
-                style={{
-                  accentColor: '#FF6B35',
-                  transform: 'scale(1.2)'
-                }}
-              />
-              <label htmlFor="labels-toggle" style={{ 
-                fontSize: '0.9rem', 
-                fontWeight: '500',
-                cursor: 'pointer'
-              }}>
-                Mostrar valores sobre el mapa
-              </label>
-            </div>
+              Mostrar valores sobre el mapa
+            </label>
           </div>
 
           {/* ── Modo Predicción Temporal ──────────────────────── */}
           <div style={{
-            marginBottom: '15px',
+            marginBottom: '14px',
             borderBottom: '1px solid #e9ecef',
             paddingBottom: '12px',
           }}>
-            <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#2c3e50', marginBottom: '8px' }}>
-              🔮 Predicción Temporal
+            <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#2c3e50', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>🔮</span> Predicción Temporal
             </div>
             {!forecastMode ? (
               <button
