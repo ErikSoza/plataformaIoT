@@ -137,10 +137,7 @@ const ReportsPage: React.FC = () => {
       hour: '2-digit', minute: '2-digit', second: '2-digit',
     });
 
-  const avg = (field: keyof Lectura) => {
-    const vals = filteredReadings.filter(r => typeof r[field] === 'number').map(r => r[field] as number);
-    return vals.length > 0 ? (vals.reduce((s, v) => s + v, 0) / vals.length).toFixed(1) : '—';
-  };
+ 
 
   // ── Exportación ───────────────────────────────────────────
   const prepareExportData = () =>
@@ -272,26 +269,6 @@ const ReportsPage: React.FC = () => {
 
         {!loading && !error && (
           <>
-            {/* ── 1. Resumen estadístico ── */}
-            <section style={s.section}>
-              <h3 style={s.sectionTitle}>Resumen estadístico</h3>
-              <div style={s.statsGrid}>
-                {[
-                  //{ label: 'Total lecturas', value: String(filteredReadings.length), unit: '' },
-                  { label: 'Estaciones activas', value: String(getUniqueStations().length), unit: '' },
-                  { label: 'Temp. promedio', value: avg('temperatura'), unit: '°C' },
-                  { label: 'Humedad promedio', value: avg('humedad'), unit: '%' },
-                  { label: 'Presión promedio', value: avg('presion_at'), unit: ' hPa' },
-                  { label: 'Viento promedio', value: avg('velocidad_viento'), unit: ' m/s' },
-                ].map(({ label, value, unit }) => (
-                  <div key={label} style={s.statCard}>
-                    <span style={s.statLabel}>{label}</span>
-                    <span style={s.statValue}>{value}{unit}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
             {/* ── 2. Predicción de temperatura ── */}
             <section style={s.section}>
               <h3 style={s.sectionTitle}>Predicción de temperatura</h3>

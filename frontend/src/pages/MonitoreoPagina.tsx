@@ -25,7 +25,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
   const [panelDevice, setPanelDevice] = useState<DeviceData | null>(null);
   const [prediccionData, setPrediccionData] = useState<PrediccionResponse | null>(null);
   const [prediccionLoading, setPrediccionLoading] = useState(false);
-  const [horizonHours, setHorizonHours] = useState(24);
+  const [horizonHours, setHorizonHours] = useState(1);
 
   // Click en marcador del mapa: actualiza panel local sin cambiar de pestaña
   const handleMapMarkerClick = (device: DeviceData) => {
@@ -172,7 +172,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                 Modelo en dispositivo ESP32 · R²=0.96
               </div>
               <div style={{ ...styles.predCardBadge, background: '#FFF3E0', color: '#E65100', border: '1px solid #FFB74D' }}>
-                Base de datos (ESP32)
+                Microcontrolador - ESP32
               </div>
             </div>
 
@@ -202,7 +202,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                     : 'Servicio ML no disponible'}
               </div>
               <div style={{ ...styles.predCardBadge, background: '#E0F7FA', color: '#006064', border: '1px solid #80DEEA' }}>
-                Servidor ML local
+                Modelo ML Pagina Web
               </div>
             </div>
 
@@ -232,7 +232,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                     : 'API no disponible en este momento'}
               </div>
               <div style={{ ...styles.predCardBadge, background: '#E8F5E9', color: '#1B5E20', border: '1px solid #A5D6A7' }}>
-                API pública gratuita
+                API pública - OpenMeteo
               </div>
             </div>
 
