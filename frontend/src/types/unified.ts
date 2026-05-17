@@ -113,8 +113,9 @@ export interface Alerta {
 
 export interface StatCardData {
   title: string;
-  value: string;
-  icon: string;
+  value: string | number;
+  icon?: string;
+  subtitle?: string;
 }
 
 export interface TabItem {

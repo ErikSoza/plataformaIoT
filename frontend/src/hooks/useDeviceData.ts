@@ -102,10 +102,6 @@ export const useDeviceData = (options: UseDeviceDataOptions = {}): UseDeviceData
       setStatsLoading(true);
       setStatsError(null);
 
-      // Estadísticas básicas de dispositivos
-      const activeDevices = filterActiveStations(stationsData);
-      const totalDevices = stationsData.length;
-      
       // Calcular promedios de métricas
       const calculateAverage = (field: keyof Station): number => {
         const devicesWithData = stationsData.filter(d => 
@@ -119,7 +115,6 @@ export const useDeviceData = (options: UseDeviceDataOptions = {}): UseDeviceData
       const avgPressure = calculateAverage('pressure');
       const avgWind = calculateAverage('wind');
       const avgGas = calculateAverage('gas');
-      const avgRadiation = calculateAverage('radiation');
 
       // Intentar obtener estadísticas globales adicionales de la API
       let globalStats: any = {};
@@ -134,39 +129,29 @@ export const useDeviceData = (options: UseDeviceDataOptions = {}): UseDeviceData
 
       const calculatedStats: StatCardData[] = [
         {
-          title: 'Dispositivos Activos',
-          value: `${activeDevices.length}/${totalDevices}`,
-          icon: '🔌',
-        },
-        {
           title: 'Temperatura Promedio',
           value: avgTemperature > 0 ? `${avgTemperature.toFixed(1)}°C` : 'N/A',
-          icon: '🌡️',
         },
         {
           title: 'Humedad Promedio',
           value: avgHumidity > 0 ? `${avgHumidity.toFixed(1)}%` : 'N/A',
-          icon: '💧',
         },
         {
           title: 'Presión Promedio',
           value: avgPressure > 0 ? `${avgPressure.toFixed(1)} hPa` : 'N/A',
-          icon: '🌫️',
         },
         {
           title: 'Velocidad del Viento',
-          value: avgWind > 0 ? `${avgWind.toFixed(1)} m/s` : 'N/A',
-          icon: '💨',
+          value: avgWind > 0 ? `${avgWind.toFixed(1)} km/h` : 'N/A',
         },
         {
           title: 'Calidad del Aire',
-          value: avgGas > 0 ? `${avgGas.toFixed(3)}` : 'N/A (Temp)',
-          icon: '🌪️',
-        },
-        {
-          title: 'Radiación Solar',
-          value: avgRadiation > 0 ? `${avgRadiation.toFixed(0)} W/m²` : 'N/A (Temp)',
-          icon: '☀️',
+          value: avgGas > 0 ? `${avgGas.toFixed(0)} ppm` : 'N/A',
+          subtitle: avgGas > 0
+            ? avgGas < 600  ? 'CO₂ — Bueno'
+            : avgGas < 1000 ? 'CO₂ — Moderada'
+            :                 'CO₂ — Elevada'
+            : 'CO₂ sin datos',
         },
       ];
 

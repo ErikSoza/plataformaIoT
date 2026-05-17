@@ -57,7 +57,7 @@ const ResumenEstacion: React.FC<ResumenEstacionProps> = ({ device, esDefecto = f
     { icon: '🌡️', label: 'Temperatura', value: device.temperature != null ? `${device.temperature.toFixed(1)} °C` : '—', color: '#e53935' },
     { icon: '💧', label: 'Humedad',      value: device.humidity    != null ? `${device.humidity.toFixed(0)} %`    : '—', color: '#1e88e5' },
     { icon: '🔵', label: 'Presión',      value: device.pressure    != null ? `${device.pressure.toFixed(1)} hPa`  : '—', color: '#6d4c41' },
-    { icon: '💨', label: 'Viento',       value: device.wind        != null ? `${device.wind.toFixed(1)} m/s`      : '—', color: '#00897b' },
+    { icon: '💨', label: 'Viento',       value: device.wind        != null ? `${device.wind.toFixed(1)} km/h`      : '—', color: '#00897b' },
   ];
 
   return (
@@ -91,7 +91,7 @@ const ResumenEstacion: React.FC<ResumenEstacionProps> = ({ device, esDefecto = f
       <div style={rs.gasSection}>
         <div style={rs.gasSectionTitle}>
           <span>🌬️</span>
-          <span>Calidad del Aire — MQ135</span>
+          <span>Calidad del Aire</span>
         </div>
         {!tieneGases ? (
           <div style={rs.sinDatos}>
