@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { ContentSection, DeviceList, UnifiedMap, DeviceData } from '../components/layout';
 import CitySearch from '../components/CitySearch';
-import PrediccionChart from '../components/PrediccionChart';
-import ResumenEstacion from '../components/ResumenEstacion';
 
 interface DevicesPageProps {
   devices: DeviceData[];
@@ -104,28 +102,6 @@ const DevicesPage: React.FC<DevicesPageProps> = ({
           />
         </ContentSection>
       </div>
-    </div>
-
-    {/* Panel de datos actuales + gases (solo cuando hay dispositivo seleccionado) */}
-    {selectedDevice && <ResumenEstacion device={selectedDevice} />}
-
-    {/* Sección de predicción ML */}
-    <div style={styles.prediccionContainer}>
-      {selectedDevice ? (
-        <PrediccionChart
-          estacionId={selectedDevice.id}
-          estacionNombre={selectedDevice.name}
-        />
-      ) : (
-        <div style={styles.prediccionPlaceholder}>
-          <span style={styles.placeholderIcono}>🤖</span>
-          <h3 style={styles.placeholderTitulo}>Predicción de Temperatura con IA</h3>
-          <p style={styles.placeholderTexto}>
-            Selecciona una estación de la lista para ver la predicción XGBoost
-            a 24h, 48h o 72h junto con la referencia Open-Meteo.
-          </p>
-        </div>
-      )}
     </div>
     </div>
   );
