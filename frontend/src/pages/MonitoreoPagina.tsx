@@ -114,7 +114,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
 
       {/* Panel de Predicciones Climáticas */}
       {estacionMostrada && (
-        <ContentSection title={`🔮 Predicciones Climáticas — ${estacionMostrada.name ?? 'Estación'}`}>
+        <ContentSection title={`🔮 Predicciones Climáticas — ${estacionMostrada.name ?? 'Estación'}`} id="panel-predicciones">
           {/* Control de horizonte temporal compartido */}
           <div style={styles.horizonControl}>
             <div style={styles.horizonHeader}>
@@ -284,26 +284,20 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
               {
                 icon: '🎓',
                 title: 'Proyecto Universitario',
-                text: 'Desarrollado por estudiantes de la Universidad de Talca para el monitoreo ambiental del campus usando tecnología IoT de última generación.',
+                text: 'Desarrollado por estudiantes de la Universidad de Talca para el monitoreo ambiental del campus usando tecnología IoT y aplicando modelos de predicción basados en Machine Learning.',
                 delay: '0.1s',
               },
               {
                 icon: '⚡',
                 title: 'Tecnología IoT',
-                text: 'Red de sensores conectados que recopilan datos meteorológicos cada minuto, transmitidos en tiempo real a través de protocolos de comunicación avanzados.',
+                text: 'Red de sensores IoT conectados que recopilan datos meteorológicos cada hora, transmitidos en tiempo real a través de protocolos de comunicación avanzados.',
                 delay: '0.2s',
               },
               {
                 icon: '🌱',
                 title: 'Impacto Ambiental',
-                text: 'Los datos recopilados contribuyen a investigaciones sobre cambio climático y apoyan la toma de decisiones para un campus más sustentable.',
+                text: 'Los datos recopilados contribuyen a investigaciones sobre cambio climático aportando con un repositorio donde se almacenan todos los datos registrados.',
                 delay: '0.3s',
-              },
-              {
-                icon: '📱',
-                title: 'Acceso Abierto',
-                text: 'Información disponible 24/7 para la comunidad universitaria y público general. Regístrate para acceder a funciones avanzadas y reportes detallados.',
-                delay: '0.4s',
               },
             ].map((card) => (
               <div

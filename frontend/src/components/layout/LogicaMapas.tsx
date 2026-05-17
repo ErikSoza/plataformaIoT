@@ -1095,9 +1095,30 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                         )}
                       </div>
                     )}
-                    <div style={{ marginTop: '8px', fontSize: '0.75rem', color: '#aaa', fontStyle: 'italic' }}>
-                      Clic para ver detalles completos ↓
+                    <div style={{ marginTop: '6px', fontSize: '0.72rem', color: '#bbb' }}>
+                      {formatLastUpdate(device)}
                     </div>
+                    <button
+                      onClick={() => {
+                        const el = document.getElementById('panel-predicciones');
+                        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      style={{
+                        marginTop: '8px',
+                        width: '100%',
+                        padding: '5px 0',
+                        background: 'linear-gradient(135deg, #00BCD4, #0097A7)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        letterSpacing: '0.2px',
+                      }}
+                    >
+                      Ver predicciones ↓
+                    </button>
                   </div>
                 </Popup>
               </Marker>

@@ -4,11 +4,12 @@ interface ContentSectionProps {
   title: string;
   children: ReactNode;
   className?: string;
+  id?: string;
 }
 
-const ContentSection: React.FC<ContentSectionProps> = ({ title, children, className }) => {
+const ContentSection: React.FC<ContentSectionProps> = ({ title, children, className, id }) => {
   return (
-    <div style={styles.section} className={className}>
+    <div style={styles.section} className={className} id={id}>
       <h2 style={styles.sectionTitle}>{title}</h2>
       {children}
     </div>
