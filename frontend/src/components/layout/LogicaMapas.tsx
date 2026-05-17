@@ -430,7 +430,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
   shouldCenterToSearch = false // Si debe centrar hacia búsqueda
 }) => {
   const [showHeatmap] = useState(true);
-  const [showTemperatureLabels, setShowTemperatureLabels] = useState(true); // Nuevo estado para etiquetas
+  const [showTemperatureLabels] = useState(true);
   const [heatmapMetric, setHeatmapMetric] = useState<'temperature' | 'humidity' | 'pressure' | 'wind' | 'gas' | 'radiation'>(defaultHeatmapMetric);
   const [shouldCenterMap, setShouldCenterMap] = useState(false); // Nuevo estado para controlar cuándo centrar el mapa
   const [internalSelectedDevice, setInternalSelectedDevice] = useState<DeviceData | undefined>(selectedDevice); // Estado interno para manejar la selección
@@ -808,21 +808,7 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
       return 'Error en formato de fecha';
     }
   };
-  // Obtener configuración de la métrica seleccionada
-  const getMetricConfig = (metric: string) => {
-    return MetricaVariables[metric as keyof typeof MetricaVariables] || MetricaVariables.temperature;
-  };
   
-  // Obtener colores para la leyenda del mapa de calor
-  const getLegendColors = (metric: string) => {
-    const config = getMetricConfig(metric);
-    const gradient = config.gradient;
-    return { 
-      low: gradient[0], 
-      high: gradient[gradient.length - 1],
-      gradient: gradient
-    };
-  };
   
   return (
     <div 
@@ -944,38 +930,6 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
             </div>
           )}
 
-          {/* Toggle Etiquetas */}
-          <div style={{
-            marginBottom: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '8px 12px',
-            background: '#f8f9fa',
-            borderRadius: '8px',
-            border: '1px solid #e9ecef',
-          }}>
-            <input
-              type="checkbox"
-              id="labels-toggle"
-              checked={showTemperatureLabels}
-              onChange={(e) => setShowTemperatureLabels(e.target.checked)}
-              style={{
-                accentColor: '#FF6B35',
-                transform: 'scale(1.2)',
-                cursor: 'pointer',
-              }}
-            />
-            <label htmlFor="labels-toggle" style={{
-              fontSize: '0.85rem',
-              fontWeight: '500',
-              cursor: 'pointer',
-              color: '#444',
-              userSelect: 'none' as const,
-            }}>
-              Mostrar valores sobre el mapa
-            </label>
-          </div>
 
           {/* ── Modo Predicción Temporal ──────────────────────── */}
           <div style={{
@@ -1057,78 +1011,6 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
             />
           )}
 
-          {/* Leyenda del Mapa de Calor Mejorada */}
-          {showHeatmap && (
-            <div style={{ 
-              marginTop: '5px' ,  
-              padding: '5px',
-              background: 'white', 
-              fontSize: '0.8rem',
-            }}>
-              <div style={{ 
-                fontWeight: 'bold', 
-                marginBottom: '8px',
-                color: '#2c3e50',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <span>{getMetricConfig(heatmapMetric).icon}</span>
-                Leyenda - {getMetricConfig(heatmapMetric).name}
-              </div>
-              
-              {/* Gradient bar */}
-              <div style={{ marginBottom: '8px' }}>
-                <div style={{ 
-                  height: '12px',
-                  borderRadius: '6px',
-                  background: `linear-gradient(to right, ${getLegendColors(heatmapMetric).gradient.join(', ')})`,
-                  border: '1px solid #dee2e6',
-                  position: 'relative'
-                }}>
-
-                  {/* Marcadores en el gradiente */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '-4px',
-                    left: '0',
-                    right: '0',
-                    display: 'flex',
-                    justifyContent: 'space-between'
-                  }}>
-                    <div style={{ width: '2px', height: '20px', background: '#6c757d' }} />
-                    <div style={{ width: '2px', height: '20px', background: '#6c757d' }} />
-                  </div>
-                </div>
-                
-                {/* Labels del gradiente */}
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between',
-                  marginTop: '6px',
-                  fontSize: '0.75em',
-                  color: '#6c757d'
-                }}>
-                  <span>
-                    {heatmapMetric === 'temperature' && '0°C'}
-                    {heatmapMetric === 'humidity' && '0%'}
-                    {heatmapMetric === 'pressure' && '1000 hPa'}
-                    {heatmapMetric === 'wind' && '0 m/s'}
-                    {heatmapMetric === 'gas' && '400 ppm'}
-                    {heatmapMetric === 'radiation' && '0 W/m²'}
-                  </span>
-                  <span>
-                    {heatmapMetric === 'temperature' && '40°C'}
-                    {heatmapMetric === 'humidity' && '100%'}
-                    {heatmapMetric === 'pressure' && '1020 hPa'}
-                    {heatmapMetric === 'wind' && '20 m/s'}
-                    {heatmapMetric === 'gas' && '1200+ ppm'}
-                    {heatmapMetric === 'radiation' && '1000 W/m²'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -1183,143 +1065,39 @@ const UnifiedMap: React.FC<UnifiedMapProps> = ({
                 }}
               >
                 <Popup>
-                  <div style={{ padding: '10px', minWidth: '200px' }}>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '8px', 
-                      marginBottom: '10px',
-                      fontSize: '1.1rem',
+                  <div style={{ padding: '8px 10px', minWidth: '160px', maxWidth: '200px' }}>
+                    <div style={{
                       fontWeight: 'bold',
-                      color: '#00BCD4'
+                      color: '#00BCD4',
+                      fontSize: '1rem',
+                      marginBottom: '6px',
                     }}>
                       📡 {device.name}
                     </div>
-                    
-                    <div style={{ marginBottom: '8px' }}>
-                      <strong>📍 Ubicación:</strong> {device.location}
-                    </div>
-                    
-                    <div style={{ marginBottom: '8px' }}>
-                      <strong>🆔 Sensor:</strong> #{device.id.toString().padStart(3, '0')}
-                    </div>
-                    
-                    <div style={{ 
-                      marginBottom: '8px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '5px'
-                    }}>
-                      <strong>Estado:</strong>
-                      <span style={{ 
-                        color: getMarkerColor(device, false),
-                        fontWeight: 'bold'
-                      }}>
-                        {device.status === 'Activo' && '🟢'}
-                        {device.status === 'Inactivo' && '⚫'}
-                        {device.status === 'Mantenimiento' && '🟡'}
-                        {device.status === 'Error' && '🔴'}
+                    <div style={{ fontSize: '0.82rem', color: '#6c757d', marginBottom: '8px' }}>
+                      #{device.id.toString().padStart(3, '0')} ·{' '}
+                      <span style={{ color: getMarkerColor(device, false), fontWeight: 600 }}>
+                        {device.status === 'Activo' ? '🟢' : device.status === 'Inactivo' ? '⚫' : device.status === 'Mantenimiento' ? '🟡' : '🔴'}
                         {' '}{device.status}
                       </span>
                     </div>
-                    
-                    <div style={{ marginBottom: '10px', fontSize: '0.9rem', color: '#6c757d' }}>
-                      <strong>Última actualización:</strong><br />
-                      {formatLastUpdate(device)}
-                    </div>
-
-                    {/* Métricas ambientales principales */}
-                    {(device.temperature !== undefined || device.pressure !== undefined || device.wind !== undefined) && (
-                      <div style={{
-                        borderTop: '1px solid #e9ecef',
-                        paddingTop: '8px',
-                        display: 'flex',
-                        flexWrap: 'wrap' as const,
-                        gap: '8px'
-                      }}>
+                    {(device.temperature !== undefined || device.humidity !== undefined) && (
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
                         {device.temperature !== undefined && (
-                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
+                          <span style={{ background: '#f0f4ff', padding: '3px 8px', borderRadius: '6px', fontSize: '0.88rem', fontWeight: 600 }}>
                             🌡️ {device.temperature}°C
                           </span>
                         )}
                         {device.humidity !== undefined && (
-                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
+                          <span style={{ background: '#f0faff', padding: '3px 8px', borderRadius: '6px', fontSize: '0.88rem', fontWeight: 600 }}>
                             💧 {device.humidity}%
-                          </span>
-                        )}
-                        {device.pressure !== undefined && (
-                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
-                            🌫️ {device.pressure} hPa
-                          </span>
-                        )}
-                        {device.wind !== undefined && (
-                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
-                            💨 {device.wind} m/s
-                          </span>
-                        )}
-                        {device.battery !== undefined && (
-                          <span style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '4px', fontSize: '0.85rem' }}>
-                            🔋 {device.battery}%
                           </span>
                         )}
                       </div>
                     )}
-
-                    {/* Sección Calidad del Aire MQ135 */}
-                    {(() => {
-                      const gasFields: Array<{
-                        key: keyof typeof device;
-                        label: string;
-                        low: number;
-                        mid: number;
-                      }> = [
-                        { key: 'gas_co2',     label: 'CO₂',      low: 800,  mid: 1200 },
-                        { key: 'gas_nh3',     label: 'NH₃',      low: 25,   mid: 50   },
-                        { key: 'gas_alcohol', label: 'Alcohol',   low: 10,   mid: 50   },
-                        { key: 'gas_humo',    label: 'Humo',      low: 50,   mid: 150  },
-                        { key: 'gas_benceno', label: 'Benceno',   low: 5,    mid: 25   },
-                        { key: 'gas_acetona', label: 'Acetona',   low: 50,   mid: 200  },
-                      ];
-                      const hasAnyGas = gasFields.some(f => device[f.key] !== undefined && device[f.key] !== null);
-                      if (!hasAnyGas) return null;
-
-                      const getBadgeColor = (val: number | null | undefined, low: number, mid: number) => {
-                        if (val === null || val === undefined) return { bg: '#e9ecef', text: '#6c757d', border: '#dee2e6' };
-                        if (val < low)  return { bg: '#d4edda', text: '#155724', border: '#c3e6cb' };
-                        if (val < mid)  return { bg: '#fff3cd', text: '#856404', border: '#ffeeba' };
-                        return              { bg: '#f8d7da', text: '#721c24', border: '#f5c6cb' };
-                      };
-
-                      return (
-                        <div style={{ borderTop: '1px solid #e9ecef', paddingTop: '8px', marginTop: '4px' }}>
-                          <div style={{ fontSize: '0.78rem', fontWeight: 600, color: '#495057', marginBottom: '6px' }}>
-                            🌪️ Calidad del Aire (MQ135)
-                          </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '5px' }}>
-                            {gasFields.map(({ key, label, low, mid }) => {
-                              const val = device[key] as number | null | undefined;
-                              const colors = getBadgeColor(val, low, mid);
-                              return (
-                                <span
-                                  key={key}
-                                  style={{
-                                    background: colors.bg,
-                                    color: colors.text,
-                                    border: `1px solid ${colors.border}`,
-                                    padding: '2px 7px',
-                                    borderRadius: '4px',
-                                    fontSize: '0.78rem',
-                                    fontWeight: 500,
-                                  }}
-                                >
-                                  {label}: {val !== null && val !== undefined ? `${Number(val).toFixed(1)} ppm` : 'Sin datos'}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    <div style={{ marginTop: '8px', fontSize: '0.75rem', color: '#aaa', fontStyle: 'italic' }}>
+                      Clic para ver detalles completos ↓
+                    </div>
                   </div>
                 </Popup>
               </Marker>
