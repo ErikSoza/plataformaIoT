@@ -1,22 +1,18 @@
 """
 ============================================================
-  ENTRENAMIENTO MODELO XGBOOST v4 — PREDICCIÓN METEOROLÓGICA
+  ENTRENAMIENTO XGBOOST v5 — PREDICCIÓN METEOROLÓGICA MULTI-VARIABLE
   Plataforma IoT - Estaciones Meteorológicas Curicó/Maule
 ============================================================
 
-Mejoras v4 sobre v3:
-  - Direct Multi-Step Forecasting: 72 modelos independientes,
-    uno por cada hora del horizonte (T+1h hasta T+72h).
-  - Eliminación de interpolación trigonométrica: cada punto
-    de la curva de predicción es una salida real de un modelo
-    ML, no una estimación sinusoidal.
-  - Curva 100% ML comparable hora a hora con Open-Meteo.
-  - Cada modelo se especializa en su horizonte:
-      T+1h  → R² ~0.99 (alta inercia térmica)
-      T+24h → R² ~0.93 (ciclo diurno completo)
-      T+72h → R² ~0.85 (tendencia sinóptica)
+Mejoras v5 sobre v4:
+  - Multi-variable: entrena modelos para temperatura, humedad,
+    presión atmosférica y velocidad del viento.
+  - Un .pkl independiente por variable (backward compatible con v4).
+  - metricas.json unificado con resultados de las 4 variables.
+  - La arquitectura de temperatura (72 modelos Direct Multi-Step,
+    80 features, hiperparámetros XGBoost) no cambia en absoluto.
 
-Features v4 (80 total, idénticas a v3):
+Features v5 (80 total, idénticas a v4):
   [A]  4  actuales:       temp, humedad, viento, presion
   [B]  5  cíclicos:       hour_sin/cos, mes_sin/cos, dia_semana
   [C] 24  lags temp:      T-1h … T-24h
@@ -27,6 +23,12 @@ Features v4 (80 total, idénticas a v3):
   [H]  4  deltas presión: Δ1h, Δ3h, Δ6h, Δ12h
   [I]  3  rolling temp:   mean_6h, mean_12h, std_6h
   Total: 4+5+24+12+12+12+4+4+3 = 80
+
+Modelos generados (288 en total):
+  modelo_xgboost.pkl  → temperatura (backward compatible con v4)
+  modelo_humedad.pkl  → humedad relativa
+  modelo_presion.pkl  → presión atmosférica
+  modelo_viento.pkl   → velocidad del viento
 
 Autor: Erik Soza — Universidad de Talca
 Proyecto: Memoria Universitaria - Red IoT Meteorológica
@@ -57,11 +59,10 @@ warnings.filterwarnings('ignore')
 # ============================================================
 # SECCIÓN 1 — RUTAS
 # ============================================================
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATOS_DIR  = os.path.join(SCRIPT_DIR, "datos")
+SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
+DATOS_DIR   = os.path.join(SCRIPT_DIR, "datos")
 MODELOS_DIR = os.path.join(SCRIPT_DIR, "modelos")
 
-MODELO_PATH   = os.path.join(MODELOS_DIR, "modelo_xgboost.pkl")
 METRICAS_PATH = os.path.join(MODELOS_DIR, "metricas.json")
 
 os.makedirs(MODELOS_DIR, exist_ok=True)
@@ -80,18 +81,53 @@ PRESION_CURICO_MEDIA = 993.0   # hPa — media histórica de Curicó a 225 msnm
 HORIZONTES = list(range(1, 73))   # 72 modelos: T+1h … T+72h (Direct Multi-Step)
 
 # Ventanas de lag por variable
-LAG_WINDOW_TEMP    = 24   # captura "misma hora de ayer"
+LAG_WINDOW_TEMP       = 24   # captura "misma hora de ayer"
 LAG_WINDOW_HUM_VIENTO = 12
-LAG_WINDOW_PRESION = 12   # 12h de historial de presión
+LAG_WINDOW_PRESION    = 12   # 12h de historial de presión
 
 # Split temporal
 TEST_SIZE = 0.20   # último 20% para evaluación final
 VAL_SIZE  = 0.10   # 10% previo al test para early stopping
 
+# ============================================================
+# VARIABLES A PREDECIR — Configuración multi-variable v5
+#
+# Cada variable usa las mismas 80 features de entrada.
+# Solo cambia la columna objetivo (target) durante el entrenamiento.
+# pkl es el nombre de archivo donde se guardan los 72 modelos de esa variable.
+# ============================================================
+VARIABLES_CONFIG = {
+    'temperatura': {
+        'col':    'air_temperature_C',
+        'nombre': 'Temperatura',
+        'unidad': '°C',
+        'pkl':    os.path.join(MODELOS_DIR, 'modelo_xgboost.pkl'),   # nombre v4 → backward compat
+    },
+    'humedad': {
+        'col':    'relative_humidity_percent',
+        'nombre': 'Humedad Relativa',
+        'unidad': '%',
+        'pkl':    os.path.join(MODELOS_DIR, 'modelo_humedad.pkl'),
+    },
+    'presion': {
+        'col':    'presion_hPa',
+        'nombre': 'Presión Atmosférica',
+        'unidad': 'hPa',
+        'pkl':    os.path.join(MODELOS_DIR, 'modelo_presion.pkl'),
+    },
+    'viento': {
+        'col':    'wind_speed_kmh',
+        'nombre': 'Velocidad del Viento',
+        'unidad': 'km/h',
+        'pkl':    os.path.join(MODELOS_DIR, 'modelo_viento.pkl'),
+    },
+}
+
 
 def print_header():
     print("\n" + "=" * 60)
-    print("  ENTRENAMIENTO XGBOOST v3 — PREDICCION METEOROLOGICA")
+    print("  ENTRENAMIENTO XGBOOST v5 — MULTI-VARIABLE")
+    print("  4 variables × 72 horizontes = 288 modelos")
     print("=" * 60)
 
 
@@ -105,7 +141,7 @@ def cargar_datasets() -> pd.DataFrame:
     """
     print("\n[1/5] Cargando datasets...")
 
-    patron = os.path.join(DATOS_DIR, "openmeteo_curico_*.csv")
+    patron  = os.path.join(DATOS_DIR, "openmeteo_curico_*.csv")
     archivos = sorted(glob.glob(patron))
 
     if not archivos:
@@ -120,13 +156,11 @@ def cargar_datasets() -> pd.DataFrame:
         nombre = os.path.basename(ruta)
         df = pd.read_csv(ruta)
 
-        # Validar columnas mínimas
         faltantes = [c for c in COLUMNAS_REQUERIDAS if c not in df.columns]
         if faltantes:
             print(f"  ERROR en {nombre}: columnas faltantes {faltantes}")
             sys.exit(1)
 
-        # presion_hPa: agregar con media climatológica si el CSV no la tiene
         if 'presion_hPa' not in df.columns:
             print(f"  AVISO {nombre}: sin presion_hPa — relleno con {PRESION_CURICO_MEDIA} hPa")
             df['presion_hPa'] = PRESION_CURICO_MEDIA
@@ -150,7 +184,6 @@ def limpiar_datos(df: pd.DataFrame) -> pd.DataFrame:
     df['time_index'] = pd.to_datetime(df['time_index'])
     df = df.sort_values('time_index').reset_index(drop=True)
 
-    # Eliminar duplicados en tiempo (puede ocurrir en años bisiestos)
     duplicados = df.duplicated(subset=['time_index']).sum()
     if duplicados:
         df = df.drop_duplicates(subset=['time_index']).reset_index(drop=True)
@@ -164,24 +197,19 @@ def limpiar_datos(df: pd.DataFrame) -> pd.DataFrame:
 
 
 # ============================================================
-# SECCIÓN 4 — FEATURE ENGINEERING v3
+# SECCIÓN 4 — FEATURE ENGINEERING v5
 # ============================================================
 def generar_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Genera las 80 features en el orden definido por obtener_features().
+    Genera las 80 features (idénticas a v4) más los targets para las
+    4 variables climáticas. Los targets se generan para todos los
+    horizontes ANTES de dropna, así cada variable queda alineada.
 
-    Grupos:
-      [A] Valores actuales (temp, humedad, viento, presion)
-      [B] Codificación cíclica de tiempo
-      [C] Lags temperatura 1-24h
-      [D] Lags humedad 1-12h
-      [E] Lags viento 1-12h
-      [F] Lags presión 1-12h
-      [G] Deltas temperatura (tendencia de subida/bajada)
-      [H] Deltas presión (tendencia → predictor de frentes)
-      [I] Estadísticas rodantes de temperatura
+    Las features NO cambian entre variables — el mismo vector de 80
+    posiciones sirve para predecir temperatura, humedad, presión y viento.
+    XGBoost aprende qué features importan para cada objetivo.
     """
-    print("\n[3/5] Generando features v3 (80 variables)...")
+    print("\n[3/5] Generando features v5 (80 variables, targets × 4 variables)...")
 
     # [B] Codificación cíclica
     df['hour_sin']   = np.sin(2 * np.pi * df['hour'] / 24)
@@ -207,31 +235,32 @@ def generar_features(df: pd.DataFrame) -> pd.DataFrame:
     for lag in range(1, LAG_WINDOW_PRESION + 1):
         df[f'presion_lag_{lag}h'] = df['presion_hPa'].shift(lag)
 
-    # [G] Deltas de temperatura (¿sube o baja? y a qué velocidad)
+    # [G] Deltas temperatura
     df['temp_delta_1h']  = df['air_temperature_C'] - df['air_temperature_C'].shift(1)
     df['temp_delta_3h']  = df['air_temperature_C'] - df['air_temperature_C'].shift(3)
     df['temp_delta_6h']  = df['air_temperature_C'] - df['air_temperature_C'].shift(6)
     df['temp_delta_24h'] = df['air_temperature_C'] - df['air_temperature_C'].shift(24)
 
-    # [H] Deltas de presión (clave meteorológica: caída = frente, subida = despejado)
+    # [H] Deltas presión
     df['presion_delta_1h']  = df['presion_hPa'] - df['presion_hPa'].shift(1)
     df['presion_delta_3h']  = df['presion_hPa'] - df['presion_hPa'].shift(3)
     df['presion_delta_6h']  = df['presion_hPa'] - df['presion_hPa'].shift(6)
     df['presion_delta_12h'] = df['presion_hPa'] - df['presion_hPa'].shift(12)
 
-    # [I] Estadísticas rodantes de temperatura
+    # [I] Estadísticas rodantes temperatura
     df['temp_mean_6h']  = df['air_temperature_C'].rolling(window=6,  min_periods=1).mean()
     df['temp_mean_12h'] = df['air_temperature_C'].rolling(window=12, min_periods=1).mean()
     df['temp_std_6h']   = df['air_temperature_C'].rolling(window=6,  min_periods=2).std().fillna(0)
 
-    # Targets
-    for h in HORIZONTES:
-        df[f'target_{h}h'] = df['air_temperature_C'].shift(-h)
+    # Targets para TODAS las variables (un target por variable × horizonte)
+    for var_key, var_cfg in VARIABLES_CONFIG.items():
+        for h in HORIZONTES:
+            df[f'target_{var_key}_{h}h'] = df[var_cfg['col']].shift(-h)
 
     registros_antes = len(df)
     df = df.dropna().reset_index(drop=True)
     print(f"  Filas eliminadas (bordes lag_24h + targets): {registros_antes - len(df):,}")
-    print(f"  Registros validos para entrenar: {len(df):,}")
+    print(f"  Registros válidos para entrenar: {len(df):,}")
     return df
 
 
@@ -273,33 +302,38 @@ def obtener_features() -> list[str]:
     # [I] Rolling temperatura
     features += ['temp_mean_6h', 'temp_mean_12h', 'temp_std_6h']
 
-    # Verificación: 4+5+24+12+12+12+4+4+3 = 80
     assert len(features) == 80, f"Error en conteo de features: {len(features)} != 80"
     return features
 
 
 # ============================================================
-# SECCIÓN 6 — ENTRENAMIENTO
+# SECCIÓN 6 — ENTRENAMIENTO POR VARIABLE (genérico)
 # ============================================================
-def entrenar_modelos(df: pd.DataFrame):
+def entrenar_variable(
+    df: pd.DataFrame,
+    feature_names: list[str],
+    var_key: str,
+    var_cfg: dict,
+    var_num: int,
+    total_vars: int,
+) -> tuple[dict, dict]:
     """
-    Entrena 72 modelos XGBoost independientes — uno por cada horizonte horario
-    de T+1h hasta T+72h (Direct Multi-Step Forecasting).
+    Entrena 72 modelos XGBoost para una variable objetivo.
 
-    Split temporal: 70% train | 10% val (early stopping) | 20% test final.
-
-    Los modelos de horizontes cortos (1-6h) convergen rápido (early stopping
-    en ~100-200 árboles). Los de largo plazo (48-72h) usan más árboles.
-    Tiempo estimado total: 45-90 minutos dependiendo del hardware.
+    Direct Multi-Step Forecasting: un modelo independiente por horizonte
+    T+1h … T+72h. Mismos hiperparámetros que la configuración de temperatura
+    de v4 (garantiza que temperatura no pierde calidad al refactorizar).
     """
-    print(f"\n[4/5] Entrenando {len(HORIZONTES)} modelos v4 (T+1h a T+{max(HORIZONTES)}h)...")
+    col_nombre = var_cfg['nombre']
+    unidad     = var_cfg['unidad']
+
+    print(f"\n  ▶ Variable {var_num}/{total_vars}: {col_nombre} ({unidad})")
+    print(f"    Entrenando {len(HORIZONTES)} modelos — T+1h a T+{max(HORIZONTES)}h")
     if USE_XGBOOST:
-        print("  Motor: XGBRegressor (XGBoost)")
+        print("    Motor: XGBRegressor (XGBoost)")
     else:
-        print("  Motor: HistGradientBoostingRegressor (sklearn fallback)")
-    print("  Nota: los modelos de horizonte corto convergen antes por early stopping.\n")
+        print("    Motor: HistGradientBoostingRegressor (sklearn fallback)")
 
-    feature_names = obtener_features()
     X = df[feature_names]
     n = len(X)
 
@@ -312,7 +346,7 @@ def entrenar_modelos(df: pd.DataFrame):
 
     for idx, h in enumerate(HORIZONTES, start=1):
         t_inicio = time.time()
-        y = df[f'target_{h}h']
+        y = df[f'target_{var_key}_{h}h']
 
         X_train, y_train = X.iloc[:val_idx],          y.iloc[:val_idx]
         X_val,   y_val   = X.iloc[val_idx:test_idx],  y.iloc[val_idx:test_idx]
@@ -374,9 +408,9 @@ def entrenar_modelos(df: pd.DataFrame):
         modelos[f'modelo_{h}h'] = modelo
         metricas[f'modelo_{h}h'] = {
             'horizonte_horas':     h,
-            'mae_celsius':         round(mae, 4),
-            'rmse_celsius':        round(rmse, 4),
-            'r2_score':            round(r2, 4),
+            'mae_celsius':         round(mae,  4),   # MAE en la unidad nativa de la variable
+            'rmse_celsius':        round(rmse, 4),   # RMSE en la unidad nativa
+            'r2_score':            round(r2,   4),
             'nivel':               nivel,
             'n_estimators_usados': int(n_trees) if n_trees else 3000,
             'train_size':          len(X_train),
@@ -384,25 +418,31 @@ def entrenar_modelos(df: pd.DataFrame):
             'test_size':           len(X_test),
         }
 
-        # Progreso: imprimir cada modelo individualmente para seguimiento
-        transcurrido = time.time() - t_inicio_total
-        restante_est = (transcurrido / idx) * (len(HORIZONTES) - idx)
+        transcurrido  = time.time() - t_inicio_total
+        restante_est  = (transcurrido / idx) * (len(HORIZONTES) - idx)
         print(
-            f"  [{idx:2d}/{len(HORIZONTES)}] T+{h:2d}h | "
-            f"MAE={mae:.3f}C  R2={r2:.3f}  arboles={n_trees}  "
+            f"    [{idx:2d}/{len(HORIZONTES)}] T+{h:2d}h | "
+            f"MAE={mae:.3f}{unidad}  R2={r2:.3f}  arboles={n_trees}  "
             f"({t_modelo:.0f}s)  |  restante ~{restante_est/60:.0f}min"
         )
 
     t_total = time.time() - t_inicio_total
-    print(f"\n  Tiempo total de entrenamiento: {t_total/60:.1f} minutos")
+    print(f"    Tiempo total {col_nombre}: {t_total/60:.1f} minutos")
     return modelos, metricas
 
 
 # ============================================================
-# SECCIÓN 7 — GUARDADO
+# SECCIÓN 7 — GUARDADO POR VARIABLE
 # ============================================================
-def guardar_resultados(modelos, metricas, feature_names):
-    print("\n[5/5] Guardando resultados...")
+def guardar_variable(
+    modelos: dict,
+    metricas: dict,
+    feature_names: list[str],
+    var_key: str,
+    var_cfg: dict,
+) -> None:
+    """Guarda el paquete .pkl de una variable con metadatos completos."""
+    pkl_path = var_cfg['pkl']
 
     paquete = {
         'modelos':              modelos,
@@ -411,46 +451,67 @@ def guardar_resultados(modelos, metricas, feature_names):
         'lag_window_temp':      LAG_WINDOW_TEMP,
         'lag_window_hum_viento': LAG_WINDOW_HUM_VIENTO,
         'lag_window_presion':   LAG_WINDOW_PRESION,
-        'version':              '4.0.0',
+        'variable':             var_key,
+        'variable_col':         var_cfg['col'],
+        'variable_nombre':      var_cfg['nombre'],
+        'variable_unidad':      var_cfg['unidad'],
+        'version':              '5.0.0',
         'fecha_entrenamiento':  datetime.now().isoformat(),
         'descripcion': (
-            'XGBoost v4 — Direct Multi-Step Forecasting: 72 modelos independientes '
-            '(T+1h a T+72h). 80 features: presion_hPa + lags/deltas, lag_24h, '
-            'cod. ciclica, rolling stats. 2020-2025 (52k registros). Curico, Chile.'
+            f"XGBoost v5 — Direct Multi-Step Forecasting: 72 modelos independientes "
+            f"(T+1h a T+72h) para {var_cfg['nombre']}. "
+            f"80 features compartidas: presion_hPa + lags/deltas, lag_24h, "
+            f"cod. ciclica, rolling stats. Curico, Chile."
         )
     }
-    joblib.dump(paquete, MODELO_PATH)
-    tam = os.path.getsize(MODELO_PATH) / (1024 * 1024)
-    print(f"  Modelo  : {MODELO_PATH}  ({tam:.2f} MB)")
+    joblib.dump(paquete, pkl_path)
+    tam = os.path.getsize(pkl_path) / (1024 * 1024)
+    print(f"    Guardado → {os.path.basename(pkl_path)}  ({tam:.2f} MB)")
 
-    # Contar CSVs usados
-    patron = os.path.join(DATOS_DIR, "openmeteo_curico_*.csv")
+
+# ============================================================
+# SECCIÓN 8 — MÉTRICAS GLOBALES UNIFICADAS
+# ============================================================
+def guardar_metricas_globales(
+    metricas_por_variable: dict,
+    feature_names: list[str],
+) -> None:
+    """
+    Guarda metricas.json unificado con resultados de las 4 variables.
+
+    Formato: { "resultados": { "temperatura": {...}, "humedad": {...} } }
+    app.py detecta este formato y consulta metricas_globales["resultados"][variable].
+    """
+    print("\n  Guardando métricas globales...")
+
+    patron     = os.path.join(DATOS_DIR, "openmeteo_curico_*.csv")
     años_usados = [
-        os.path.basename(f).replace('openmeteo_curico_','').replace('.csv','')
+        os.path.basename(f).replace('openmeteo_curico_', '').replace('.csv', '')
         for f in sorted(glob.glob(patron))
     ]
 
     metricas_completas = {
         'proyecto':  'Plataforma IoT - Estaciones Meteorologicas',
         'ubicacion': 'Curico, Region del Maule, Chile',
-        'version_modelo': '4.0.0',
+        'version_modelo': '5.0.0',
         'dataset': {
-            'fuente':   'Open-Meteo Historical Weather API',
-            'años':     años_usados,
-            'variables_entrada': len(feature_names),
-            'lag_temperatura':   f'{LAG_WINDOW_TEMP}h (incluye lag_24h)',
-            'lag_hum_viento':    f'{LAG_WINDOW_HUM_VIENTO}h',
-            'lag_presion':       f'{LAG_WINDOW_PRESION}h + deltas 1/3/6/12h',
+            'fuente':              'Open-Meteo Historical Weather API',
+            'años':                años_usados,
+            'variables_entrada':   len(feature_names),
+            'variables_prediccion': list(VARIABLES_CONFIG.keys()),
+            'lag_temperatura':     f'{LAG_WINDOW_TEMP}h (incluye lag_24h)',
+            'lag_hum_viento':      f'{LAG_WINDOW_HUM_VIENTO}h',
+            'lag_presion':         f'{LAG_WINDOW_PRESION}h + deltas 1/3/6/12h',
             'split': '70% train / 10% val (early stopping) / 20% test',
         },
         'algoritmo': {
             'nombre': 'XGBRegressor' if USE_XGBOOST else 'HistGradientBoostingRegressor',
-            'mejoras_v4': [
-                'Direct Multi-Step Forecasting: 72 modelos independientes (T+1h a T+72h)',
-                'Curva horaria 100% ML: sin interpolacion trigonometrica',
-                'Cada modelo especializado en su horizonte exacto',
-                'Competencia directa hora a hora con Open-Meteo Forecast API',
-                'Hereda todas las mejoras de v3: presion_hPa, 80 features, 52k registros',
+            'mejoras_v5': [
+                'Multi-variable: temperatura, humedad, presión, viento',
+                'Un .pkl por variable → carga selectiva en app.py',
+                'Mismas 80 features para todas las variables',
+                'Hiperparámetros idénticos a v4 (no se degrada temperatura)',
+                '288 modelos totales (4 variables × 72 horizontes)',
             ],
             'hiperparametros': {
                 'n_estimators_max':      3000,
@@ -465,20 +526,20 @@ def guardar_resultados(modelos, metricas, feature_names):
                 'gamma':                0.1,
             }
         },
-        'resultados': metricas,
+        'resultados': metricas_por_variable,   # {var: {modelo_Xh: {...}}}
         'fecha_entrenamiento': datetime.now().isoformat(),
         'notas': [
-            'presion_delta es el predictor meteorologico mas potente para cambios abruptos',
-            'lag_24h de temperatura captura el patron diurno dominante',
-            'Con 6 años el modelo ha visto suficientes frentes, niñas y heladas atipicas',
-            'MAE naturalmente mayor a mayor horizonte temporal',
-            'Sensores AHT20/BMP280 tienen ±0.5C de error propio',
+            'mae_celsius = MAE en la unidad nativa de cada variable (°C, %, hPa, km/h)',
+            'rmse_celsius = RMSE en la unidad nativa',
+            'R² es adimensional — mismos umbrales para todas las variables',
+            'presion_delta es el predictor meteorológico más potente para cambios abruptos',
+            'lag_24h de temperatura captura el patrón diurno dominante',
         ]
     }
 
     with open(METRICAS_PATH, 'w', encoding='utf-8') as f:
         json.dump(metricas_completas, f, indent=2, ensure_ascii=False)
-    print(f"  Metricas: {METRICAS_PATH}")
+    print(f"    Métricas → {METRICAS_PATH}")
 
 
 # ============================================================
@@ -496,14 +557,47 @@ def main():
     print(f"  Lags temp        : 1h-{LAG_WINDOW_TEMP}h")
     print(f"  Lags hum/viento  : 1h-{LAG_WINDOW_HUM_VIENTO}h")
     print(f"  Lags presion     : 1h-{LAG_WINDOW_PRESION}h + deltas")
+    print(f"\n  Variables a entrenar: {list(VARIABLES_CONFIG.keys())}")
 
-    modelos, metricas = entrenar_modelos(df)
-    guardar_resultados(modelos, metricas, feature_names)
+    n_vars = len(VARIABLES_CONFIG)
+    estim_min = n_vars * 60   # ~60 min por variable (varía por hardware)
+    print(f"  Tiempo estimado total: {estim_min // 60}h {estim_min % 60}min")
+    print("\n[4/5] Entrenando modelos...")
+
+    metricas_por_variable = {}
+    t_global = time.time()
+
+    for i, (var_key, var_cfg) in enumerate(VARIABLES_CONFIG.items(), start=1):
+        modelos, metricas = entrenar_variable(
+            df, feature_names, var_key, var_cfg, var_num=i, total_vars=n_vars
+        )
+        guardar_variable(modelos, metricas, feature_names, var_key, var_cfg)
+        metricas_por_variable[var_key] = metricas
+
+    t_global_total = time.time() - t_global
+    print(f"\n  ✓ Entrenamiento total: {t_global_total/60:.1f} minutos")
+
+    print("\n[5/5] Guardando métricas globales...")
+    guardar_metricas_globales(metricas_por_variable, feature_names)
 
     print("\n" + "=" * 60)
-    print("  ENTRENAMIENTO v4 COMPLETADO — 72 modelos horarios")
+    print("  ENTRENAMIENTO v5 COMPLETADO")
+    print(f"  {n_vars} variables × {len(HORIZONTES)} horizontes = {n_vars * len(HORIZONTES)} modelos")
     print("=" * 60)
-    print(f"\n  Siguiente: reiniciar app.py para cargar el nuevo modelo\n")
+
+    # Resumen de métricas clave (T+24h, T+48h, T+72h)
+    print("\n  RESUMEN MÉTRICAS (horizontes clave):")
+    print(f"  {'Variable':<15} {'T+24h MAE':>10} {'T+48h MAE':>10} {'T+72h MAE':>10}  {'Unidad':<6}")
+    print("  " + "-" * 60)
+    for var_key, var_cfg in VARIABLES_CONFIG.items():
+        metr = metricas_por_variable[var_key]
+        m24  = metr.get('modelo_24h', {}).get('mae_celsius', 'N/A')
+        m48  = metr.get('modelo_48h', {}).get('mae_celsius', 'N/A')
+        m72  = metr.get('modelo_72h', {}).get('mae_celsius', 'N/A')
+        fmt  = lambda v: f"{v:.3f}" if isinstance(v, float) else str(v)
+        print(f"  {var_cfg['nombre']:<15} {fmt(m24):>10} {fmt(m48):>10} {fmt(m72):>10}  {var_cfg['unidad']:<6}")
+
+    print(f"\n  Siguiente: reiniciar app.py para cargar los nuevos modelos\n")
 
 
 if __name__ == '__main__':

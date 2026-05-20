@@ -16,11 +16,19 @@ const LAG_WINDOW = 24;
 export const getPrediccion = async (req, res) => {
     const { estacion_id } = req.params;
     const horas = parseInt(req.query.horas) || 72;
+    const variable = req.query.variable || 'temperatura';
 
     const horizontesValidos = [24, 48, 72];
+    const variablesValidas  = ['temperatura', 'humedad', 'presion', 'viento'];
+
     if (!horizontesValidos.includes(horas)) {
         return res.status(400).json({
             error: `El parámetro 'horas' debe ser uno de ${horizontesValidos.join(', ')}`,
+        });
+    }
+    if (!variablesValidas.includes(variable)) {
+        return res.status(400).json({
+            error: `El parámetro 'variable' debe ser uno de ${variablesValidas.join(', ')}`,
         });
     }
 
@@ -50,6 +58,7 @@ export const getPrediccion = async (req, res) => {
 
     const payload = {
         horas,
+        variable,
         temp_actual: actual.temperatura,
         humedad: actual.humedad,
         presion: actual.presion_at,
@@ -113,11 +122,17 @@ export const getPrediccion = async (req, res) => {
  */
 export const getPrediccionZona = async (req, res) => {
     const { zona_id } = req.params;
-    const horas = parseInt(req.query.horas) || 72;
+    const horas    = parseInt(req.query.horas) || 72;
+    const variable = req.query.variable || 'temperatura';
 
     const horizontesValidos = [24, 48, 72];
+    const variablesValidas  = ['temperatura', 'humedad', 'presion', 'viento'];
+
     if (!horizontesValidos.includes(horas)) {
         return res.status(400).json({ error: `El parámetro 'horas' debe ser uno de ${horizontesValidos.join(', ')}` });
+    }
+    if (!variablesValidas.includes(variable)) {
+        return res.status(400).json({ error: `El parámetro 'variable' debe ser uno de ${variablesValidas.join(', ')}` });
     }
 
     let historial;
@@ -140,6 +155,7 @@ export const getPrediccionZona = async (req, res) => {
 
     const payload = {
         horas,
+        variable,
         temp_actual: actual.temperatura,
         humedad: actual.humedad,
         presion: actual.presion_at,

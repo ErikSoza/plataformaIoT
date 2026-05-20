@@ -11,8 +11,7 @@ import {
   Filler,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
-import { prediccionService, PrediccionResponse } from '../services/api';
-
+import { prediccionService, PrediccionResponse, VariablePrediccion } from '../services/api';
 
 ChartJS.register(
   CategoryScale,
@@ -33,18 +32,81 @@ interface PrediccionChartProps {
 
 type Horizonte = 24 | 48 | 72;
 
+// ── Configuración visual por variable ─────────────────────────
+interface VarDisplay {
+  label: string;
+  labelCorto: string;
+  unidad: string;
+  color: string;
+  colorOM: string;
+  colorBanda: string;
+  inputsKey: keyof { temp_actual: number; humedad: number; presion: number; viento: number };
+  formato: (v: number) => string;
+  defaultMae: number;
+}
+
+const VARIABLE_DISPLAY: Record<VariablePrediccion, VarDisplay> = {
+  temperatura: {
+    label:      'Temperatura',
+    labelCorto: 'Temp.',
+    unidad:     '°C',
+    color:      '#0288D1',
+    colorOM:    '#9E9E9E',
+    colorBanda: 'rgba(2, 136, 209, 0.10)',
+    inputsKey:  'temp_actual',
+    formato:    (v) => `${v.toFixed(1)}°C`,
+    defaultMae: 1.8,
+  },
+  humedad: {
+    label:      'Humedad Relativa',
+    labelCorto: 'Humedad',
+    unidad:     '%',
+    color:      '#00897B',
+    colorOM:    '#80CBC4',
+    colorBanda: 'rgba(0, 137, 123, 0.10)',
+    inputsKey:  'humedad',
+    formato:    (v) => `${v.toFixed(0)}%`,
+    defaultMae: 5.0,
+  },
+  presion: {
+    label:      'Presión Atmosférica',
+    labelCorto: 'Presión',
+    unidad:     'hPa',
+    color:      '#7B1FA2',
+    colorOM:    '#CE93D8',
+    colorBanda: 'rgba(123, 31, 162, 0.10)',
+    inputsKey:  'presion',
+    formato:    (v) => `${v.toFixed(1)} hPa`,
+    defaultMae: 1.5,
+  },
+  viento: {
+    label:      'Velocidad del Viento',
+    labelCorto: 'Viento',
+    unidad:     'km/h',
+    color:      '#F57C00',
+    colorOM:    '#FFCC80',
+    colorBanda: 'rgba(245, 124, 0, 0.10)',
+    inputsKey:  'viento',
+    formato:    (v) => `${v.toFixed(1)} km/h`,
+    defaultMae: 3.0,
+  },
+};
+
 const BADGE_COLOR: Record<string, string> = {
-  Alto: '#28a745',
-  Medio: '#ffc107',
-  Bajo: '#dc3545',
+  Alto:        '#28a745',
+  Medio:       '#ffc107',
+  Bajo:        '#dc3545',
   Desconocido: '#6c757d',
 };
 
+const VARIABLES_ORDEN: VariablePrediccion[] = ['temperatura', 'humedad', 'presion', 'viento'];
+
 const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, estacionNombre }) => {
-  const [datos, setDatos] = useState<PrediccionResponse | null>(null);
+  const [datos,     setDatos]     = useState<PrediccionResponse | null>(null);
   const [horizonte, setHorizonte] = useState<Horizonte>(72);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [variable,  setVariable]  = useState<VariablePrediccion>('temperatura');
+  const [cargando,  setCargando]  = useState(false);
+  const [error,     setError]     = useState<string | null>(null);
 
   const cargarPrediccion = useCallback(async () => {
     if (!estacionId && !zonaId) return;
@@ -52,15 +114,15 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
     setError(null);
     try {
       const resultado = zonaId
-        ? await prediccionService.getByZona(zonaId, horizonte)
-        : await prediccionService.getByEstacion(estacionId!, horizonte);
+        ? await prediccionService.getByZona(zonaId, horizonte, variable)
+        : await prediccionService.getByEstacion(estacionId!, horizonte, variable);
       setDatos(resultado);
     } catch (err: any) {
       setError(err.message || 'Error al cargar la predicción');
     } finally {
       setCargando(false);
     }
-  }, [estacionId, zonaId, horizonte]);
+  }, [estacionId, zonaId, horizonte, variable]);
 
   useEffect(() => {
     cargarPrediccion();
@@ -71,30 +133,29 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
   const construirDatosGrafico = (): any => {
     if (!datos) return null;
 
+    const varDisp   = VARIABLE_DISPLAY[variable];
     const predsLocal = datos.modelo_local.predicciones;
-    const mae = datos.modelo_local.metricas_entrenamiento?.mae_celsius ?? 1.8;
+    const mae       = datos.modelo_local.metricas_entrenamiento?.mae_celsius ?? varDisp.defaultMae;
 
-    // Etiquetas: mostrar cada N horas para no saturar el eje
+    // Etiquetas: mostrar cada N horas
     const paso = horizonte <= 24 ? 2 : horizonte <= 48 ? 4 : 6;
     const etiquetas = predsLocal.map((p, i) => {
-      if (i === 0 || (p.hora_offset % paso === 0)) {
+      if (i === 0 || p.hora_offset % paso === 0) {
         const fecha = new Date(p.datetime);
         return `${fecha.getDate()}/${fecha.getMonth() + 1} ${String(fecha.getHours()).padStart(2, '0')}h`;
       }
       return '';
     });
 
-    const tempsLocal = predsLocal.map((p) => p.temperatura);
-
-    // Banda de incertidumbre: upper y lower rellenados entre sí
-    const upper = tempsLocal.map((t) => parseFloat((t + mae).toFixed(2)));
-    const lower = tempsLocal.map((t) => parseFloat((t - mae).toFixed(2)));
+    const valoresLocal = predsLocal.map((p) => p.valor ?? p.temperatura);
+    const upper = valoresLocal.map((v) => parseFloat((v + mae).toFixed(2)));
+    const lower = valoresLocal.map((v) => parseFloat((v - mae).toFixed(2)));
 
     // Open-Meteo alineado por hora_offset
     const omMap = new Map(
-      datos.validacion_openmeteo.predicciones.map((p) => [p.hora_offset, p.temperatura])
+      datos.validacion_openmeteo.predicciones.map((p) => [p.hora_offset, p.valor ?? p.temperatura])
     );
-    const tempsOM = predsLocal.map((p) => omMap.get(p.hora_offset) ?? null);
+    const valoresOM = predsLocal.map((p) => omMap.get(p.hora_offset) ?? null);
 
     return {
       labels: etiquetas,
@@ -104,9 +165,9 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
           label: '_upper',
           data: upper,
           borderColor: 'transparent',
-          backgroundColor: 'rgba(0, 188, 212, 0.12)',
+          backgroundColor: varDisp.colorBanda,
           pointRadius: 0,
-          fill: '+1',  // rellena hasta el dataset siguiente (lower)
+          fill: '+1',
           tension: 0.4,
         },
         // 2. Banda inferior (invisible)
@@ -114,45 +175,45 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
           label: '_lower',
           data: lower,
           borderColor: 'transparent',
-          backgroundColor: 'rgba(0, 188, 212, 0.12)',
+          backgroundColor: varDisp.colorBanda,
           pointRadius: 0,
           fill: false,
           tension: 0.4,
         },
-        // 3. Línea XGBoost (azul sólida)
+        // 3. Línea modelo local
         {
-          label: 'XGBoost (modelo local)',
-          data: tempsLocal,
-          borderColor: '#0288D1',
-          backgroundColor: '#0288D1',
+          label: `XGBoost — ${varDisp.label}`,
+          data: valoresLocal,
+          borderColor: varDisp.color,
+          backgroundColor: varDisp.color,
           borderWidth: 2.5,
           pointRadius: (ctx: any) => (ctx.dataIndex % paso === 0 ? 4 : 0),
           pointHoverRadius: 6,
           tension: 0.4,
           fill: false,
         },
-        // 4. Línea Open-Meteo (gris punteada — el dash se aplica vía plugin segment)
+        // 4. Línea Open-Meteo (punteada)
         ...(datos.validacion_openmeteo.disponible
           ? [
               {
                 label: 'Open-Meteo (referencia)',
-                data: tempsOM,
-                borderColor: '#9E9E9E',
-                backgroundColor: '#9E9E9E',
+                data: valoresOM,
+                borderColor: varDisp.colorOM,
+                backgroundColor: varDisp.colorOM,
                 borderWidth: 1.8,
                 pointRadius: 0,
                 pointHoverRadius: 5,
                 tension: 0.4,
                 fill: false,
-                segment: {
-                  borderDash: () => [6, 4],
-                },
+                segment: { borderDash: () => [6, 4] },
               },
             ]
           : []),
       ],
     };
   };
+
+  const varDisp = VARIABLE_DISPLAY[variable];
 
   const opcionesGrafico = {
     responsive: true,
@@ -174,7 +235,7 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
         callbacks: {
           label: (ctx: any) => {
             if (ctx.parsed.y === null) return '';
-            return ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}°C`;
+            return ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(varDisp.unidad === '%' ? 0 : 1)} ${varDisp.unidad}`;
           },
         },
       },
@@ -195,11 +256,11 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
         ticks: {
           color: '#6c757d',
           font: { size: 12 },
-          callback: (v: any) => `${v}°C`,
+          callback: (v: any) => `${v} ${varDisp.unidad}`,
         },
         title: {
           display: true,
-          text: 'Temperatura (°C)',
+          text: `${varDisp.label} (${varDisp.unidad})`,
           color: '#6c757d',
           font: { size: 12 },
         },
@@ -209,57 +270,89 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
 
   // ── Render ────────────────────────────────────────────────
   const datosGrafico = datos ? construirDatosGrafico() : null;
-  const confianza = datos?.confianza;
-  const metricas = datos?.modelo_local.metricas_entrenamiento;
+  const confianza    = datos?.confianza;
+  const metricas     = datos?.modelo_local.metricas_entrenamiento;
+
+  // Valor actual de la variable seleccionada desde inputs del servidor
+  const valorActual  = datos?.meta.inputs[varDisp.inputsKey] ?? null;
 
   return (
-    <div style={styles.container}>
-      {/* Encabezado */}
+    <div style={{ ...styles.container, borderLeft: `4px solid ${varDisp.color}` }}>
+      {/* ── Encabezado ─────────────────────────────────────── */}
       <div style={styles.header}>
         <div>
-          <h3 style={styles.titulo}>Predicción de Temperatura</h3>
-          {estacionNombre && (
-            <span style={styles.subtitulo}>{estacionNombre}</span>
-          )}
+          <h3 style={styles.titulo}>Predicción Meteorológica</h3>
+          {estacionNombre && <span style={styles.subtitulo}>{estacionNombre}</span>}
         </div>
 
-        {/* Selector horizonte */}
-        <div style={styles.controles}>
-          <span style={styles.controlLabel}>Horizonte:</span>
-          {([24, 48, 72] as Horizonte[]).map((h) => (
+        <div style={styles.controlesBloque}>
+          {/* Selector de variable */}
+          <div style={styles.controles}>
+            <span style={styles.controlLabel}>Variable:</span>
+            {VARIABLES_ORDEN.map((v) => {
+              const cfg = VARIABLE_DISPLAY[v];
+              const activo = variable === v;
+              return (
+                <button
+                  key={v}
+                  style={{
+                    ...styles.btnHorizonte,
+                    ...(activo ? { backgroundColor: cfg.color, borderColor: cfg.color, color: 'white' } : {}),
+                  }}
+                  onClick={() => setVariable(v)}
+                  disabled={cargando}
+                  title={cfg.label}
+                >
+                  {cfg.labelCorto}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Selector horizonte */}
+          <div style={styles.controles}>
+            <span style={styles.controlLabel}>Horizonte:</span>
+            {([24, 48, 72] as Horizonte[]).map((h) => (
+              <button
+                key={h}
+                style={{
+                  ...styles.btnHorizonte,
+                  ...(horizonte === h ? styles.btnHorizonteActivo : {}),
+                }}
+                onClick={() => setHorizonte(h)}
+                disabled={cargando}
+              >
+                {h}h
+              </button>
+            ))}
             <button
-              key={h}
-              style={{
-                ...styles.btnHorizonte,
-                ...(horizonte === h ? styles.btnHorizonteActivo : {}),
-              }}
-              onClick={() => setHorizonte(h)}
+              style={styles.btnRefresh}
+              onClick={cargarPrediccion}
               disabled={cargando}
+              title="Actualizar"
             >
-              {h}h
+              {cargando ? '⏳' : '🔄'}
             </button>
-          ))}
-          <button style={styles.btnRefresh} onClick={cargarPrediccion} disabled={cargando} title="Actualizar">
-            {cargando ? '⏳' : '🔄'}
-          </button>
+          </div>
         </div>
       </div>
 
-      {/* Badge de confianza */}
+      {/* ── Badge de confianza ─────────────────────────────── */}
       {confianza && (
         <div style={styles.badgeRow}>
           <span
-            className={`badge-confianza-${confianza.nivel}`}
             style={{
               ...styles.badge,
               backgroundColor: BADGE_COLOR[confianza.nivel] + '22',
-              borderColor: BADGE_COLOR[confianza.nivel],
-              color: BADGE_COLOR[confianza.nivel],
+              borderColor:     BADGE_COLOR[confianza.nivel],
+              color:           BADGE_COLOR[confianza.nivel],
             }}
           >
             {confianza.badge} Confianza {confianza.nivel}
             {confianza.mae_diferencia !== null && (
-              <span style={styles.badgeDetalle}> · Δ {confianza.mae_diferencia}°C vs Open-Meteo</span>
+              <span style={styles.badgeDetalle}>
+                {' · '}Δ {confianza.mae_diferencia} {varDisp.unidad} vs Open-Meteo
+              </span>
             )}
           </span>
           {datos && (
@@ -272,16 +365,17 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
         </div>
       )}
 
-      {/* Descripción confianza */}
       {confianza && (
         <p style={styles.confianzaDesc}>{confianza.descripcion}</p>
       )}
 
-      {/* Estado: cargando / error / gráfico */}
+      {/* ── Estado: cargando / error / gráfico ─────────────── */}
       {cargando && (
         <div style={styles.estadoCentro}>
-          <div style={styles.spinner} />
-          <p style={styles.estadoTexto}>Calculando predicción…</p>
+          <div style={{ ...styles.spinner, borderTop: `3px solid ${varDisp.color}` }} />
+          <p style={styles.estadoTexto}>
+            Calculando predicción de {varDisp.label.toLowerCase()}…
+          </p>
         </div>
       )}
 
@@ -292,7 +386,8 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
             <strong>No se pudo obtener la predicción</strong>
             <p style={styles.errorDetalle}>{error}</p>
             <p style={styles.errorSugerencia}>
-              Verifica que el microservicio ML esté corriendo en el puerto 5001.
+              Verifica que el microservicio ML esté corriendo en el puerto 5001
+              {variable !== 'temperatura' ? ' y que el modelo para esta variable esté entrenado.' : '.'}
             </p>
           </div>
         </div>
@@ -305,17 +400,20 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
             <Line data={datosGrafico as any} options={opcionesGrafico} />
           </div>
 
-          {/* Temperatura predicha final */}
+          {/* Tarjetas de resumen */}
           <div style={styles.resumenRow}>
+            {/* Valor actual */}
             <div
               className="resumen-card-animate"
               style={{ ...styles.resumenCard, animationDelay: '0.05s' }}
             >
-              <span style={styles.resumenLabel}>Temp. actual</span>
+              <span style={styles.resumenLabel}>{varDisp.labelCorto} actual</span>
               <span style={styles.resumenValor}>
-                {datos!.meta.inputs.temp_actual.toFixed(1)}°C
+                {valorActual !== null ? varDisp.formato(valorActual) : '—'}
               </span>
             </div>
+
+            {/* Puntos ancla predichos */}
             {Object.entries(datos!.modelo_local.puntos_ancla).map(([key, val], i) => (
               <div
                 key={key}
@@ -323,8 +421,8 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
                 style={{ ...styles.resumenCard, animationDelay: `${(i + 1) * 0.1 + 0.05}s` }}
               >
                 <span style={styles.resumenLabel}>+{key}</span>
-                <span style={{ ...styles.resumenValor, color: '#0288D1' }}>
-                  {(val as number).toFixed(1)}°C
+                <span style={{ ...styles.resumenValor, color: varDisp.color }}>
+                  {varDisp.formato(val as number)}
                 </span>
               </div>
             ))}
@@ -334,7 +432,7 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
           {metricas && (
             <div style={styles.metricasRow}>
               <span style={styles.metricaItem}>
-                MAE entrenamiento: <strong>{metricas.mae_celsius}°C</strong>
+                MAE: <strong>{metricas.mae_celsius} {metricas.unidad ?? varDisp.unidad}</strong>
               </span>
               <span style={styles.metricaSep}>·</span>
               <span style={styles.metricaItem}>
@@ -347,7 +445,7 @@ const PrediccionChart: React.FC<PrediccionChartProps> = ({ estacionId, zonaId, e
               {datos?.validacion_openmeteo.disponible && (
                 <>
                   <span style={styles.metricaSep}>·</span>
-                  <span style={{ ...styles.metricaItem, color: '#9E9E9E' }}>
+                  <span style={{ ...styles.metricaItem, color: varDisp.colorOM }}>
                     ⬚ Open-Meteo disponible
                   </span>
                 </>
@@ -368,7 +466,7 @@ const styles = {
     padding: '24px',
     boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
     border: '1px solid #e9ecef',
-    borderLeft: '4px solid #00BCD4',
+    borderLeft: '4px solid #00BCD4',  // sobreescrito dinámicamente
   },
   header: {
     display: 'flex',
@@ -388,6 +486,12 @@ const styles = {
     color: '#6c757d',
     fontSize: '0.85rem',
   },
+  controlesBloque: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '8px',
+    alignItems: 'flex-end',
+  },
   controles: {
     display: 'flex',
     alignItems: 'center',
@@ -396,19 +500,19 @@ const styles = {
   },
   controlLabel: {
     color: '#6c757d',
-    fontSize: '0.85rem',
-    marginRight: '4px',
+    fontSize: '0.82rem',
+    marginRight: '2px',
   },
   btnHorizonte: {
-    padding: '5px 14px',
+    padding: '4px 12px',
     borderRadius: '20px',
     border: '1.5px solid #dee2e6',
     backgroundColor: 'white',
     color: '#495057',
-    fontSize: '0.82rem',
+    fontSize: '0.80rem',
     fontWeight: '500' as const,
     cursor: 'pointer',
-    transition: 'all 0.2s',
+    transition: 'all 0.18s',
   },
   btnHorizonteActivo: {
     backgroundColor: '#00BCD4',
@@ -416,7 +520,7 @@ const styles = {
     color: 'white',
   },
   btnRefresh: {
-    padding: '5px 10px',
+    padding: '4px 10px',
     borderRadius: '20px',
     border: '1.5px solid #dee2e6',
     backgroundColor: 'white',
@@ -468,7 +572,7 @@ const styles = {
     height: '36px',
     borderRadius: '50%',
     border: '3px solid #e9ecef',
-    borderTop: '3px solid #00BCD4',
+    borderTop: '3px solid #00BCD4',  // sobreescrito dinámicamente
     animation: 'spin 0.8s linear infinite',
   },
   estadoTexto: {
@@ -530,7 +634,7 @@ const styles = {
   },
   resumenValor: {
     display: 'block',
-    fontSize: '1.3rem',
+    fontSize: '1.25rem',
     fontWeight: '300' as const,
     color: '#2c3e50',
   },

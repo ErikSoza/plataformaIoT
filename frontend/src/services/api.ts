@@ -554,14 +554,34 @@ export const readingService = {
 
 // ==================== PREDICCIÓN ML ====================
 
+export type VariablePrediccion = 'temperatura' | 'humedad' | 'presion' | 'viento';
+
 export interface PuntoPrediccion {
   hora_offset: number;
   datetime: string;
-  temperatura: number;
+  valor: number;
+  temperatura: number;  // alias backward compat
+}
+
+export interface VariableInfo {
+  nombre: string;
+  unidad: string;
+  color: string;
+  color_om: string;
+}
+
+export interface MetricasEntrenamiento {
+  mae_celsius: number;
+  rmse_celsius: number;
+  r2_score: number;
+  nivel: string;
+  unidad?: string;
 }
 
 export interface PrediccionResponse {
-  estacion: {
+  variable: VariablePrediccion;
+  variable_info: VariableInfo;
+  estacion?: {
     id: number;
     nombre: string;
     ubicacion: string;
@@ -569,21 +589,25 @@ export interface PrediccionResponse {
     coordenadas: { lat: number; lon: number };
     lecturas_usadas: number;
   };
+  zona?: {
+    id: number;
+    nombre: string;
+    descripcion?: string;
+    total_estaciones: number;
+    lecturas_usadas: number;
+  };
   modelo_local: {
     horizonte_horas: number;
-    temperatura_predicha_final: number;
+    valor_predicho_final: number;
+    temperatura_predicha_final: number;  // alias backward compat
     puntos_ancla: Record<string, number>;
     predicciones: PuntoPrediccion[];
-    metricas_entrenamiento: {
-      mae_celsius: number;
-      rmse_celsius: number;
-      r2_score: number;
-      nivel: string;
-    } | null;
+    metricas_entrenamiento: MetricasEntrenamiento | null;
   };
   validacion_openmeteo: {
     disponible: boolean;
     fuente: string;
+    variable_om?: string;
     coordenadas: { lat: number; lon: number };
     predicciones: PuntoPrediccion[];
   };
@@ -598,22 +622,31 @@ export interface PrediccionResponse {
     inputs: { temp_actual: number; humedad: number; presion: number; viento: number };
     lags_reales: boolean;
     lags_usados: number;
+    modelos_ejecutados?: number;
   };
 }
 
 export const prediccionService = {
-  getByEstacion: async (estacionId: number, horas: 24 | 48 | 72 = 72): Promise<PrediccionResponse> => {
+  getByEstacion: async (
+    estacionId: number,
+    horas: 24 | 48 | 72 = 72,
+    variable: VariablePrediccion = 'temperatura',
+  ): Promise<PrediccionResponse> => {
     try {
-      const response = await api.get(`/prediccion/${estacionId}`, { params: { horas } });
+      const response = await api.get(`/prediccion/${estacionId}`, { params: { horas, variable } });
       return response.data;
     } catch (error: any) {
       console.error('❌ Error al obtener predicción:', error.response?.data || error.message);
       throw new Error(error.response?.data?.error || 'Error al obtener la predicción');
     }
   },
-  getByZona: async (zonaId: number, horas: 24 | 48 | 72 = 72): Promise<PrediccionResponse> => {
+  getByZona: async (
+    zonaId: number,
+    horas: 24 | 48 | 72 = 72,
+    variable: VariablePrediccion = 'temperatura',
+  ): Promise<PrediccionResponse> => {
     try {
-      const response = await api.get(`/prediccion/zona/${zonaId}`, { params: { horas } });
+      const response = await api.get(`/prediccion/zona/${zonaId}`, { params: { horas, variable } });
       return response.data;
     } catch (error: any) {
       console.error('❌ Error al obtener predicción de zona:', error.response?.data || error.message);

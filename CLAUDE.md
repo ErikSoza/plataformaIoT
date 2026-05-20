@@ -35,42 +35,41 @@ plataformaIoT/
 | Backend | XGBoost entrenado localmente | 24-72 horas | ✅ Modelo entrenado, ✅ FastAPI completado |
 | Referencia | Open-Meteo Forecast API | 7-16 días | ⏳ Pendiente integración |
 
-## Estado Actual del Modelo ML (Paso 1 — COMPLETADO)
-- Datasets: Open-Meteo 2023+2024 combinados = 17,541 registros horarios
-- Features: 42 (6 actuales + 36 time-lag 12h)
-- Split: 80% train / 20% test (temporal, sin shuffle)
-- Resultados:
-  - Modelo 24h: MAE=1.74°C, RMSE=2.22°C, R²=0.897
-  - Modelo 48h: MAE=2.13°C, RMSE=2.67°C, R²=0.852
-  - Modelo 72h: MAE=2.24°C, RMSE=2.79°C, R²=0.837
-- Archivos generados: modelo_xgboost.pkl (5.3MB), metricas.json
+## Estado Actual del Modelo ML
+- Arquitectura v5 (multi-variable): 4 variables × 72 horizontes = 288 modelos XGBoost
+- Features: 80 (idénticas para todas las variables — solo cambia el target)
+- Split: 70% train / 10% val (early stopping) / 20% test (temporal)
+- Variables y archivos .pkl generados:
+  - `modelo_xgboost.pkl` → temperatura (backward compat con v4)
+  - `modelo_humedad.pkl` → humedad relativa (%)
+  - `modelo_presion.pkl` → presión atmosférica (hPa)
+  - `modelo_viento.pkl`  → velocidad del viento (km/h)
+- `metricas.json` unificado: `resultados[variable][modelo_Xh]`
+- **Requiere re-entrenamiento** para generar los 3 nuevos .pkl
 
-## Plan de Implementación (Pasos Pendientes)
+## Plan de Implementación (Pasos Completados)
 
-### Paso 2 — Microservicio FastAPI (SIGUIENTE)
+### Paso 2 — Microservicio FastAPI ✅ COMPLETADO (v2 multi-variable)
 - Archivo: `ml_service/app.py` en puerto 5001
-- Endpoint: `GET /predict?horas=72&temp_actual=22.5&humedad=65&presion=1013&viento=12`
-- Respuesta JSON con 3 bloques: modelo_local, validacion_openmeteo, confianza
-- Carga modelo_xgboost.pkl al iniciar
-- Consulta Open-Meteo Forecast API como referencia
-- Calcula métrica de confianza (MAE entre ambas predicciones)
+- Endpoint: `GET|POST /predict?variable=temperatura|humedad|presion|viento&horas=72`
+- Nuevo endpoint: `GET /variables` → lista variables disponibles y estado de cada modelo
+- Carga los 4 .pkl al iniciar; si alguno falta, esa variable retorna 503
+- Open-Meteo mapeado por variable: temperature_2m, relative_humidity_2m, surface_pressure, wind_speed_10m
 
 ### Paso 3 — Proxy en Node.js ✅ COMPLETADO
-- Endpoint: `GET /api/prediccion/:estacion_id?horas=72`
-- Lee últimas 13 lecturas de MySQL (1 actual + 12 lags reales)
-- Llama internamente a `POST localhost:5001/predict` con historial completo
-- Retorna respuesta enriquecida con datos de la estación
-- El microservicio Python NO se expone directamente al frontend
+- Endpoint: `GET /api/prediccion/:estacion_id?horas=72&variable=temperatura`
+- Lee últimas 25 lecturas de MySQL (1 actual + 24 lags reales)
+- Pasa `variable` al microservicio Python
 - Archivos: `backend/src/models/prediccionModel.js`, `controllers/prediccionController.js`, `routes/prediccionRoutes.js`
 
-### Paso 4 — Visualización en React ✅ COMPLETADO
+### Paso 4 — Visualización en React ✅ COMPLETADO (v2 multi-variable)
 - Componente: `frontend/src/components/PrediccionChart.tsx`
-- Línea azul sólida (#0288D1): predicción XGBoost
-- Línea gris punteada (#9E9E9E): referencia Open-Meteo
-- Banda sombreada: incertidumbre ±MAE del modelo de entrenamiento
-- Badge de confianza: 🟢 Alto / 🟡 Medio / 🔴 Bajo / ⚪ Desconocido
-- Selector de horizonte: 24h / 48h / 72h con recarga automática
-- Tarjetas de puntos ancla: temperatura actual + 24h/48h/72h
+- Selector de variable: Temp. | Humedad | Presión | Viento (con color dinámico)
+- Color de línea y borde del card cambia según variable seleccionada
+- Unidades dinámicas en eje Y, tooltips y tarjetas de resumen
+- Banda sombreada ±MAE en unidad nativa de la variable
+- Badge de confianza con unidad correcta (°C / % / hPa / km/h)
+- Selector de horizonte: 24h / 48h / 72h
 - Métricas de entrenamiento (MAE, R², nivel) al pie del gráfico
 - Integrado en `DispositivosPagina.tsx` — aparece al seleccionar estación
 - `prediccionService` agregado a `frontend/src/services/api.ts`
