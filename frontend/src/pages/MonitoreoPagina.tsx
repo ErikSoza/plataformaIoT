@@ -2,7 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { ContentSection, StatsGrid, UnifiedMap, DeviceData, StatCardData } from '../components/layout';
 import CitySearch from '../components/CitySearch';
 import ResumenEstacion from '../components/ResumenEstacion';
-import { prediccionService, PrediccionResponse, PuntoPrediccion } from '../services/api';
+import { prediccionService, PrediccionResponse, PuntoPrediccion, VariablePrediccion } from '../services/api';
+
+const VARIABLE_DISPLAY: Record<VariablePrediccion, {
+  label: string;
+  unidad: string;
+  color: string;
+  formato: (v: number) => string;
+  placeholder: string;
+}> = {
+  temperatura: { label: 'Temperatura', unidad: '°C',   color: '#0288D1', formato: v => `${v.toFixed(1)}°C`,    placeholder: '— °C'   },
+  humedad:     { label: 'Humedad',     unidad: '%',    color: '#00897B', formato: v => `${v.toFixed(0)}%`,     placeholder: '— %'    },
+  presion:     { label: 'Presión',     unidad: 'hPa',  color: '#7B1FA2', formato: v => `${v.toFixed(0)} hPa`,  placeholder: '— hPa'  },
+  viento:      { label: 'Viento',      unidad: 'm/s',  color: '#E65100', formato: v => `${v.toFixed(1)} m/s`,  placeholder: '— m/s'  },
+};
+
+const VARIABLES_ORDEN: VariablePrediccion[] = ['temperatura', 'humedad', 'presion', 'viento'];
 
 interface MonitoringPageProps {
   devices: DeviceData[];
@@ -25,6 +40,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
   const [panelDevice, setPanelDevice] = useState<DeviceData | null>(null);
   const [prediccionData, setPrediccionData] = useState<PrediccionResponse | null>(null);
   const [prediccionLoading, setPrediccionLoading] = useState(false);
+  const [selectedVariable, setSelectedVariable] = useState<VariablePrediccion>('temperatura');
   const [horizonHours, setHorizonHours] = useState(1);
 
   // Click en marcador del mapa: actualiza panel local sin cambiar de pestaña
@@ -48,19 +64,25 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
     }
     let cancelled = false;
     setPrediccionLoading(true);
-    prediccionService.getByEstacion(estacionId, 72)
+    prediccionService.getByEstacion(estacionId, 72, selectedVariable)
       .then(data => { if (!cancelled) setPrediccionData(data); })
       .catch(() => { if (!cancelled) setPrediccionData(null); })
       .finally(() => { if (!cancelled) setPrediccionLoading(false); });
     return () => { cancelled = true; };
-  }, [estacionId, estacionStatus]);
+  }, [estacionId, estacionStatus, selectedVariable]);
 
   const getPredAtHour = (preds: PuntoPrediccion[] | undefined, h: number): number | null => {
     if (!preds || preds.length === 0) return null;
-    return preds.reduce((best, p) =>
+    const pt = preds.reduce((best, p) =>
       Math.abs(p.hora_offset - h) < Math.abs(best.hora_offset - h) ? p : best
-    ).temperatura;
+    );
+    return pt.valor ?? pt.temperatura;
   };
+
+  const varDisp = VARIABLE_DISPLAY[selectedVariable];
+
+  const fmtVal = (val: number | null | undefined): string =>
+    val != null ? varDisp.formato(Number(val)) : varDisp.placeholder;
 
   const fmtTemp = (val: number | null | undefined): string =>
     val != null ? `${Number(val).toFixed(1)}°C` : '— °C';
@@ -115,6 +137,34 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
       {/* Panel de Predicciones Climáticas */}
       {estacionMostrada && (
         <ContentSection title={`🔮 Predicciones Climáticas — ${estacionMostrada.name ?? 'Estación'}`} id="panel-predicciones">
+          {/* Selector de variable climática */}
+          <div style={styles.varSelectorRow}>
+            <span style={styles.horizonLabel}>Variable:</span>
+            {VARIABLES_ORDEN.map(v => {
+              const vd = VARIABLE_DISPLAY[v];
+              const active = selectedVariable === v;
+              return (
+                <button
+                  key={v}
+                  onClick={() => setSelectedVariable(v)}
+                  style={{
+                    padding: '5px 14px',
+                    borderRadius: '20px',
+                    border: `2px solid ${vd.color}`,
+                    background: active ? vd.color : 'transparent',
+                    color: active ? '#fff' : vd.color,
+                    fontWeight: '600',
+                    fontSize: '0.82rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {vd.label}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Control de horizonte temporal compartido */}
           <div style={styles.horizonControl}>
             <div style={styles.horizonHeader}>
@@ -162,7 +212,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                 <div style={{ ...styles.predCardIconBg, background: 'linear-gradient(135deg, #FF9800, #F57C00)' }}>⚡</div>
                 <div>
                   <div style={styles.predCardTitle}>Edge TinyML</div>
-                  <div style={styles.predCardSubtitle}>Horizonte fijo: +1h</div>
+                  <div style={styles.predCardSubtitle}>Horizonte fijo: +1h · Temperatura</div>
                 </div>
               </div>
               <div style={styles.predCardValue}>
@@ -170,6 +220,11 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
               </div>
               <div style={styles.predCardMeta}>
                 Modelo en dispositivo ESP32 · R²=0.96
+                {selectedVariable !== 'temperatura' && (
+                  <span style={{ display: 'block', color: '#E65100', marginTop: '4px' }}>
+                    Solo predice temperatura (hardware)
+                  </span>
+                )}
               </div>
               <div style={{ ...styles.predCardBadge, background: '#FFF3E0', color: '#E65100', border: '1px solid #FFB74D' }}>
                 Microcontrolador - ESP32
@@ -189,14 +244,14 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                 <div style={styles.predCardLoading}>⏳ Calculando...</div>
               ) : (
                 <div style={styles.predCardValue}>
-                  {fmtTemp(prediccionData
+                  {fmtVal(prediccionData
                     ? getPredAtHour(prediccionData.modelo_local.predicciones, horizonHours)
                     : null)}
                 </div>
               )}
               <div style={styles.predCardMeta}>
                 {prediccionData?.modelo_local.metricas_entrenamiento
-                  ? `MAE ±${prediccionData.modelo_local.metricas_entrenamiento.mae_celsius.toFixed(2)}°C · R²=${prediccionData.modelo_local.metricas_entrenamiento.r2_score.toFixed(3)}`
+                  ? `MAE ±${prediccionData.modelo_local.metricas_entrenamiento.mae_celsius.toFixed(2)}${varDisp.unidad} · R²=${prediccionData.modelo_local.metricas_entrenamiento.r2_score.toFixed(3)}`
                   : estacionMostrada.status !== 'Activo'
                     ? 'Estación inactiva'
                     : 'Servicio ML no disponible'}
@@ -220,8 +275,8 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
               ) : (
                 <div style={styles.predCardValue}>
                   {prediccionData?.validacion_openmeteo.disponible
-                    ? fmtTemp(getPredAtHour(prediccionData.validacion_openmeteo.predicciones, horizonHours))
-                    : '— °C'}
+                    ? fmtVal(getPredAtHour(prediccionData.validacion_openmeteo.predicciones, horizonHours))
+                    : varDisp.placeholder}
                 </div>
               )}
               <div style={styles.predCardMeta}>
@@ -257,7 +312,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                 {prediccionData.confianza.descripcion}
                 {prediccionData.confianza.mae_diferencia != null && (
                   <span style={{ color: '#6c757d', marginLeft: '8px' }}>
-                    (diferencia XGBoost–Open-Meteo: ±{prediccionData.confianza.mae_diferencia.toFixed(2)}°C)
+                    (diferencia XGBoost–Open-Meteo: ±{prediccionData.confianza.mae_diferencia.toFixed(2)}{varDisp.unidad})
                   </span>
                 )}
               </span>
@@ -398,6 +453,13 @@ const styles = {
   },
 
   // ── Prediction panel styles ───────────────────────────────────────
+  varSelectorRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flexWrap: 'wrap' as const,
+    marginBottom: '16px',
+  },
   horizonControl: {
     background: 'linear-gradient(135deg, #f8f9fa, #e9ecef)',
     borderRadius: '12px',
