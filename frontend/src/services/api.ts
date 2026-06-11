@@ -703,6 +703,103 @@ export const zonaService = {
   },
 };
 
+// ==================== ALERTAS ====================
+
+export type NivelAlerta = 'info' | 'advertencia' | 'critico';
+export type CondicionAlerta = '>' | '<' | '>=' | '<=';
+export type VariableAlerta =
+  | 'temperatura' | 'humedad' | 'presion_at' | 'velocidad_viento'
+  | 'gas_co2' | 'gas_nh3' | 'gas_alcohol' | 'gas_humo' | 'gas_benceno' | 'gas_acetona';
+
+export interface ReglaAlerta {
+  id: number;
+  id_estacion: number;
+  id_usuario: number;
+  estacion_nombre: string;
+  variable: VariableAlerta;
+  condicion: CondicionAlerta;
+  umbral: number;
+  nivel: NivelAlerta;
+  nombre: string | null;
+  activa: number;
+  created_at: string;
+}
+
+export interface AlertaEvento {
+  id: number;
+  id_estacion: number;
+  estacion_nombre: string;
+  variable: VariableAlerta;
+  variable_label?: string;
+  variable_unit?: string;
+  valor_detectado: number;
+  umbral_configurado: number;
+  condicion: CondicionAlerta;
+  mensaje: string;
+  nivel: NivelAlerta;
+  leida: number;
+  id_regla: number | null;
+  created_at: string;
+}
+
+export const alertaService = {
+  // ── Reglas ──────────────────────────────────────────────────────────────────
+  getReglas: async (): Promise<ReglaAlerta[]> => {
+    const response = await api.get('/alertas/reglas');
+    return response.data;
+  },
+
+  getReglasByEstacion: async (id_estacion: number): Promise<ReglaAlerta[]> => {
+    const response = await api.get(`/alertas/reglas/estacion/${id_estacion}`);
+    return response.data;
+  },
+
+  createRegla: async (data: {
+    id_estacion: number;
+    variable: VariableAlerta;
+    condicion: CondicionAlerta;
+    umbral: number;
+    nivel: NivelAlerta;
+    nombre?: string;
+  }): Promise<{ id: number; message: string }> => {
+    const response = await api.post('/alertas/reglas', data);
+    return response.data;
+  },
+
+  updateRegla: async (id: number, data: Partial<ReglaAlerta>): Promise<void> => {
+    await api.put(`/alertas/reglas/${id}`, data);
+  },
+
+  deleteRegla: async (id: number): Promise<void> => {
+    await api.delete(`/alertas/reglas/${id}`);
+  },
+
+  toggleRegla: async (id: number): Promise<void> => {
+    await api.patch(`/alertas/reglas/${id}/toggle`);
+  },
+
+  // ── Alertas (eventos) ────────────────────────────────────────────────────────
+  getAlertas: async (soloNoLeidas = false): Promise<AlertaEvento[]> => {
+    const response = await api.get('/alertas', {
+      params: soloNoLeidas ? { leidas: 'false' } : {},
+    });
+    return response.data;
+  },
+
+  verificar: async (): Promise<{ nuevas_alertas: number; alertas: AlertaEvento[] }> => {
+    const response = await api.post('/alertas/verificar');
+    return response.data;
+  },
+
+  marcarLeida: async (id: number): Promise<void> => {
+    await api.patch(`/alertas/${id}/leer`);
+  },
+
+  marcarTodasLeidas: async (): Promise<void> => {
+    await api.patch('/alertas/leer-todas');
+  },
+};
+
 // ==================== UTILIDADES ====================
 
 export const apiUtils = {

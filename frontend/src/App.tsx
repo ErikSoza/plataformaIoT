@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { AlertProvider } from './contexts/AlertContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import AlertToast from './components/AlertToast';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -10,8 +12,10 @@ import './App.css';
 function App() {
   return (
     <AuthProvider>
+      <AlertProvider>
       <Router>
         <div className="App">
+          <AlertToast />
           <Routes>
             {/* Ruta pública - Home maneja su propia autenticación */}
             <Route path="/" element={<Home />} />
@@ -39,6 +43,7 @@ function App() {
           </Routes>
         </div>
       </Router>
+      </AlertProvider>
     </AuthProvider>
   );
 }

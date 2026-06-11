@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import AlertBell from './AlertBell';
 
 const UserHeader: React.FC = () => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -46,7 +47,9 @@ const UserHeader: React.FC = () => {
             </span>
           </div>
           
-          <button 
+          <AlertBell />
+
+          <button
             onClick={handleLogout}
             style={styles.logoutButton}
             onMouseEnter={(e) => {
