@@ -21,12 +21,22 @@ CREATE TABLE IF NOT EXISTS reglas_alerta (
     REFERENCES usuarios(id) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Agregar columnas nuevas a la tabla alertas existente
--- (ADD COLUMN IF NOT EXISTS requiere MySQL 8+; en 5.7 comentar las que ya existan)
-ALTER TABLE alertas
-  ADD COLUMN IF NOT EXISTS variable           VARCHAR(50)    NULL AFTER id_estacion,
-  ADD COLUMN IF NOT EXISTS valor_detectado    DECIMAL(10,2)  NULL AFTER variable,
-  ADD COLUMN IF NOT EXISTS umbral_configurado DECIMAL(10,2)  NULL AFTER valor_detectado,
-  ADD COLUMN IF NOT EXISTS condicion          VARCHAR(5)     NULL AFTER umbral_configurado,
-  ADD COLUMN IF NOT EXISTS leida              TINYINT(1)     DEFAULT 0 AFTER nivel,
-  ADD COLUMN IF NOT EXISTS id_regla           INT            NULL AFTER leida;
+-- Recrear alertas con esquema completo (opción recomendada si la tabla está vacía)
+DROP TABLE IF EXISTS alertas;
+CREATE TABLE alertas (
+  id                  INT AUTO_INCREMENT PRIMARY KEY,
+  id_estacion         INT NOT NULL,
+  id_usuario          INT NULL,
+  variable            VARCHAR(50) NULL,
+  valor_detectado     DECIMAL(10,2) NULL,
+  umbral_configurado  DECIMAL(10,2) NULL,
+  condicion           VARCHAR(5) NULL,
+  mensaje             TEXT,
+  nivel               VARCHAR(50) DEFAULT 'advertencia',
+  leida               TINYINT(1) DEFAULT 0,
+  id_regla            INT NULL,
+  created_at          DATETIME DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_alerta_estacion
+    FOREIGN KEY (id_estacion) REFERENCES estaciones(id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
