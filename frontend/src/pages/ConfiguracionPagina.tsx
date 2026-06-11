@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { authService } from '../services/api';
+import { useNavigation } from '../contexts/NavigationContext';
+import { authService, alertaService, stationService, ReglaAlerta, VariableAlerta, CondicionAlerta, NivelAlerta } from '../services/api';
 import { ContentSection } from '../components/layout';
 
 interface ProfileFormData {
@@ -31,9 +32,63 @@ interface UserFormData {
   confirmPassword?: string;
 }
 
+// ── Constantes para sección Alertas ──────────────────────────────────────────
+const VARIABLES_ALERTA: { value: VariableAlerta; label: string; unit: string }[] = [
+  { value: 'temperatura',      label: 'Temperatura',      unit: '°C'  },
+  { value: 'humedad',          label: 'Humedad',          unit: '%'   },
+  { value: 'presion_at',       label: 'Presión Atm.',     unit: 'hPa' },
+  { value: 'velocidad_viento', label: 'Vel. Viento',      unit: 'm/s' },
+  { value: 'gas_co2',          label: 'CO₂',              unit: 'ppm' },
+  { value: 'gas_nh3',          label: 'NH₃',              unit: 'ppm' },
+  { value: 'gas_alcohol',      label: 'Alcohol',          unit: 'ppm' },
+  { value: 'gas_humo',         label: 'Humo',             unit: 'ppm' },
+  { value: 'gas_benceno',      label: 'Benceno',          unit: 'ppm' },
+  { value: 'gas_acetona',      label: 'Acetona',          unit: 'ppm' },
+];
+const CONDICIONES_ALERTA: { value: CondicionAlerta; label: string }[] = [
+  { value: '>',  label: 'Mayor que (>)'          },
+  { value: '<',  label: 'Menor que (<)'          },
+  { value: '>=', label: 'Mayor o igual (>=)' },
+  { value: '<=', label: 'Menor o igual (<=)' },
+];
+const NIVELES_ALERTA: { value: NivelAlerta; label: string; color: string }[] = [
+  { value: 'info',        label: 'Informativo', color: '#1976d2' },
+  { value: 'advertencia', label: 'Advertencia', color: '#f9a825' },
+  { value: 'critico',     label: 'Crítico',     color: '#c62828' },
+];
+const NIVEL_ICONS: Record<NivelAlerta, string> = {
+  info: 'ℹ️', advertencia: '⚠️', critico: '🚨',
+};
+const ALERTA_FORM_INICIAL = {
+  id_estacion: 0,
+  variable: 'temperatura' as VariableAlerta,
+  condicion: '>' as CondicionAlerta,
+  umbral: '',
+  nivel: 'advertencia' as NivelAlerta,
+  nombre: '',
+};
+
 const ConfiguracionPagina: React.FC = () => {
   const { user, token, updateUser, logout } = useAuth();
-  const [activeSection, setActiveSection] = useState<'profile' | 'password' | 'danger' | 'users'>('profile');
+  const { pendingSection, clearPending } = useNavigation();
+  const [activeSection, setActiveSection] = useState<'profile' | 'password' | 'danger' | 'users' | 'alertas'>('profile');
+
+  // Reaccionar a navegación desde AlertBell
+  useEffect(() => {
+    if (pendingSection === 'alertas') {
+      setActiveSection('alertas');
+      clearPending();
+    }
+  }, [pendingSection, clearPending]);
+
+  // Estados para sección de alertas
+  const [reglas, setReglas] = useState<ReglaAlerta[]>([]);
+  const [estaciones, setEstaciones] = useState<{ id: number; nombre: string }[]>([]);
+  const [alertaForm, setAlertaForm] = useState(ALERTA_FORM_INICIAL);
+  const [alertaSaving, setAlertaSaving] = useState(false);
+  const [alertaError, setAlertaError] = useState('');
+  const [alertaSuccess, setAlertaSuccess] = useState('');
+  const [alertasLoading, setAlertasLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -81,6 +136,80 @@ const ConfiguracionPagina: React.FC = () => {
       loadUsers();
     }
   }, [user, activeSection, token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cargar datos para alertas
+  useEffect(() => {
+    if (activeSection === 'alertas') {
+      loadAlertasData();
+    }
+  }, [activeSection]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadAlertasData = async () => {
+    setAlertasLoading(true);
+    try {
+      const [reglasData, estData] = await Promise.all([
+        alertaService.getReglas(),
+        stationService.getAll(),
+      ]);
+      setReglas(reglasData);
+      setEstaciones(estData);
+      if (estData.length > 0 && alertaForm.id_estacion === 0) {
+        setAlertaForm(f => ({ ...f, id_estacion: estData[0].id }));
+      }
+    } catch (err: any) {
+      setAlertaError(err.message || 'Error al cargar datos de alertas');
+    } finally {
+      setAlertasLoading(false);
+    }
+  };
+
+  const handleCrearRegla = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAlertaError('');
+    setAlertaSuccess('');
+    if (!alertaForm.id_estacion) { setAlertaError('Selecciona una estación'); return; }
+    if (!alertaForm.umbral || isNaN(Number(alertaForm.umbral))) { setAlertaError('Ingresa un umbral numérico válido'); return; }
+    setAlertaSaving(true);
+    try {
+      await alertaService.createRegla({
+        id_estacion: alertaForm.id_estacion,
+        id_usuario: user!.id,
+        variable: alertaForm.variable,
+        condicion: alertaForm.condicion,
+        umbral: Number(alertaForm.umbral),
+        nivel: alertaForm.nivel,
+        nombre: alertaForm.nombre || undefined,
+      });
+      setAlertaSuccess('Regla creada correctamente');
+      setAlertaForm(f => ({ ...ALERTA_FORM_INICIAL, id_estacion: f.id_estacion }));
+      const updated = await alertaService.getReglas();
+      setReglas(updated);
+      setTimeout(() => setAlertaSuccess(''), 4000);
+    } catch (err: any) {
+      setAlertaError(err.message || 'Error al guardar la regla');
+    } finally {
+      setAlertaSaving(false);
+    }
+  };
+
+  const handleEliminarRegla = async (id: number) => {
+    if (!window.confirm('¿Eliminar esta regla de alerta?')) return;
+    try {
+      await alertaService.deleteRegla(id);
+      setReglas(prev => prev.filter(r => r.id !== id));
+    } catch (err: any) {
+      setAlertaError(err.message || 'Error al eliminar');
+    }
+  };
+
+  const handleToggleRegla = async (id: number) => {
+    try {
+      await alertaService.toggleRegla(id);
+      setReglas(prev => prev.map(r => r.id === id ? { ...r, activa: r.activa ? 0 : 1 } : r));
+    } catch (err: any) {
+      setAlertaError(err.message || 'Error al cambiar estado');
+    }
+  };
 
   const loadUsers = async () => {
     if (!token) return;
@@ -365,6 +494,12 @@ const ConfiguracionPagina: React.FC = () => {
             </button>
           )}
           <button
+            style={activeSection === 'alertas' ? styles.tabActive : styles.tab}
+            onClick={() => setActiveSection('alertas')}
+          >
+            🔔 Alertas
+          </button>
+          <button
             style={activeSection === 'danger' ? styles.tabActive : styles.tab}
             onClick={() => setActiveSection('danger')}
           >
@@ -512,6 +647,193 @@ const ConfiguracionPagina: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Sección de Alertas ─────────────────────────────────────────── */}
+        {activeSection === 'alertas' && (
+          <div style={styles.usersSection}>
+            <h4 style={{ marginTop: 0, marginBottom: '4px' }}>🔔 Reglas de Alerta</h4>
+            <p style={{ color: '#6c757d', fontSize: '14px', marginTop: 0, marginBottom: '24px' }}>
+              Define umbrales para cualquier variable meteorológica. Cuando una lectura supere el umbral configurado,
+              aparecerá una notificación en la campana de alertas.
+            </p>
+
+            {alertaError && (
+              <div style={{ ...styles.errorMessage, marginBottom: '16px' }}>
+                ❌ {alertaError}
+              </div>
+            )}
+            {alertaSuccess && (
+              <div style={{ ...styles.successMessage, marginBottom: '16px' }}>
+                ✅ {alertaSuccess}
+              </div>
+            )}
+
+            {/* Formulario nueva regla */}
+            <div style={alertaStyles.formCard}>
+              <h5 style={alertaStyles.subTitle}>➕ Nueva Regla</h5>
+              <form onSubmit={handleCrearRegla}>
+                <div style={alertaStyles.row}>
+                  <div style={{ ...styles.formGroup, flex: 1 }}>
+                    <label style={styles.label}>Estación</label>
+                    <select
+                      style={styles.input}
+                      value={alertaForm.id_estacion}
+                      onChange={e => setAlertaForm(f => ({ ...f, id_estacion: Number(e.target.value) }))}
+                      disabled={alertasLoading}
+                    >
+                      {estaciones.length === 0 && <option value={0}>Cargando…</option>}
+                      {estaciones.map(est => (
+                        <option key={est.id} value={est.id}>{est.nombre}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ ...styles.formGroup, flex: 1 }}>
+                    <label style={styles.label}>Variable</label>
+                    <select
+                      style={styles.input}
+                      value={alertaForm.variable}
+                      onChange={e => setAlertaForm(f => ({ ...f, variable: e.target.value as VariableAlerta }))}
+                    >
+                      {VARIABLES_ALERTA.map(v => (
+                        <option key={v.value} value={v.value}>{v.label} ({v.unit})</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={alertaStyles.row}>
+                  <div style={{ ...styles.formGroup, flex: 1 }}>
+                    <label style={styles.label}>Condición</label>
+                    <select
+                      style={styles.input}
+                      value={alertaForm.condicion}
+                      onChange={e => setAlertaForm(f => ({ ...f, condicion: e.target.value as CondicionAlerta }))}
+                    >
+                      {CONDICIONES_ALERTA.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div style={{ ...styles.formGroup, flex: 1 }}>
+                    <label style={styles.label}>
+                      Umbral ({VARIABLES_ALERTA.find(v => v.value === alertaForm.variable)?.unit})
+                    </label>
+                    <input
+                      type="number"
+                      step="any"
+                      style={styles.input}
+                      placeholder="ej: 35"
+                      value={alertaForm.umbral}
+                      onChange={e => setAlertaForm(f => ({ ...f, umbral: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Severidad</label>
+                  <div style={alertaStyles.nivelRow}>
+                    {NIVELES_ALERTA.map(n => (
+                      <button
+                        key={n.value}
+                        type="button"
+                        style={{
+                          ...alertaStyles.nivelBtn,
+                          borderColor: alertaForm.nivel === n.value ? n.color : '#e0e0e0',
+                          background: alertaForm.nivel === n.value ? n.color + '18' : '#fafafa',
+                          color: alertaForm.nivel === n.value ? n.color : '#555',
+                          fontWeight: alertaForm.nivel === n.value ? 700 : 400,
+                        }}
+                        onClick={() => setAlertaForm(f => ({ ...f, nivel: n.value }))}
+                      >
+                        {NIVEL_ICONS[n.value]} {n.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={styles.formGroup}>
+                  <label style={styles.label}>Nombre descriptivo (opcional)</label>
+                  <input
+                    type="text"
+                    style={styles.input}
+                    placeholder="ej: Temperatura alta verano"
+                    value={alertaForm.nombre}
+                    onChange={e => setAlertaForm(f => ({ ...f, nombre: e.target.value }))}
+                    maxLength={100}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  style={alertaSaving ? styles.buttonDisabled : styles.button}
+                  disabled={alertaSaving || alertasLoading}
+                >
+                  {alertaSaving ? '⏳ Guardando...' : '💾 Guardar Regla'}
+                </button>
+              </form>
+            </div>
+
+            {/* Lista de reglas existentes */}
+            <div style={{ marginTop: '28px' }}>
+              <h5 style={alertaStyles.subTitle}>
+                Reglas configuradas ({reglas.length})
+              </h5>
+              {alertasLoading ? (
+                <div style={styles.loadingMessage}>⏳ Cargando reglas…</div>
+              ) : reglas.length === 0 ? (
+                <div style={styles.emptyMessage}>No hay reglas configuradas aún.</div>
+              ) : (
+                <div style={alertaStyles.reglasList}>
+                  {reglas.map(regla => {
+                    const varInfo = VARIABLES_ALERTA.find(v => v.value === regla.variable);
+                    const nivelInfo = NIVELES_ALERTA.find(n => n.value === regla.nivel);
+                    return (
+                      <div
+                        key={regla.id}
+                        style={{ ...alertaStyles.reglaItem, opacity: regla.activa ? 1 : 0.55 }}
+                      >
+                        <span style={{ fontSize: '18px' }}>{NIVEL_ICONS[regla.nivel]}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={alertaStyles.reglaTitle}>
+                            {regla.nombre || `${regla.estacion_nombre} — ${varInfo?.label}`}
+                          </div>
+                          <div style={alertaStyles.reglaSub}>
+                            <span style={alertaStyles.tag}>{regla.estacion_nombre}</span>
+                            <span>
+                              {varInfo?.label} <strong>{regla.condicion} {regla.umbral} {varInfo?.unit}</strong>
+                            </span>
+                            <span style={{ ...alertaStyles.tag, background: (nivelInfo?.color ?? '#eee') + '22', color: nivelInfo?.color }}>
+                              {nivelInfo?.label}
+                            </span>
+                            <span style={{ ...alertaStyles.tag, background: regla.activa ? '#e8f5e9' : '#f5f5f5', color: regla.activa ? '#388e3c' : '#999' }}>
+                              {regla.activa ? 'Activa' : 'Inactiva'}
+                            </span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                          <button
+                            style={{ ...alertaStyles.iconBtn, background: regla.activa ? '#e8f5e9' : '#f5f5f5', color: regla.activa ? '#388e3c' : '#999' }}
+                            onClick={() => handleToggleRegla(regla.id)}
+                            title={regla.activa ? 'Desactivar' : 'Activar'}
+                          >
+                            {regla.activa ? '✓ Activa' : '○ Inactiva'}
+                          </button>
+                          <button
+                            style={{ ...alertaStyles.iconBtn, background: '#ffebee', color: '#c62828' }}
+                            onClick={() => handleEliminarRegla(regla.id)}
+                            title="Eliminar regla"
+                          >
+                            🗑️ Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1151,6 +1473,90 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+};
+
+const alertaStyles: Record<string, React.CSSProperties> = {
+  formCard: {
+    background: '#f8f9fa',
+    border: '1px solid #e9ecef',
+    borderRadius: '10px',
+    padding: '20px 24px',
+  },
+  subTitle: {
+    margin: '0 0 16px',
+    fontSize: '15px',
+    fontWeight: 700,
+    color: '#333',
+  },
+  row: {
+    display: 'flex',
+    gap: '16px',
+  },
+  nivelRow: {
+    display: 'flex',
+    gap: '10px',
+  },
+  nivelBtn: {
+    flex: 1,
+    padding: '9px 8px',
+    borderRadius: '8px',
+    border: '2px solid',
+    cursor: 'pointer',
+    fontSize: '13px',
+    transition: 'all 0.15s',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '5px',
+  },
+  reglasList: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '10px',
+  },
+  reglaItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    background: '#fff',
+    border: '1px solid #e9ecef',
+    borderRadius: '10px',
+    padding: '12px 16px',
+    transition: 'opacity 0.2s',
+  },
+  reglaTitle: {
+    fontWeight: 600,
+    fontSize: '14px',
+    color: '#1a1a1a',
+    marginBottom: '4px',
+  },
+  reglaSub: {
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+    flexWrap: 'wrap' as const,
+    fontSize: '12px',
+    color: '#444',
+  },
+  tag: {
+    background: '#f0f0f0',
+    color: '#555',
+    borderRadius: '4px',
+    padding: '1px 7px',
+    fontSize: '11px',
+  },
+  iconBtn: {
+    border: 'none',
+    borderRadius: '7px',
+    cursor: 'pointer',
+    padding: '5px 10px',
+    fontSize: '12px',
+    fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    transition: 'filter 0.15s',
   },
 };
 

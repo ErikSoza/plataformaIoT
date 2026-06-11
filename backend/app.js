@@ -16,7 +16,7 @@ const app = express();
 app.use(cors({
     // Permite que el proxy pase las peticiones, o en local
     origin: true, 
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
     credentials: true
 }));
 

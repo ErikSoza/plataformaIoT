@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import {TabNavigation, MainLayout, TabItem, DeviceData} from '../components/layout';
 import UserHeader from '../components/UserHeader';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigation } from '../contexts/NavigationContext';
 import { authService } from '../services/api';
 
 // Importar páginas separadas
@@ -75,12 +76,21 @@ const WeatherLoader: React.FC = () => (
 const Home: React.FC = () => {
   // Hook de autenticación
   const { isAuthenticated, user, token, isLoading: authLoading } = useAuth();
-  
+  const { pendingTab, clearPending } = useNavigation();
+
   // Estados del componente
   const [activeTab, setActiveTab] = useState<string>('monitoring');
   const [selectedDevice, setSelectedDevice] = useState<DeviceData | undefined>(undefined);
   const [favoriteStationIds, setFavoriteStationIds] = useState<number[]>([]);
   const [favoritesLoading, setFavoritesLoading] = useState(false);
+
+  // Navegar al tab solicitado por otro componente (ej: AlertBell → settings)
+  useEffect(() => {
+    if (pendingTab) {
+      setActiveTab(pendingTab);
+      clearPending();
+    }
+  }, [pendingTab, clearPending]);
 
   // Obtener datos de la API usando hook unificado - DEBE estar al inicio
   const { 

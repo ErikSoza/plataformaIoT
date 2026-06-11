@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAlerts } from '../contexts/AlertContext';
+import { useNavigation } from '../contexts/NavigationContext';
 import { AlertaEvento, NivelAlerta } from '../services/api';
-import AlertConfigModal from './AlertConfigModal';
 
 const NIVEL_COLORS: Record<NivelAlerta, string> = {
   info: '#1976d2',
@@ -38,8 +38,8 @@ const formatTime = (iso: string) => {
 
 const AlertBell: React.FC = () => {
   const { alertas, noLeidas, marcarLeida, marcarTodasLeidas, recargar } = useAlerts();
+  const { navigateToTab } = useNavigation();
   const [open, setOpen] = useState(false);
-  const [showConfig, setShowConfig] = useState(false);
   const [activeTab, setActiveTab] = useState<'noLeidas' | 'todas'>('noLeidas');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -99,7 +99,7 @@ const AlertBell: React.FC = () => {
                 )}
                 <button
                   style={styles.configBtn}
-                  onClick={() => { setOpen(false); setShowConfig(true); }}
+                  onClick={() => { setOpen(false); navigateToTab('settings', 'alertas'); }}
                 >
                   ⚙️ Configurar
                 </button>
@@ -178,7 +178,6 @@ const AlertBell: React.FC = () => {
         )}
       </div>
 
-      {showConfig && <AlertConfigModal onClose={() => setShowConfig(false)} />}
     </>
   );
 };

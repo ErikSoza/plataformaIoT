@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { AlertProvider } from './contexts/AlertContext';
+import { NavigationProvider } from './contexts/NavigationContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AlertToast from './components/AlertToast';
 import Home from './pages/Home';
@@ -12,6 +13,7 @@ import './App.css';
 function App() {
   return (
     <AuthProvider>
+      <NavigationProvider>
       <AlertProvider>
       <Router>
         <div className="App">
@@ -44,6 +46,7 @@ function App() {
         </div>
       </Router>
       </AlertProvider>
+      </NavigationProvider>
     </AuthProvider>
   );
 }

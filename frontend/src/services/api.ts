@@ -756,47 +756,81 @@ export const alertaService = {
 
   createRegla: async (data: {
     id_estacion: number;
+    id_usuario?: number;
     variable: VariableAlerta;
     condicion: CondicionAlerta;
     umbral: number;
     nivel: NivelAlerta;
     nombre?: string;
   }): Promise<{ id: number; message: string }> => {
-    const response = await api.post('/alertas/reglas', data);
-    return response.data;
+    try {
+      const response = await api.post('/alertas/reglas', data);
+      return response.data;
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || error.message || 'Error al crear regla');
+    }
   },
 
   updateRegla: async (id: number, data: Partial<ReglaAlerta>): Promise<void> => {
-    await api.put(`/alertas/reglas/${id}`, data);
+    try {
+      await api.put(`/alertas/reglas/${id}`, data);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || error.message || 'Error al actualizar regla');
+    }
   },
 
   deleteRegla: async (id: number): Promise<void> => {
-    await api.delete(`/alertas/reglas/${id}`);
+    try {
+      await api.delete(`/alertas/reglas/${id}`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || error.message || 'Error al eliminar regla');
+    }
   },
 
   toggleRegla: async (id: number): Promise<void> => {
-    await api.patch(`/alertas/reglas/${id}/toggle`);
+    try {
+      await api.patch(`/alertas/reglas/${id}/toggle`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || error.message || 'Error al cambiar estado de regla');
+    }
   },
 
   // ── Alertas (eventos) ────────────────────────────────────────────────────────
   getAlertas: async (soloNoLeidas = false): Promise<AlertaEvento[]> => {
-    const response = await api.get('/alertas', {
-      params: soloNoLeidas ? { leidas: 'false' } : {},
-    });
-    return response.data;
+    try {
+      const response = await api.get('/alertas', {
+        params: soloNoLeidas ? { leidas: 'false' } : {},
+      });
+      return response.data;
+    } catch {
+      return [];
+    }
   },
 
   verificar: async (): Promise<{ nuevas_alertas: number; alertas: AlertaEvento[] }> => {
-    const response = await api.post('/alertas/verificar');
-    return response.data;
+    try {
+      const response = await api.post('/alertas/verificar');
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ Error al verificar alertas:', error.response?.data?.error || error.message);
+      return { nuevas_alertas: 0, alertas: [] };
+    }
   },
 
   marcarLeida: async (id: number): Promise<void> => {
-    await api.patch(`/alertas/${id}/leer`);
+    try {
+      await api.patch(`/alertas/${id}/leer`);
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
   },
 
   marcarTodasLeidas: async (): Promise<void> => {
-    await api.patch('/alertas/leer-todas');
+    try {
+      await api.patch('/alertas/leer-todas');
+    } catch (error: any) {
+      throw new Error(error.response?.data?.error || error.message);
+    }
   },
 };
 
