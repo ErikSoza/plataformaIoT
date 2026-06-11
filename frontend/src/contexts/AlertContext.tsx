@@ -21,29 +21,31 @@ export const useAlerts = (): AlertContextValue => {
   return ctx;
 };
 
-const POLL_INTERVAL_MS = 60_000; // verificar cada 60 segundos
+const POLL_INTERVAL_MS = 60_000;
 
 export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [alertas, setAlertas] = useState<AlertaEvento[]>([]);
   const [toastsNuevos, setToastsNuevos] = useState<AlertaEvento[]>([]);
   const [loading, setLoading] = useState(false);
   const lastCheckRef = useRef<number>(0);
 
+  const userId = user?.id;
+
   const recargar = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !userId) return;
     try {
-      const data = await alertaService.getAlertas(false);
+      const data = await alertaService.getAlertas(false, userId);
       setAlertas(data);
     } catch {
-      // silencioso — no interrumpir UX por error de polling
+      // silencioso
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, userId]);
 
   const verificarYMostrar = useCallback(async () => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !userId) return;
     try {
-      const { alertas: nuevas } = await alertaService.verificar();
+      const { alertas: nuevas } = await alertaService.verificar(userId);
       if (nuevas.length > 0) {
         setToastsNuevos((prev) => [...prev, ...nuevas]);
         setAlertas((prev) => [...nuevas, ...prev]);
@@ -52,34 +54,40 @@ export const AlertProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       // silencioso
     }
     lastCheckRef.current = Date.now();
+  }, [isAuthenticated, userId]);
+
+  // Limpiar estado al cerrar sesión
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setAlertas([]);
+      setToastsNuevos([]);
+    }
   }, [isAuthenticated]);
 
-  // Carga inicial
+  // Carga inicial cuando el usuario está autenticado
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !userId) return;
     setLoading(true);
     recargar().finally(() => setLoading(false));
     verificarYMostrar();
-  }, [isAuthenticated, recargar, verificarYMostrar]);
+  }, [isAuthenticated, userId, recargar, verificarYMostrar]);
 
   // Polling
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !userId) return;
     const id = setInterval(verificarYMostrar, POLL_INTERVAL_MS);
     return () => clearInterval(id);
-  }, [isAuthenticated, verificarYMostrar]);
+  }, [isAuthenticated, userId, verificarYMostrar]);
 
   const marcarLeida = useCallback(async (id: number) => {
     await alertaService.marcarLeida(id);
-    setAlertas((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, leida: 1 } : a))
-    );
+    setAlertas((prev) => prev.map((a) => (a.id === id ? { ...a, leida: 1 } : a)));
   }, []);
 
   const marcarTodasLeidas = useCallback(async () => {
-    await alertaService.marcarTodasLeidas();
+    await alertaService.marcarTodasLeidas(userId);
     setAlertas((prev) => prev.map((a) => ({ ...a, leida: 1 })));
-  }, []);
+  }, [userId]);
 
   const dismissToast = useCallback((id: number) => {
     setToastsNuevos((prev) => prev.filter((t) => t.id !== id));

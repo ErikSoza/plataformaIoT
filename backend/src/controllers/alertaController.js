@@ -4,7 +4,8 @@ import * as alertaModel from '../models/alertaModel.js';
 
 export const getReglas = async (req, res) => {
   try {
-    const reglas = await alertaModel.getAllReglas();
+    const id_usuario = req.query.id_usuario ? parseInt(req.query.id_usuario) : null;
+    const reglas = await alertaModel.getAllReglas(id_usuario);
     res.json(reglas);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -13,7 +14,8 @@ export const getReglas = async (req, res) => {
 
 export const getReglasByEstacion = async (req, res) => {
   try {
-    const reglas = await alertaModel.getReglasByEstacion(req.params.id);
+    const id_usuario = req.query.id_usuario ? parseInt(req.query.id_usuario) : null;
+    const reglas = await alertaModel.getReglasByEstacion(req.params.id, id_usuario);
     res.json(reglas);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -77,8 +79,9 @@ export const toggleRegla = async (req, res) => {
 export const getAlertas = async (req, res) => {
   try {
     const soloNoLeidas = req.query.leidas === 'false';
+    const id_usuario = req.query.id_usuario ? parseInt(req.query.id_usuario) : null;
     const limit = parseInt(req.query.limit) || 50;
-    const alertas = await alertaModel.getAlertas({ soloNoLeidas, limit });
+    const alertas = await alertaModel.getAlertas({ soloNoLeidas, id_usuario, limit });
     res.json(alertas);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -87,7 +90,8 @@ export const getAlertas = async (req, res) => {
 
 export const verificarAlertas = async (req, res) => {
   try {
-    const nuevas = await alertaModel.verificarAlertas();
+    const id_usuario = req.query.id_usuario ? parseInt(req.query.id_usuario) : null;
+    const nuevas = await alertaModel.verificarAlertas(id_usuario);
     res.json({ nuevas_alertas: nuevas.length, alertas: nuevas });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -105,7 +109,8 @@ export const marcarLeida = async (req, res) => {
 
 export const marcarTodasLeidas = async (req, res) => {
   try {
-    await alertaModel.marcarTodasLeidas();
+    const id_usuario = req.query.id_usuario ? parseInt(req.query.id_usuario) : null;
+    await alertaModel.marcarTodasLeidas(id_usuario);
     res.json({ message: 'Todas las alertas marcadas como leídas' });
   } catch (error) {
     res.status(500).json({ error: error.message });

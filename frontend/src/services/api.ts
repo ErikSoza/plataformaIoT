@@ -744,13 +744,17 @@ export interface AlertaEvento {
 
 export const alertaService = {
   // ── Reglas ──────────────────────────────────────────────────────────────────
-  getReglas: async (): Promise<ReglaAlerta[]> => {
-    const response = await api.get('/alertas/reglas');
+  getReglas: async (id_usuario?: number): Promise<ReglaAlerta[]> => {
+    const response = await api.get('/alertas/reglas', {
+      params: id_usuario ? { id_usuario } : {},
+    });
     return response.data;
   },
 
-  getReglasByEstacion: async (id_estacion: number): Promise<ReglaAlerta[]> => {
-    const response = await api.get(`/alertas/reglas/estacion/${id_estacion}`);
+  getReglasByEstacion: async (id_estacion: number, id_usuario?: number): Promise<ReglaAlerta[]> => {
+    const response = await api.get(`/alertas/reglas/estacion/${id_estacion}`, {
+      params: id_usuario ? { id_usuario } : {},
+    });
     return response.data;
   },
 
@@ -796,20 +800,23 @@ export const alertaService = {
   },
 
   // ── Alertas (eventos) ────────────────────────────────────────────────────────
-  getAlertas: async (soloNoLeidas = false): Promise<AlertaEvento[]> => {
+  getAlertas: async (soloNoLeidas = false, id_usuario?: number): Promise<AlertaEvento[]> => {
     try {
-      const response = await api.get('/alertas', {
-        params: soloNoLeidas ? { leidas: 'false' } : {},
-      });
+      const params: Record<string, any> = {};
+      if (soloNoLeidas) params.leidas = 'false';
+      if (id_usuario)   params.id_usuario = id_usuario;
+      const response = await api.get('/alertas', { params });
       return response.data;
     } catch {
       return [];
     }
   },
 
-  verificar: async (): Promise<{ nuevas_alertas: number; alertas: AlertaEvento[] }> => {
+  verificar: async (id_usuario?: number): Promise<{ nuevas_alertas: number; alertas: AlertaEvento[] }> => {
     try {
-      const response = await api.post('/alertas/verificar');
+      const response = await api.post('/alertas/verificar', {}, {
+        params: id_usuario ? { id_usuario } : {},
+      });
       return response.data;
     } catch (error: any) {
       console.error('❌ Error al verificar alertas:', error.response?.data?.error || error.message);
@@ -825,9 +832,11 @@ export const alertaService = {
     }
   },
 
-  marcarTodasLeidas: async (): Promise<void> => {
+  marcarTodasLeidas: async (id_usuario?: number): Promise<void> => {
     try {
-      await api.patch('/alertas/leer-todas');
+      await api.patch('/alertas/leer-todas', {}, {
+        params: id_usuario ? { id_usuario } : {},
+      });
     } catch (error: any) {
       throw new Error(error.response?.data?.error || error.message);
     }

@@ -30,24 +30,26 @@ const VARIABLE_UNITS = {
 
 // ── REGLAS ────────────────────────────────────────────────────────────────────
 
-export const getAllReglas = async () => {
+export const getAllReglas = async (id_usuario = null) => {
   const [rows] = await pool.query(`
     SELECT r.*, e.nombre AS estacion_nombre
     FROM reglas_alerta r
     JOIN estaciones e ON r.id_estacion = e.id
+    ${id_usuario ? 'WHERE r.id_usuario = ?' : ''}
     ORDER BY r.created_at DESC
-  `);
+  `, id_usuario ? [id_usuario] : []);
   return rows;
 };
 
-export const getReglasByEstacion = async (id_estacion) => {
+export const getReglasByEstacion = async (id_estacion, id_usuario = null) => {
   const [rows] = await pool.query(`
     SELECT r.*, e.nombre AS estacion_nombre
     FROM reglas_alerta r
     JOIN estaciones e ON r.id_estacion = e.id
     WHERE r.id_estacion = ?
+      ${id_usuario ? 'AND r.id_usuario = ?' : ''}
     ORDER BY r.created_at DESC
-  `, [id_estacion]);
+  `, id_usuario ? [id_estacion, id_usuario] : [id_estacion]);
   return rows;
 };
 
@@ -81,8 +83,15 @@ export const toggleRegla = async (id) => {
 
 // ── ALERTAS ───────────────────────────────────────────────────────────────────
 
-export const getAlertas = async ({ soloNoLeidas = false, limit = 50 } = {}) => {
-  const where = soloNoLeidas ? 'WHERE a.leida = 0' : '';
+export const getAlertas = async ({ soloNoLeidas = false, id_usuario = null, limit = 50 } = {}) => {
+  const conditions = [];
+  const params = [];
+
+  if (soloNoLeidas) conditions.push('a.leida = 0');
+  if (id_usuario)   { conditions.push('a.id_usuario = ?'); params.push(id_usuario); }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
   const [rows] = await pool.query(`
     SELECT a.*, e.nombre AS estacion_nombre
     FROM alertas a
@@ -90,15 +99,15 @@ export const getAlertas = async ({ soloNoLeidas = false, limit = 50 } = {}) => {
     ${where}
     ORDER BY a.created_at DESC
     LIMIT ?
-  `, [limit]);
+  `, [...params, limit]);
   return rows;
 };
 
-export const createAlerta = async ({ id_estacion, variable, valor_detectado, umbral_configurado, condicion, nivel, mensaje, id_regla }) => {
+export const createAlerta = async ({ id_estacion, id_usuario, variable, valor_detectado, umbral_configurado, condicion, nivel, mensaje, id_regla }) => {
   const [result] = await pool.query(
-    `INSERT INTO alertas (id_estacion, variable, valor_detectado, umbral_configurado, condicion, nivel, mensaje, id_regla)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id_estacion, variable, valor_detectado, umbral_configurado, condicion, nivel, mensaje, id_regla || null]
+    `INSERT INTO alertas (id_estacion, id_usuario, variable, valor_detectado, umbral_configurado, condicion, nivel, mensaje, id_regla)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [id_estacion, id_usuario || null, variable, valor_detectado, umbral_configurado, condicion, nivel, mensaje, id_regla || null]
   );
   return result.insertId;
 };
@@ -107,14 +116,18 @@ export const marcarLeida = async (id) => {
   await pool.query('UPDATE alertas SET leida=1 WHERE id=?', [id]);
 };
 
-export const marcarTodasLeidas = async () => {
-  await pool.query('UPDATE alertas SET leida=1 WHERE leida=0');
+export const marcarTodasLeidas = async (id_usuario = null) => {
+  if (id_usuario) {
+    await pool.query('UPDATE alertas SET leida=1 WHERE leida=0 AND id_usuario=?', [id_usuario]);
+  } else {
+    await pool.query('UPDATE alertas SET leida=1 WHERE leida=0');
+  }
 };
 
 // ── VERIFICAR LECTURAS vs REGLAS ──────────────────────────────────────────────
 
-export const verificarAlertas = async () => {
-  // Obtener todas las reglas activas junto con la última lectura de cada estación
+export const verificarAlertas = async (id_usuario = null) => {
+  // Obtener reglas activas del usuario (o todas si no se especifica)
   const [reglas] = await pool.query(`
     SELECT
       r.*,
@@ -127,13 +140,14 @@ export const verificarAlertas = async () => {
     JOIN dispositivos d ON d.id_estacion = e.id
     JOIN lecturas l ON l.device_id = d.device_id
     WHERE r.activa = 1
+      ${id_usuario ? 'AND r.id_usuario = ?' : ''}
       AND l.fecha_registro = (
         SELECT MAX(l2.fecha_registro)
         FROM lecturas l2
         JOIN dispositivos d2 ON l2.device_id = d2.device_id
         WHERE d2.id_estacion = e.id
       )
-  `);
+  `, id_usuario ? [id_usuario] : []);
 
   const nuevasAlertas = [];
 
@@ -154,13 +168,13 @@ export const verificarAlertas = async () => {
 
     if (!disparada) continue;
 
-    // Evitar duplicados: no crear alerta si ya existe una no leída en los últimos 10 minutos
+    // Evitar duplicados: no crear alerta si ya existe una no leída del mismo usuario en los últimos 10 minutos
     const [existing] = await pool.query(
       `SELECT id FROM alertas
-       WHERE id_regla=? AND leida=0
+       WHERE id_regla=? AND id_usuario=? AND leida=0
          AND created_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)
        LIMIT 1`,
-      [regla.id]
+      [regla.id, regla.id_usuario]
     );
     if (existing.length > 0) continue;
 
@@ -170,6 +184,7 @@ export const verificarAlertas = async () => {
 
     const id = await createAlerta({
       id_estacion: regla.id_estacion,
+      id_usuario: regla.id_usuario,
       variable: regla.variable,
       valor_detectado: valor,
       umbral_configurado: umbral,

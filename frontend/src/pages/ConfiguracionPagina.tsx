@@ -148,7 +148,7 @@ const ConfiguracionPagina: React.FC = () => {
     setAlertasLoading(true);
     try {
       const [reglasData, estData] = await Promise.all([
-        alertaService.getReglas(),
+        alertaService.getReglas(user!.id),
         stationService.getAll(),
       ]);
       setReglas(reglasData);
@@ -182,7 +182,7 @@ const ConfiguracionPagina: React.FC = () => {
       });
       setAlertaSuccess('Regla creada correctamente');
       setAlertaForm(f => ({ ...ALERTA_FORM_INICIAL, id_estacion: f.id_estacion }));
-      const updated = await alertaService.getReglas();
+      const updated = await alertaService.getReglas(user!.id);
       setReglas(updated);
       setTimeout(() => setAlertaSuccess(''), 4000);
     } catch (err: any) {
