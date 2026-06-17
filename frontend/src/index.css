@@ -1,6 +1,18 @@
 /* Animaciones climáticas globales */
 @import './styles/weatherAnimations.css';
 
+/* ── Tokens de color accesibles ──────────────────────────────────── */
+:root {
+  /* Texto secundario: reemplaza #6c757d (ratio 4.1:1) por 7.8:1 */
+  --color-text-secondary: #495057;
+  /* Teal oscuro para texto sobre blanco: reemplaza #00BCD4 (ratio 2.2:1) por 5.8:1 */
+  --color-brand-text: #006B77;
+  /* Teal medio para fondos con texto blanco encima: ratio blanco/fondo 4.8:1 */
+  --color-brand-bg: #007E8A;
+  /* Decorativo: el cyan original permanece solo en bordes/fondos */
+  --color-brand-accent: #00BCD4;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
@@ -13,4 +25,24 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
+}
+
+/* ── Foco visible para teclado ──────────────────────────────────── */
+:focus-visible {
+  outline: 3px solid #006B77;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ── Clase utilitaria para contenido solo para lectores de pantalla */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

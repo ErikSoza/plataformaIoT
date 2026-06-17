@@ -11,10 +11,10 @@ const VARIABLE_DISPLAY: Record<VariablePrediccion, {
   formato: (v: number) => string;
   placeholder: string;
 }> = {
-  temperatura: { label: 'Temperatura', unidad: '°C',   color: '#0288D1', formato: v => `${v.toFixed(1)}°C`,    placeholder: '— °C'   },
-  humedad:     { label: 'Humedad',     unidad: '%',    color: '#00897B', formato: v => `${v.toFixed(0)}%`,     placeholder: '— %'    },
+  temperatura: { label: 'Temperatura', unidad: '°C',   color: '#006DA3', formato: v => `${v.toFixed(1)}°C`,    placeholder: '— °C'   },
+  humedad:     { label: 'Humedad',     unidad: '%',    color: '#00695C', formato: v => `${v.toFixed(0)}%`,     placeholder: '— %'    },
   presion:     { label: 'Presión',     unidad: 'hPa',  color: '#7B1FA2', formato: v => `${v.toFixed(0)} hPa`,  placeholder: '— hPa'  },
-  viento:      { label: 'Viento',      unidad: 'm/s',  color: '#E65100', formato: v => `${v.toFixed(1)} m/s`,  placeholder: '— m/s'  },
+  viento:      { label: 'Viento',      unidad: 'm/s',  color: '#A84000', formato: v => `${v.toFixed(1)} m/s`,  placeholder: '— m/s'  },
 };
 
 const VARIABLES_ORDEN: VariablePrediccion[] = ['temperatura', 'humedad', 'presion', 'viento'];
@@ -176,7 +176,11 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                 })}
               </span>
             </div>
+            <label htmlFor="horizonSlider" className="sr-only">
+              Horizonte de predicción (1 a 72 horas)
+            </label>
             <input
+              id="horizonSlider"
               type="range"
               min="1"
               max="72"
@@ -192,7 +196,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                     cursor: 'pointer',
                     fontSize: '0.72rem',
                     fontWeight: horizonHours === h ? '700' : '400',
-                    color: horizonHours === h ? '#00BCD4' : '#aaa',
+                    color: horizonHours === h ? '#006B77' : '#767676',
                     transition: 'color 0.2s',
                   }}
                   onClick={() => setHorizonHours(h)}
@@ -203,7 +207,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
             </div>
           </div>
 
-          {/* Tarjetas de predicción */}
+          {/* Tarjetas de predicción  */}
           <div style={styles.predCardsGrid}>
 
             {/* ── Card 1: Edge TinyML ── */}
@@ -221,12 +225,12 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
               <div style={styles.predCardMeta}>
                 Modelo en dispositivo ESP32 · R²=0.96
                 {selectedVariable !== 'temperatura' && (
-                  <span style={{ display: 'block', color: '#E65100', marginTop: '4px' }}>
+                  <span style={{ display: 'block', color: '#A84000', marginTop: '4px' }}>
                     Solo predice temperatura (hardware)
                   </span>
                 )}
               </div>
-              <div style={{ ...styles.predCardBadge, background: '#FFF3E0', color: '#E65100', border: '1px solid #FFB74D' }}>
+              <div style={{ ...styles.predCardBadge, background: '#FFF3E0', color: '#A84000', border: '1px solid #FFB74D' }}>
                 Microcontrolador - ESP32
               </div>
             </div>
@@ -311,7 +315,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                 <strong>Confianza {prediccionData.confianza.nivel}:</strong>{' '}
                 {prediccionData.confianza.descripcion}
                 {prediccionData.confianza.mae_diferencia != null && (
-                  <span style={{ color: '#6c757d', marginLeft: '8px' }}>
+                  <span style={{ color: '#495057', marginLeft: '8px' }}>
                     (diferencia XGBoost–Open-Meteo: ±{prediccionData.confianza.mae_diferencia.toFixed(2)}{varDisp.unidad})
                   </span>
                 )}
@@ -433,13 +437,13 @@ const styles = {
     marginBottom: '15px',
   },
   aboutCardTitle: {
-    color: '#00BCD4',
+    color: '#006B77',
     fontSize: '16px',
     fontWeight: '600' as const,
     margin: '0 0 12px 0',
   },
   aboutCardText: {
-    color: '#6c757d',
+    color: '#495057',
     fontSize: '14px',
     lineHeight: 1.5,
     margin: 0,
@@ -481,12 +485,12 @@ const styles = {
   },
   horizonValue: {
     fontWeight: '700' as const,
-    color: '#00BCD4',
+    color: '#006B77',
     fontSize: '1.15rem',
     minWidth: '44px',
   },
   horizonTime: {
-    color: '#6c757d',
+    color: '#495057',
     fontSize: '0.82rem',
   },
   horizonSlider: {
@@ -538,7 +542,7 @@ const styles = {
     fontSize: '0.95rem',
   },
   predCardSubtitle: {
-    color: '#6c757d',
+    color: '#495057',
     fontSize: '0.78rem',
     marginTop: '2px',
   },
@@ -550,7 +554,7 @@ const styles = {
     letterSpacing: '-0.5px',
   },
   predCardMeta: {
-    color: '#6c757d',
+    color: '#495057',
     fontSize: '0.78rem',
     lineHeight: 1.4,
     flexGrow: 1,
@@ -563,7 +567,7 @@ const styles = {
     alignSelf: 'flex-start',
   },
   predCardLoading: {
-    color: '#6c757d',
+    color: '#495057',
     fontSize: '0.9rem',
     fontStyle: 'italic' as const,
     padding: '12px 0',

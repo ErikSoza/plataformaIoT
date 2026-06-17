@@ -201,7 +201,9 @@ const CitySearch: React.FC<CitySearchProps> = ({
         <div style={styles.searchIcon}>🔍</div>
         <input
           ref={inputRef}
+          id="city-search-input"
           type="text"
+          aria-label="Buscar ciudad"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -285,7 +287,7 @@ const styles = {
     left: '12px',
     zIndex: 1,
     fontSize: '1.1rem',
-    color: '#6c757d',
+    color: '#495057',
   },
 
   input: {
@@ -306,7 +308,7 @@ const styles = {
     background: 'none',
     border: 'none',
     fontSize: '1.2rem',
-    color: '#6c757d',
+    color: '#495057',
     cursor: 'pointer',
     padding: '2px',
     borderRadius: '50%',
@@ -377,7 +379,7 @@ const styles = {
 
   resultCoords: {
     fontSize: '0.8rem',
-    color: '#7f8c8d',
+    color: '#595959',
   },
 
   footer: {
@@ -388,7 +390,7 @@ const styles = {
 
   footerText: {
     fontSize: '0.75rem',
-    color: '#6c757d',
+    color: '#495057',
     fontStyle: 'italic' as const,
   },
 };

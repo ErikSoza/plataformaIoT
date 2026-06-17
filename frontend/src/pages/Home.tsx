@@ -407,11 +407,11 @@ const Home: React.FC = () => {
       {isAuthenticated ? (
         <UserHeader />
       ) : (
-        <div style={styles.guestHeader}>
+        <header style={styles.guestHeader}>
           <div style={styles.guestHeaderContent}>
             {/* Logo/Título */}
             <div style={styles.guestBrandSection}>
-              <h2 style={styles.guestBrandTitle}>🌐 Plataforma IoT UTalca</h2>
+              <h1 style={styles.guestBrandTitle}>🌐 Plataforma IoT UTalca</h1>
               <span style={styles.guestSubtitle}>Vista Visitante</span>
             </div>
 
@@ -431,15 +431,17 @@ const Home: React.FC = () => {
               >
                 🚀 Iniciar Sesión
               </button>
-              <button 
+              <button
                 style={styles.guestRegisterBtn}
                 onClick={() => window.location.href = '/register'}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#00BCD4';
+                  e.currentTarget.style.backgroundColor = '#007E8A';
+                  e.currentTarget.style.color = 'white';
                   e.currentTarget.style.transform = 'translateY(-1px)';
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#006B77';
                   e.currentTarget.style.transform = 'translateY(0)';
                 }}
               >
@@ -447,7 +449,7 @@ const Home: React.FC = () => {
               </button>
             </div>
           </div>
-        </div>
+        </header>
       )}
 
       {/* Indicador de conexión API */}
@@ -509,12 +511,12 @@ const styles = {
   },
   guestBrandTitle: {
     margin: 0,
-    color: '#00BCD4',
+    color: '#006B77',
     fontSize: '24px',
     fontWeight: '600' as const,
   },
   guestSubtitle: {
-    color: '#6c757d',
+    color: '#495057',
     fontSize: '14px',
     fontWeight: '500' as const,
     backgroundColor: '#f8f9fa',
@@ -529,8 +531,8 @@ const styles = {
   },
   guestLoginBtn: {
     backgroundColor: 'white',
-    color: '#00BCD4',
-    border: '2px solid #00BCD4',
+    color: '#006B77',
+    border: '2px solid #006B77',
     padding: '8px 16px',
     borderRadius: '6px',
     fontSize: '14px',
@@ -540,8 +542,8 @@ const styles = {
   },
   guestRegisterBtn: {
     backgroundColor: 'transparent',
-    color: '#00BCD4',
-    border: '2px solid #00BCD4',
+    color: '#006B77',
+    border: '2px solid #006B77',
     padding: '8px 16px',
     borderRadius: '6px',
     fontSize: '14px',
@@ -557,7 +559,7 @@ const styles = {
     backgroundColor: '#fff',
     borderBottom: '1px solid #dee2e6',
     fontSize: '14px',
-    color: '#6c757d',
+    color: '#495057',
     position: 'sticky' as const,
     top: 0,
     zIndex: 9998,
@@ -579,7 +581,7 @@ const styles = {
     justifyContent: 'center',
     padding: '60px 20px',
     textAlign: 'center' as const,
-    color: '#6c757d',
+    color: '#495057',
     backgroundColor: '#fff',
     margin: '20px',
     borderRadius: '8px',

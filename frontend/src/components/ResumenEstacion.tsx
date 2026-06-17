@@ -20,8 +20,8 @@ const GAS_FIELDS: GasConfig[] = [
 ];
 
 function semColor(val: number | null | undefined, low: number, mid: number): string {
-  if (val == null) return '#bdbdbd';
-  return val < low ? '#2e7d32' : val < mid ? '#e65100' : '#b71c1c';
+  if (val == null) return '#6b6b6b';
+  return val < low ? '#2e7d32' : val < mid ? '#A84000' : '#b71c1c';
 }
 
 function semLabel(val: number | null | undefined, low: number, mid: number): string {
@@ -123,24 +123,24 @@ const rs: Record<string, React.CSSProperties> = {
   header: { display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px', flexWrap: 'wrap' },
   headerIcon: { fontSize: '1.6rem' },
   headerTitle: { margin: 0, fontSize: '1.1rem', fontWeight: 600, color: '#2c3e50' },
-  headerSub: { fontSize: '0.83rem', color: '#607d8b' },
+  headerSub: { fontSize: '0.83rem', color: '#546e7a' },
   headerRight: { marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' },
   statusDot: { width: '10px', height: '10px', borderRadius: '50%', display: 'inline-block' },
   statusText: { fontSize: '0.82rem', fontWeight: 600, color: '#546e7a' },
-  updateText: { fontSize: '0.78rem', color: '#90a4ae', marginLeft: '6px' },
+  updateText: { fontSize: '0.78rem', color: '#546e7a', marginLeft: '6px' },
   meteoGrid: { display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '18px' },
   meteoCard: { background: '#f8f9fa', borderRadius: '10px', padding: '14px 10px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', textAlign: 'center' },
   meteoIcon: { fontSize: '1.4rem' },
   meteoValue: { fontSize: '1.35rem', fontWeight: 700, lineHeight: 1.1 },
-  meteoLabel: { fontSize: '0.72rem', color: '#90a4ae', textTransform: 'uppercase', letterSpacing: '0.04em' },
+  meteoLabel: { fontSize: '0.72rem', color: '#546e7a', textTransform: 'uppercase', letterSpacing: '0.04em' },
   gasSection: { borderTop: '1px solid #eceff1', paddingTop: '16px' },
   gasSectionTitle: { display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 600, color: '#546e7a', marginBottom: '12px' },
-  sinDatos: { color: '#bdbdbd', fontSize: '0.88rem', textAlign: 'center', padding: '10px 0' },
+  sinDatos: { color: '#495057', fontSize: '0.88rem', textAlign: 'center', padding: '10px 0' },
   gasGrid: { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '10px' },
   gasCard: { borderTop: '3px solid #bdbdbd', borderRadius: '8px', padding: '10px 8px', background: '#f8f9fa', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', textAlign: 'center' },
   gasName: { fontSize: '0.72rem', fontWeight: 600, color: '#546e7a', textTransform: 'uppercase', letterSpacing: '0.04em' },
   gasVal: { fontSize: '1.3rem', fontWeight: 700, lineHeight: 1.1 },
-  gasUnit: { fontSize: '0.68rem', color: '#b0bec5' },
+  gasUnit: { fontSize: '0.68rem', color: '#546e7a' },
   gasBadge: { marginTop: '3px', padding: '2px 7px', borderRadius: '10px', fontSize: '0.66rem', fontWeight: 600, color: '#fff' },
 };
 

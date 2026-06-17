@@ -29,11 +29,11 @@ const UserHeader: React.FC = () => {
   };
 
   return (
-    <div style={styles.headerContainer}>
+    <header style={styles.headerContainer}>
       <div style={styles.headerContent}>
         {/* Logo/Título */}
         <div style={styles.brandSection}>
-          <h2 style={styles.brandTitle}>🌐 Plataforma IoT - Universidad de Talca</h2>
+          <h1 style={styles.brandTitle}>🌐 Plataforma IoT - Universidad de Talca</h1>
         </div>
 
         {/* Información del usuario */}
@@ -65,7 +65,7 @@ const UserHeader: React.FC = () => {
           </button>
         </div>
       </div>
-    </div>
+    </header>
   );
 };
 
@@ -96,7 +96,7 @@ const styles = {
   
   brandTitle: {
     margin: 0,
-    color: '#00BCD4',
+    color: '#006B77',
     fontSize: '24px',
     fontWeight: '600' as const,
   },
@@ -121,7 +121,7 @@ const styles = {
   
   roleText: {
     fontSize: '12px',
-    color: '#7f8c8d',
+    color: '#595959',
     backgroundColor: '#ecf0f1',
     padding: '2px 8px',
     borderRadius: '10px',

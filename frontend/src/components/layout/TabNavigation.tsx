@@ -19,17 +19,19 @@ const TabNavigation: React.FC<TabNavigationProps> = ({ tabs, onTabChange }) => {
   };
 
   return (
-    <div style={styles.tabNavigation}>
+    <nav aria-label="Navegación principal" style={styles.tabNavigation}>
       {tabs.map((tab) => (
-        <div
+        <button
           key={tab.id}
+          type="button"
+          aria-current={tab.active ? 'page' : undefined}
           style={tab.active ? styles.tabActive : styles.tab}
           onClick={() => handleTabClick(tab.id)}
         >
           {tab.label}
-        </div>
+        </button>
       ))}
-    </div>
+    </nav>
   );
 };
 
@@ -49,13 +51,15 @@ const styles = {
 
   tabActive: {
     padding: '15px 20px',
-    backgroundColor: '#00BCD4',
+    backgroundColor: '#007E8A',
     color: 'white',
     fontSize: '0.9rem',
     fontWeight: '600' as const,
     letterSpacing: '0.5px',
     cursor: 'pointer',
+    border: 'none' as const,
     borderBottom: '3px solid #00BCD4',
+    fontFamily: 'inherit',
     position: 'relative' as const,
     transition: 'all 0.3s ease',
     flex: '0 0 auto',
@@ -65,12 +69,14 @@ const styles = {
   tab: {
     padding: '15px 20px',
     backgroundColor: 'transparent',
-    color: '#666',
+    color: '#444444',
     fontSize: '0.9rem',
     fontWeight: '500' as const,
     letterSpacing: '0.5px',
     cursor: 'pointer',
+    border: 'none' as const,
     borderBottom: '3px solid transparent',
+    fontFamily: 'inherit',
     transition: 'all 0.3s ease',
     flex: '0 0 auto',
     whiteSpace: 'nowrap' as const,

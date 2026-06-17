@@ -95,7 +95,7 @@ const METRIC_CONFIG: Record<string, MetricConfig> = {
   radiation: {
     gradient: 'linear-gradient(135deg, #fffde7 0%, #fff9c4 100%)',
     borderColor: '#F9A825',
-    textColor: '#F57F17',
+    textColor: '#BF6000',
     glowClass: 'stat-glow-radiation',
     iconClass: 'stat-icon-sun',
     decorColor: 'rgba(249, 168, 37, 0.15)',
@@ -238,7 +238,7 @@ export const StatCard: React.FC<StatCardProps> = ({
       {/* Título con ícono animado */}
       <h3 style={{
         margin:       '0 0 10px 0',
-        color:        '#5a6472',
+        color:        '#495057',
         fontSize:     '0.78rem',
         fontWeight:   700,
         textTransform: 'uppercase',
@@ -275,7 +275,7 @@ export const StatCard: React.FC<StatCardProps> = ({
       {/* Subtítulo */}
       {subtitle && (
         <small style={{
-          color:      '#6c757d',
+          color:      '#495057',
           fontSize:   '0.74rem',
           display:    'block',
           marginTop:  '8px',
