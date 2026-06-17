@@ -39,7 +39,7 @@ const METRIC_CONFIG: Record<string, MetricConfig> = {
   temperature: {
     gradient: 'linear-gradient(135deg, #fff8e1 0%, #ffecb3 100%)',
     borderColor: '#FF9800',
-    textColor: '#E65100',
+    textColor: '#A84000',
     glowClass: '',
     iconClass: 'stat-icon-float',
     decorColor: 'rgba(255, 152, 0, 0.12)',
@@ -47,7 +47,7 @@ const METRIC_CONFIG: Record<string, MetricConfig> = {
   temperature_hot: {
     gradient: 'linear-gradient(135deg, #fbe9e7 0%, #ffccbc 100%)',
     borderColor: '#FF5722',
-    textColor: '#BF360C',
+    textColor: '#962800',
     glowClass: 'stat-glow-temperature-hot',
     iconClass: 'stat-icon-float',
     decorColor: 'rgba(255, 87, 34, 0.15)',
@@ -95,7 +95,7 @@ const METRIC_CONFIG: Record<string, MetricConfig> = {
   radiation: {
     gradient: 'linear-gradient(135deg, #fffde7 0%, #fff9c4 100%)',
     borderColor: '#F9A825',
-    textColor: '#BF6000',
+    textColor: '#7B3C00',
     glowClass: 'stat-glow-radiation',
     iconClass: 'stat-icon-sun',
     decorColor: 'rgba(249, 168, 37, 0.15)',
@@ -239,10 +239,10 @@ export const StatCard: React.FC<StatCardProps> = ({
       <h3 style={{
         margin:       '0 0 10px 0',
         color:        '#495057',
-        fontSize:     '0.78rem',
+        fontSize:     '0.875rem',
         fontWeight:   700,
         textTransform: 'uppercase',
-        letterSpacing: '0.6px',
+        letterSpacing: '0.5px',
         lineHeight:    1.2,
         position:     'relative',
         zIndex:        1,
@@ -276,7 +276,7 @@ export const StatCard: React.FC<StatCardProps> = ({
       {subtitle && (
         <small style={{
           color:      '#495057',
-          fontSize:   '0.74rem',
+          fontSize:   '0.875rem',
           display:    'block',
           marginTop:  '8px',
           position:   'relative',

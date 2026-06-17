@@ -378,7 +378,7 @@ const styles = {
   },
 
   resultCoords: {
-    fontSize: '0.8rem',
+    fontSize: '0.875rem',
     color: '#595959',
   },
 
@@ -389,7 +389,7 @@ const styles = {
   },
 
   footerText: {
-    fontSize: '0.75rem',
+    fontSize: '0.875rem',
     color: '#495057',
     fontStyle: 'italic' as const,
   },

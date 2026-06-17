@@ -154,7 +154,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                     background: active ? vd.color : 'transparent',
                     color: active ? '#fff' : vd.color,
                     fontWeight: '600',
-                    fontSize: '0.82rem',
+                    fontSize: '0.875rem',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                   }}
@@ -194,7 +194,7 @@ const MonitoringPage: React.FC<MonitoringPageProps> = ({
                   key={h}
                   style={{
                     cursor: 'pointer',
-                    fontSize: '0.72rem',
+                    fontSize: '0.875rem',
                     fontWeight: horizonHours === h ? '700' : '400',
                     color: horizonHours === h ? '#006B77' : '#767676',
                     transition: 'color 0.2s',
@@ -543,7 +543,7 @@ const styles = {
   },
   predCardSubtitle: {
     color: '#495057',
-    fontSize: '0.78rem',
+    fontSize: '0.875rem',
     marginTop: '2px',
   },
   predCardValue: {
@@ -555,14 +555,14 @@ const styles = {
   },
   predCardMeta: {
     color: '#495057',
-    fontSize: '0.78rem',
+    fontSize: '0.875rem',
     lineHeight: 1.4,
     flexGrow: 1,
   },
   predCardBadge: {
     padding: '4px 10px',
     borderRadius: '6px',
-    fontSize: '0.72rem',
+    fontSize: '0.875rem',
     fontWeight: '600' as const,
     alignSelf: 'flex-start',
   },
