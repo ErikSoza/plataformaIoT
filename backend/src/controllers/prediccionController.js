@@ -1,5 +1,6 @@
 import { getHistorialEstacion } from '../models/prediccionModel.js';
 import { getHistorialZona, getZonaById } from '../models/zonaModel.js';
+import { validarParametrosPrediccion } from '../utils/prediccionValidacion.js';
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:5001';
 // v2: temperatura usa lags 1-24h → necesitamos 24 lecturas históricas + 1 actual
@@ -18,18 +19,9 @@ export const getPrediccion = async (req, res) => {
     const horas = parseInt(req.query.horas) || 72;
     const variable = req.query.variable || 'temperatura';
 
-    const horizontesValidos = [24, 48, 72];
-    const variablesValidas  = ['temperatura', 'humedad', 'presion', 'viento'];
-
-    if (!horizontesValidos.includes(horas)) {
-        return res.status(400).json({
-            error: `El parámetro 'horas' debe ser uno de ${horizontesValidos.join(', ')}`,
-        });
-    }
-    if (!variablesValidas.includes(variable)) {
-        return res.status(400).json({
-            error: `El parámetro 'variable' debe ser uno de ${variablesValidas.join(', ')}`,
-        });
+    const errorValidacion = validarParametrosPrediccion(horas, variable);
+    if (errorValidacion) {
+        return res.status(errorValidacion.status).json({ error: errorValidacion.error });
     }
 
     // 1 ── Obtener lecturas de MySQL
@@ -125,14 +117,9 @@ export const getPrediccionZona = async (req, res) => {
     const horas    = parseInt(req.query.horas) || 72;
     const variable = req.query.variable || 'temperatura';
 
-    const horizontesValidos = [24, 48, 72];
-    const variablesValidas  = ['temperatura', 'humedad', 'presion', 'viento'];
-
-    if (!horizontesValidos.includes(horas)) {
-        return res.status(400).json({ error: `El parámetro 'horas' debe ser uno de ${horizontesValidos.join(', ')}` });
-    }
-    if (!variablesValidas.includes(variable)) {
-        return res.status(400).json({ error: `El parámetro 'variable' debe ser uno de ${variablesValidas.join(', ')}` });
+    const errorValidacionZona = validarParametrosPrediccion(horas, variable);
+    if (errorValidacionZona) {
+        return res.status(errorValidacionZona.status).json({ error: errorValidacionZona.error });
     }
 
     let historial;

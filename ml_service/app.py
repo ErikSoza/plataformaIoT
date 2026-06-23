@@ -39,6 +39,14 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+from features_utils import (
+    LAG_WINDOW_TEMP,
+    LAG_WINDOW_HUM_VIENTO,
+    LAG_WINDOW_PRESION,
+    PRESION_CURICO_MEDIA,
+    construir_lags,
+)
+
 # ============================================================
 # CONFIGURACIÓN
 # ============================================================
@@ -50,11 +58,7 @@ METRICAS_PATH = os.path.join(MODELOS_DIR, "metricas.json")
 CURICO_LAT = -34.9853
 CURICO_LON = -71.2368
 
-HORIZONTES_VALIDOS    = [24, 48, 72]
-LAG_WINDOW_TEMP       = 24
-LAG_WINDOW_HUM_VIENTO = 12
-LAG_WINDOW_PRESION    = 12
-PRESION_CURICO_MEDIA  = 993.0
+HORIZONTES_VALIDOS = [24, 48, 72]
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:     %(message)s")
 logger = logging.getLogger(__name__)
@@ -733,28 +737,18 @@ async def predict_post(body: PredictRequest) -> dict:
             detail=f"horas debe ser uno de {HORIZONTES_VALIDOS}. Recibido: {body.horas}",
         )
 
-    ahora    = datetime.now()
-    historial = body.historial or []
-    n_hist   = len(historial)
-
-    lags_temp = [
-        historial[i].temperatura      if i < n_hist else body.temp_actual
-        for i in range(LAG_WINDOW_TEMP)
-    ]
-    lags_hum = [
-        historial[i].humedad          if i < n_hist else body.humedad
-        for i in range(LAG_WINDOW_HUM_VIENTO)
-    ]
-    lags_viento = [
-        historial[i].velocidad_viento if i < n_hist else body.viento
-        for i in range(LAG_WINDOW_HUM_VIENTO)
-    ]
+    ahora          = datetime.now()
+    historial      = body.historial or []
+    n_hist         = len(historial)
     presion_actual = body.presion if body.presion is not None else PRESION_CURICO_MEDIA
-    lags_presion = [
-        historial[i].presion          if i < n_hist and historial[i].presion is not None
-        else presion_actual
-        for i in range(LAG_WINDOW_PRESION)
-    ]
+
+    lags_temp, lags_hum, lags_viento, lags_presion = construir_lags(
+        historial     = historial,
+        temp_actual   = body.temp_actual,
+        humedad_actual= body.humedad,
+        viento_actual = body.viento,
+        presion_actual= presion_actual,
+    )
 
     X = construir_features(
         temp=body.temp_actual, humedad=body.humedad,

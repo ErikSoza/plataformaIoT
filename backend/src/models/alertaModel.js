@@ -1,4 +1,5 @@
 import pool from '../db/connection.js';
+import { evaluarCondicion } from '../utils/alertaLogica.js';
 
 // ── LABELS / UNITS ────────────────────────────────────────────────────────────
 
@@ -159,12 +160,7 @@ export const verificarAlertas = async (id_usuario = null) => {
     const umbral = parseFloat(regla.umbral);
     let disparada = false;
 
-    switch (regla.condicion) {
-      case '>':  disparada = valor > umbral;  break;
-      case '<':  disparada = valor < umbral;  break;
-      case '>=': disparada = valor >= umbral; break;
-      case '<=': disparada = valor <= umbral; break;
-    }
+    disparada = evaluarCondicion(valor, regla.condicion, umbral);
 
     if (!disparada) continue;
 

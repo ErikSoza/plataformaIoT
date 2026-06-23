@@ -1,22 +1,7 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import UserModel from '../models/userModel.js';
-
-// Función para validar email
-const isValidEmail = (email) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-// Función para validar contraseña (mínimo 6 caracteres)
-const isValidPassword = (password) => {
-  return password && password.length >= 6;
-};
-
-// Función para validar nombre (mínimo 2 caracteres)
-const isValidName = (nombre) => {
-  return nombre && nombre.trim().length >= 2;
-};
+import { isValidEmail, isValidPassword, isValidName } from '../utils/userValidaciones.js';
 
 const userController = {
   // Registrar nuevo usuario
