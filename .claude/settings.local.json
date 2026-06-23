@@ -3,7 +3,11 @@
     "allow": [
       "Bash(npx tsc *)",
       "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
-      "Bash(grep -E \"\\\\.\\(js\\)$\")"
+      "Bash(grep -E \"\\\\.\\(js\\)$\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('simulador_esp32.py'\\).read\\(\\)\\); print\\('Sintaxis OK'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('simulador_esp32.py', encoding='utf-8'\\).read\\(\\)\\); print\\('Sintaxis OK'\\)\")",
+      "Bash(python simulador_esp32.py --dry-run --historico 3 --estacion 0)",
+      "Bash(python simulador_esp32.py --dry-run --historico 5)"
     ]
   }
 }
