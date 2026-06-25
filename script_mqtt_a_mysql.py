@@ -7,7 +7,7 @@ import mysql.connector
 
 # --- CONFIGURACIÓN ---
 # 1. Datos MQTT (Tu Broker)
-MQTT_BROKER = "192.168.1.93" 
+MQTT_BROKER = "localhost" 
 MQTT_PORT = 1883
 MQTT_TOPIC = "datos"
 

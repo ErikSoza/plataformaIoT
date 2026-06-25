@@ -41,7 +41,7 @@ import paho.mqtt.client as mqtt
 # =============================================================================
 
 # -- Broker MQTT --------------------------------------------------------------
-MQTT_BROKER = "192.168.1.93"
+MQTT_BROKER = "localhost"
 MQTT_PORT   = 1883
 MQTT_TOPIC  = "datos"
 

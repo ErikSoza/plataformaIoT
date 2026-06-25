@@ -1,465 +1,512 @@
-# 🌡️ Plataforma IoT de Monitoreo Meteorológico - UTalca
+# Plataforma IoT Meteorológica — Red de Estaciones Curicó/Maule
 
-<div align="center">
-
-![Plataforma IoT](https://img.shields.io/badge/Plataforma-IoT-blue)
-![React](https://img.shields.io/badge/React-19.2.0-61DAFB?logo=react)
-![TypeScript](https://img.shields.io/badge/TypeScript-4.9.5-3178C6?logo=typescript)
-![Node.js](https://img.shields.io/badge/Node.js-Latest-339933?logo=node.js)
-![MySQL](https://img.shields.io/badge/MySQL-8.0+-4479A1?logo=mysql)
-![Leaflet](https://img.shields.io/badge/Leaflet-1.9.4-199900?logo=leaflet)
-
-**Sistema de monitoreo en tiempo real de estaciones meteorológicas IoT para el Campus Universidad de Talca**
-
-*Visualización interactiva con mapas de calor, análisis de datos históricos y gestión centralizada de dispositivos*
-
-</div>
+**Autor:** Erik Soza — Universidad de Talca, Ingeniería en Computación  
+**Repositorio:** https://github.com/ErikSoza/plataformaIoT.git
 
 ---
 
-## 📋 Descripción del Proyecto
+## Descripción
 
-La **Plataforma IoT de Monitoreo Meteorológico** es una aplicación web completa desarrollada para el Campus de la Universidad de Talca en Curicó. El sistema permite el monitoreo en tiempo real de múltiples estaciones meteorológicas distribuidas geográficamente, proporcionando visualización interactiva a través de mapas de calor, análisis estadístico y reportes históricos.
-
-### 🎯 Características Principales
-
-- **🗺️ Mapas Interactivos**: Visualización geoespacial con Leaflet y capas de calor
-- **📊 Dashboard en Tiempo Real**: Monitoreo live de 8 estaciones meteorológicas
-- **📈 Análisis Histórico**: Gráficos temporales y reportes exportables
-- **🔧 Gestión de Dispositivos**: Control centralizado del estado de estaciones
-- **⚡ Datos en Tiempo Real**: Actualización automática cada 30 segundos
-- **📱 Diseño Responsivo**: Compatible con dispositivos móviles y desktop
-
-### 🌟 Tecnologías Utilizadas
-
-#### Frontend
-- **React 19.2.0** con **TypeScript 4.9.5**
-- **React Router DOM 7.9.5** para navegación SPA
-- **Leaflet 1.9.4** + **React-Leaflet 5.0.0** para mapas interactivos
-- **Chart.js 4.5.1** + **React-ChartJS-2** para visualizaciones
-- **Axios 1.12.2** para comunicación HTTP
-- **React Scripts 5.0.1** como build tool
-
-#### Backend
-- **Node.js** con **Express.js 5.1.0**
-- **MySQL 8.0+** como base de datos principal
-- **mysql2 3.15.2** driver con soporte para Promises
-- **CORS 2.8.5** para comunicación cross-origin
-- **dotenv 17.2.3** para variables de entorno
-- **Nodemon 3.1.10** para desarrollo
+Sistema completo de monitoreo meteorológico IoT de bajo costo para la zona de Curicó/Maule, Chile. Integra una red de estaciones físicas basadas en ESP32, un backend REST con pipeline MQTT, un microservicio de predicción con modelos XGBoost, y una SPA React con visualización en tiempo real, mapas de calor IDW y predicciones multi-variable a 24/48/72 horas.
 
 ---
 
-## 🏗️ Arquitectura del Sistema
+## Arquitectura general
 
-### Estructura del Proyecto
+```
+[ESP32 + Sensores]
+       │  MQTT (JSON v2.1)
+       ▼
+[script_mqtt_a_mysql.py]  ← Suscriptor MQTT, parsea y persiste en MySQL
+       │
+       ▼
+[MySQL]  ←──────────────────────────────────────────────┐
+       │                                                 │
+       ▼                                                 │
+[Backend Node.js / Express]  ──/api/prediccion──►  [ML Service FastAPI :5001]
+       │                                                 │
+       ▼                                           XGBoost local (288 modelos)
+[Frontend React + TypeScript :5173]                Open-Meteo Forecast API
+  - Mapa Leaflet + heatmap IDW + leaflet-velocity
+  - Gráficos Chart.js en tiempo real
+  - PrediccionChart multi-variable
+  - Sistema de alertas con notificaciones
+  - Reportes + exportación Excel/CSV
+```
+
+### Capas de predicción
+
+| Capa | Tecnología | Horizonte | Estado |
+|------|-----------|-----------|--------|
+| Edge | TinyML en ESP32 (R²=0.96) | 1 hora | Implementado |
+| Backend | XGBoost local (288 modelos) | 24–72 horas | Implementado |
+| Referencia | Open-Meteo Forecast API | 7–16 días | Integrado como validación |
+
+---
+
+## Stack tecnológico
+
+| Capa | Tecnología |
+|------|-----------|
+| Firmware | C++ en ZY-ESP32 (ESP-WROOM-32) |
+| Sensores | DHT11 (temp/hum), BMP280 (presión), MQ135 (6 gases), anemómetro WH-SP-WS01 |
+| Pipeline MQTT | Python 3.12 + paho-mqtt + mysql-connector |
+| Backend | Node.js 20 + Express 5, MySQL 8, JWT, bcrypt |
+| ML Service | Python 3.12, XGBoost 2.0, FastAPI, httpx |
+| Frontend | React 18 + TypeScript, Vite, Chart.js, Leaflet |
+| Testing | Jest 29 (backend), pytest + pytest-cov (ML service) |
+
+---
+
+## Estructura del repositorio
 
 ```
 plataformaIoT/
-├── 📁 frontend/                    # Aplicación React + TypeScript
-│   ├── 📁 public/                  # Archivos estáticos
-│   └── 📁 src/
-│       ├── 📁 components/layout/   # Componentes de UI
-│       │   ├── UtalcaHeader.tsx    # Header institucional
-│       │   ├── MainLayout.tsx      # Layout principal
-│       │   ├── MapaCalor.tsx       # Mapa de calor con Leaflet
-│       │   ├── StatsGrid.tsx       # Grid de estadísticas
-│       │   └── ListaDispositivos.tsx # Lista de estaciones
-│       ├── 📁 pages/              # Páginas principales
-│       │   ├── Home.tsx           # Dashboard principal
-│       │   ├── MonitoreoPagina.tsx # Vista de monitoreo
-│       │   ├── DispositivosPagina.tsx # Gestión dispositivos
-│       │   └── ReportePagina.tsx   # Análisis y reportes
-│       ├── 📁 services/           # Servicios API
-│       ├── 📁 types/              # Definiciones TypeScript
-│       └── 📁 data/               # Datos de ejemplo
-├── 📁 backend/                    # API REST con Node.js
-│   ├── 📁 src/
-│   │   ├── 📁 controllers/        # Lógica de negocio
-│   │   ├── 📁 models/            # Modelos de datos
-│   │   ├── 📁 routes/            # Definición de rutas API
-│   │   └── 📁 db/                # Configuración de BD
-│   ├── init.sql                  # Script de inicialización
-│   └── package.json              # Dependencias del backend
-└── README.md                     # Este archivo
-```
-
-### Modelo de Datos
-
-#### 🏢 Estaciones Meteorológicas
-```typescript
-interface DeviceData {
-  id: number;                    // Identificador único
-  nombre: string;                // Nombre descriptivo
-  tipo: string;                  // "Sensor Ambiental IoT"
-  estado: 'Activo' | 'Inactivo' | 'Mantenimiento' | 'Error';
-  ultima_actualizacion: string;  // Timestamp última lectura
-  localizacion: string;          // Descripción ubicación
-  latitud: number;               // Coordenada GPS
-  longitud: number;              // Coordenada GPS
-  temperatura?: number;          // °C
-  humedad?: number;              // % humedad relativa
-  bateria?: number;              // % nivel batería
-}
-```
-
-#### 📊 Lecturas de Sensores
-```typescript
-interface Lectura {
-  id: number;
-  id_estacion: number;
-  timestamp: string;
-  json: {
-    temperatura: number;
-    humedad: number;
-    presion?: number;
-    gas?: number;
-    radiacion?: number;
-    viento?: number;
-    bateria: number;
-  };
-}
+├── backend/                    # API REST Node.js + Express
+│   ├── app.js                  # Punto de entrada, registra rutas
+│   ├── init.sql                # Esquema MySQL completo (tablas + datos de ejemplo)
+│   ├── src/
+│   │   ├── controllers/        # Lógica de negocio
+│   │   ├── models/             # Queries MySQL
+│   │   ├── routes/             # Definición de endpoints
+│   │   ├── middleware/
+│   │   │   └── auth.js         # authenticateToken, requireAdmin (JWT)
+│   │   └── utils/
+│   │       ├── alertaLogica.js         # evaluarCondicion() — lógica pura
+│   │       ├── prediccionValidacion.js # validarParametrosPrediccion()
+│   │       └── userValidaciones.js     # isValidEmail/Password/Name()
+│   └── tests/                  # Suite Jest — 83 tests, 100% cobertura módulos críticos
+│       ├── alertaLogica.test.js
+│       ├── prediccionValidacion.test.js
+│       ├── userValidaciones.test.js
+│       └── auth.middleware.test.js
+├── frontend/                   # SPA React + TypeScript
+│   └── src/
+│       ├── components/         # PrediccionChart, AlertBell, MapaCalor, etc.
+│       ├── pages/              # DispositivosPagina, ReportesPagina, etc.
+│       └── services/           # api.ts — clientes HTTP hacia el backend
+├── ml_service/                 # Microservicio FastAPI (puerto 5001)
+│   ├── app.py                  # Endpoints /predict, /variables, /health, /metricas
+│   ├── features_utils.py       # construir_lags() + constantes LAG_WINDOW_*
+│   ├── train_model.py          # Entrenamiento de los 288 modelos XGBoost
+│   ├── datos/                  # CSVs Open-Meteo 2023+2024
+│   ├── modelos/                # .pkl generados por train_model.py (no versionados)
+│   ├── requirements.txt
+│   ├── requirements-dev.txt    # pytest, pytest-cov
+│   └── tests/                  # Suite pytest — 42 tests
+│       ├── test_confianza.py
+│       ├── test_features_utils.py
+│       └── test_metricas.py
+├── script_mqtt_a_mysql.py      # Suscriptor MQTT → MySQL
+├── simulador_esp32.py          # Simulador de estación para desarrollo
+├── docs/
+│   ├── pruebas_caja_negra_blanca.md
+│   ├── pruebas_caja_blanca_implementacion.md
+│   ├── documentacion_pruebas.md
+│   └── accesibilidad_wave.md
+└── CLAUDE.md
 ```
 
 ---
 
-## 🚀 Instalación y Configuración
+## Instalación y puesta en marcha
 
-### Prerequisitos
+### Requisitos previos
 
-- **Node.js** 16+ [Descargar aquí](https://nodejs.org/)
-- **MySQL Server** 8.0+ [Descargar aquí](https://dev.mysql.com/downloads/)
-- **Git** [Descargar aquí](https://git-scm.com/downloads)
+- Node.js >= 20
+- Python >= 3.10
+- MySQL 8
+- Broker MQTT (Mosquitto u otro)
 
-### 1. Clonar el Repositorio
+### 1. Base de datos
 
 ```bash
-git clone https://github.com/ErikSoza/plataformaIoT.git
-cd plataformaIoT
+# Crear esquema completo (tablas, relaciones y datos de ejemplo)
+mysql -u root -p < backend/init.sql
 ```
 
-### 2. Configuración del Backend
+Crear `backend/.env`:
 
-#### Instalar Dependencias
+```env
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=plataformaiot
+DB_PORT=3306
+PORT=3000
+JWT_SECRET=tu_clave_secreta_larga
+```
+
+### 2. Backend
+
 ```bash
 cd backend
 npm install
+npm run dev     # desarrollo con nodemon
+npm start       # producción
 ```
 
-#### Configurar Base de Datos
+Disponible en `http://localhost:3000`.
 
-1. **Crear la base de datos**:
-   ```bash
-   mysql -u root -p < init.sql
-   ```
+### 3. ML Service
 
-2. **Configurar variables de entorno**:
-   Crear archivo `.env` en `/backend/`:
-   ```env
-   # Configuración de Base de Datos
-   DB_HOST=localhost
-   DB_USER=tu_usuario_mysql
-   DB_PASSWORD=tu_contraseña_mysql
-   DB_NAME=plataformaiot
-   DB_PORT=3306
-
-   # Configuración del Servidor
-   PORT=3000
-   ```
-
-#### Ejecutar el Servidor
 ```bash
-# Modo desarrollo (con auto-recarga)
-npm run dev
+cd ml_service
+pip install -r requirements.txt
 
-# Modo producción
-npm start
+# Entrenar los modelos (primera vez o al cambiar datos históricos)
+python train_model.py
+# Genera: modelos/modelo_xgboost.pkl, modelo_humedad.pkl,
+#          modelo_presion.pkl, modelo_viento.pkl, metricas.json
+
+uvicorn app:app --port 5001 --reload
 ```
 
-El backend estará disponible en: `http://localhost:3000`
+Disponible en `http://localhost:5001`.
 
-### 3. Configuración del Frontend
+### 4. Frontend
 
-#### Instalar Dependencias
 ```bash
 cd frontend
 npm install
+npm run dev
 ```
 
-#### Configurar Variables de Entorno (Opcional)
-Crear archivo `.env.local` en `/frontend/`:
-```env
-REACT_APP_API_URL=http://localhost:3000/api
-REACT_APP_MAP_CENTER_LAT=-35.0025
-REACT_APP_MAP_CENTER_LNG=-71.2295
-```
+Disponible en `http://localhost:3001`.
 
-#### Ejecutar la Aplicación
+### 5. Pipeline MQTT
+
 ```bash
-npm start
-```
+# Suscriptor MQTT (conecta al broker y persiste en MySQL)
+python script_mqtt_a_mysql.py
 
-La aplicación estará disponible en: `http://localhost:3001`
+# Para desarrollo sin hardware real:
+python simulador_esp32.py
+```
 
 ---
 
-## 📡 API Endpoints
+## API REST — Endpoints
 
-### Base URL: `http://localhost:3000/api`
+**Base URL:** `http://localhost:3000/api`
 
-#### 🏢 Estaciones Meteorológicas
-| Método | Endpoint | Descripción | Parámetros |
-|--------|----------|-------------|------------|
-| `GET` | `/estaciones` | Lista todas las estaciones | - |
-| `GET` | `/estaciones/:id` | Obtiene estación específica | `id`: ID de estación |
-| `POST` | `/estaciones` | Crea nueva estación | Body: Datos de estación |
-| `PUT` | `/estaciones/:id` | Actualiza estación | `id`: ID, Body: Datos |
-| `DELETE` | `/estaciones/:id` | Elimina estación | `id`: ID de estación |
+### Autenticación (`/api/auth`)
 
-#### 📊 Lecturas de Sensores
-| Método | Endpoint | Descripción | Parámetros |
-|--------|----------|-------------|------------|
-| `GET` | `/lecturas` | Lista todas las lecturas | `?limit=100&offset=0` |
-| `GET` | `/lecturas/:id` | Obtiene lectura específica | `id`: ID de lectura |
-| `GET` | `/lecturas/reports` | Lecturas para reportes | - |
-| `GET` | `/lecturas/latest` | Últimas lecturas de todas las estaciones | - |
-| `GET` | `/estaciones/:stationId/lecturas` | Lecturas de una estación específica | `stationId`: ID de estación |
-| `GET` | `/estaciones/:stationId/lecturas/latest` | Última lectura de una estación | `stationId`: ID de estación |
-| `POST` | `/lecturas` | Crea nueva lectura | Body: Datos de lectura |
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| POST | `/auth/registro` | Registrar nuevo usuario | No |
+| POST | `/auth/login` | Login, devuelve JWT | No |
+| GET | `/auth/perfil` | Perfil del usuario autenticado | JWT |
+| PUT | `/auth/perfil` | Actualizar nombre, email o contraseña | JWT |
+| DELETE | `/auth/cuenta` | Eliminar cuenta propia | JWT |
+| GET | `/auth/usuarios` | Listar todos los usuarios | Admin |
+| POST | `/auth/usuarios` | Crear usuario (admin) | Admin |
+| PUT | `/auth/usuarios/:id` | Actualizar usuario | Admin |
+| DELETE | `/auth/usuarios/:id` | Eliminar usuario | Admin |
 
+### Estaciones y dispositivos
 
-### Ejemplos de Uso
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/estaciones` | Listar estaciones activas | No |
+| GET | `/estaciones/:id` | Detalle de estación | No |
+| POST | `/estaciones` | Crear estación | Admin |
+| PUT | `/estaciones/:id` | Actualizar estación | Admin |
+| DELETE | `/estaciones/:id` | Eliminar estación | Admin |
+| GET | `/dispositivos` | Listar dispositivos ESP32 | JWT |
+| POST | `/dispositivos/asignar` | Asignar dispositivo a estación | Admin |
+| PUT | `/dispositivos/:id/liberar` | Desasociar dispositivo | Admin |
 
-#### Obtener todas las estaciones
-```bash
-curl "http://localhost:3000/api/estaciones"
+### Lecturas
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/lecturas/:estacion_id` | Últimas lecturas de una estación |
+| GET | `/lecturas/:estacion_id/historial` | Historial con filtro de fechas |
+| GET | `/lecturas/reportes` | Lecturas para exportación |
+
+### Predicción
+
+| Método | Endpoint | Parámetros | Descripción |
+|--------|----------|------------|-------------|
+| GET | `/prediccion/:estacion_id` | `?variable=temperatura&horas=72` | Predicción vía proxy al ML Service |
+| GET | `/prediccion/zona` | `?variable=humedad&horas=48` | Predicción promedio de zona |
+
+### Alertas
+
+| Método | Endpoint | Descripción | Auth |
+|--------|----------|-------------|------|
+| GET | `/alertas/reglas` | Reglas configuradas por el usuario | JWT |
+| POST | `/alertas/reglas` | Crear nueva regla | JWT |
+| PATCH | `/alertas/reglas/:id/toggle` | Activar/desactivar regla | JWT |
+| DELETE | `/alertas/reglas/:id` | Eliminar regla | JWT |
+| GET | `/alertas` | Alertas disparadas no leídas | JWT |
+| PATCH | `/alertas/:id/leer` | Marcar alerta como leída | JWT |
+
+### Zonas climáticas
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/zonas` | Listar zonas climáticas |
+| GET | `/zonas/:id/datos` | Datos agregados de una zona |
+
+---
+
+## ML Service — Endpoints FastAPI
+
+**Base URL:** `http://localhost:5001`
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET/POST | `/predict` | Predicción `?variable=temperatura&horas=72` |
+| GET | `/variables` | Variables disponibles y estado de cada modelo |
+| GET | `/health` | Estado del servicio y modelos cargados |
+| GET | `/metricas` | Métricas de entrenamiento (MAE, R², nivel) |
+
+**Variables disponibles:** `temperatura` (°C) · `humedad` (%) · `presion` (hPa) · `viento` (km/h)
+
+**Ejemplo de respuesta `/predict`:**
+```json
+{
+  "variable": "temperatura",
+  "unidad": "°C",
+  "predicciones": [
+    { "hora_offset": 1, "datetime": "2026-06-25T15:00", "valor": 22.4 }
+  ],
+  "openmeteo": [...],
+  "confianza": {
+    "nivel": "Alto",
+    "badge": "🟢",
+    "mae_diferencia": 0.8,
+    "descripcion": "Diferencia media de ±0.8°C respecto a Open-Meteo"
+  },
+  "metricas": { "mae_celsius": 1.2, "r2_score": 0.94, "nivel": "Bueno" }
+}
 ```
 
-#### Obtener última lectura de una estación
-```bash
-curl "http://localhost:3000/api/estaciones/1/lecturas/latest"
-```
+---
 
+## Payload MQTT — JSON v2.1
 
-#### Crear nueva lectura
-```bash
-curl -X POST "http://localhost:3000/api/lecturas" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "id_estacion": 1,
-    "json": {
-      "temperatura": 25.5,
-      "humedad": 60,
-      "bateria": 85
+```json
+{
+  "id": "UTALCA_AABBCCDDEE",
+  "timestamp": 1747400000,
+  "datos": {
+    "temperatura":     "22.50",
+    "humedad":         "49.00",
+    "presionAT":       "1013.2",
+    "velocidadViento": "0.0",
+    "prediccionTemp":  "23.10",
+    "gases": {
+      "co2":     "402.6",
+      "nh3":     "3.9",
+      "alcohol": "1.2",
+      "humo":    "10.0",
+      "benceno": "10.0",
+      "acetona": "10.0"
     }
-  }'
+  }
+}
 ```
+
+El subobjeto `gases` es opcional. El suscriptor MQTT usa `.get('gases', {})` para retrocompatibilidad con firmware anterior al MQ135.
 
 ---
 
-## 🖥️ Guía de Uso
+## Esquema de base de datos — Tabla `lecturas`
 
-### Dashboard Principal
-1. **Vista General**: Estadísticas en tiempo real de todas las estaciones
-2. **Navegación**: 4 pestañas principales (Monitoreo, Dispositivos, Reportes, Configuración)
+| Columna | Tipo | Descripción |
+|---------|------|-------------|
+| id | INT AUTO_INCREMENT | PK |
+| device_id | VARCHAR(50) | FK → dispositivos |
+| fecha_registro | DATETIME | Timestamp legible |
+| raw_timestamp | BIGINT | Unix timestamp del ESP32 |
+| temperatura | DECIMAL(5,2) | °C — DHT11 |
+| humedad | DECIMAL(5,2) | % — DHT11 |
+| presion_at | DECIMAL(6,1) | hPa — BMP280 |
+| velocidad_viento | DECIMAL(5,2) | m/s — anemómetro |
+| prediccion_temp | DECIMAL(5,2) | °C — TinyML Edge |
+| gas_co2 | FLOAT NULL | ppm CO₂ — MQ135 |
+| gas_nh3 | FLOAT NULL | ppm NH₃ — MQ135 |
+| gas_alcohol | FLOAT NULL | ppm alcohol — MQ135 |
+| gas_humo | FLOAT NULL | ppm humo — MQ135 |
+| gas_benceno | FLOAT NULL | ppm benceno — MQ135 |
+| gas_acetona | FLOAT NULL | ppm acetona — MQ135 |
 
-### 🗺️ Módulo de Monitoreo
-- **Mapa Interactivo**: Visualización de estaciones con marcadores
-- **Mapa de Calor**: Representación térmica de temperatura/humedad
-- **Estadísticas Live**: Actualización automática cada 30 segundos
-- **Filtros**: Por estado, rango de fechas, tipo de sensor
-
-### 🔧 Gestión de Dispositivos
-- **Lista Completa**: Todas las estaciones con estado actual
-- **Detalles**: Información técnica, ubicación, histórico
-- **Gestión**: Activar/desactivar, cambiar estado, editar información
-- **Búsqueda**: Filtros por nombre, ubicación, estado
-
-### 📊 Módulo de Reportes
-- **Análisis Temporal**: Gráficos de evolución por variable
-- **Exportación**: CSV, PDF de datos históricos
-- **Filtros Avanzados**: Por estación, rango de fechas, variables
-- **Estadísticas**: Promedios, máximos, mínimos por período
-
-### ⚙️ Configuración
-- **Parámetros del Sistema**: Intervalos de actualización
-- **Gestión de Usuarios**: Permisos y roles (futuro)
-- **Alertas**: Configuración de umbrales y notificaciones
+Las columnas de gases son `NULL` en lecturas históricas sin sensor MQ135.
 
 ---
 
-## 🧪 Datos de Ejemplo
+## Modelo ML — Detalles técnicos
 
-El sistema incluye 8 estaciones pre-configuradas en el Campus UTalca:
+**Arquitectura v5 (multi-variable):** 4 variables × 72 horizontes = 288 modelos XGBoost independientes. Cada modelo predice exactamente T+Xh para una variable específica.
 
-| ID | Nombre | Ubicación | Coordenadas | Estado |
-|----|--------|-----------|-------------|--------|
-| 1 | Centro Extensión Curicó | Campus Principal | -34.985, -71.241 | Activo |
-| 2 | Facultad Ingeniería | Área Académica | -35.002, -71.230 | Activo |
-| 3 | Biblioteca Central | Zona Estudiantil | -35.003, -71.229 | Mantenimiento |
-| 4 | Edificio Mecánica | Laboratorios | -35.002, -71.229 | Activo |
-| 5 | Cerro Condel | Área Elevada | -34.978, -71.226 | Activo |
-| 6 | Lab. Química | Área Especializada | -35.002, -71.229 | Activo |
-| 7 | Auditorio Principal | Zona Events | -35.003, -71.230 | Activo |
-| 8 | Cafetería Central | Área Social | -35.002, -71.229 | Activo |
+**Features por modelo (80 total):**
 
----
+| Grupo | Features |
+|-------|---------|
+| Variables actuales | temperatura, humedad, viento, presión |
+| Tiempo cíclico | hora_sin, hora_cos, mes_sin, mes_cos, dia_semana |
+| Lags temperatura | lag_1h … lag_24h |
+| Lags humedad/viento | lag_1h … lag_12h (cada uno) |
+| Lags presión | lag_1h … lag_12h |
+| Deltas temperatura | delta a 1h, 3h, 6h, 24h |
+| Deltas presión | delta a 1h, 3h, 6h, 12h |
+| Rolling temperatura | media y std a 6h y 12h |
 
-## 🔧 Desarrollo
+**Split temporal:** 70% train / 10% validación (early stopping) / 20% test
 
-### Scripts Disponibles
+**Archivos generados por `train_model.py`:**
 
-#### Frontend
-```bash
-npm start          # Servidor de desarrollo (puerto 3001)
-npm test           # Ejecutar tests unitarios
-npm run build      # Build para producción
-npm run eject      # Exponer configuración (irreversible)
-```
+| Archivo | Variable | Nota |
+|---------|---------|------|
+| `modelos/modelo_xgboost.pkl` | temperatura | Compatible con v4 anterior |
+| `modelos/modelo_humedad.pkl` | humedad relativa | |
+| `modelos/modelo_presion.pkl` | presión atmosférica | |
+| `modelos/modelo_viento.pkl` | velocidad del viento | |
+| `modelos/metricas.json` | todas | Versionado en git |
 
-#### Backend
-```bash
-npm run dev        # Servidor con auto-recarga (nodemon)
-npm start          # Servidor de producción
-npm test           # Tests (por implementar)
-```
-
-### Estructura de Componentes React
-
-```typescript
-// Componente principal con estado global
-const Home: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('monitoreo');
-  const [deviceData, setDeviceData] = useState<DeviceData[]>([]);
-  const [stats, setStats] = useState<StatCardData[]>([]);
-  
-  // Actualización automática cada 30 segundos
-  useEffect(() => {
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <MainLayout>
-      <UtalcaHeader />
-      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      <ContentSection title={getTabTitle(activeTab)}>
-        {renderTabContent()}
-      </ContentSection>
-    </MainLayout>
-  );
-};
-```
-
-### Configuración de Mapas Leaflet
-
-```typescript
-const MapaCalor: React.FC = ({ deviceData }) => {
-  const position: LatLngTuple = [-35.0025, -71.2295]; // Centro UTalca
-  
-  const heatmapData = deviceData
-    .filter(device => device.temperatura)
-    .map(device => [
-      device.coordinates[0],
-      device.coordinates[1],
-      device.temperatura! / 50 // Intensidad normalizada
-    ]);
-
-  return (
-    <MapContainer center={position} zoom={16} style={{ height: '500px' }}>
-      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-      <HeatmapLayer points={heatmapData} />
-      {/* Marcadores de estaciones */}
-    </MapContainer>
-  );
-};
-```
+Los `.pkl` no se versionan — se regeneran localmente con `train_model.py`.
 
 ---
 
-## 🐛 Solución de Problemas
+## Pruebas de software
 
-### Backend
+### Caja blanca — Backend (Jest)
 
-#### Error de Conexión a MySQL
 ```bash
-Error: ER_ACCESS_DENIED_ERROR: Access denied for user 'root'@'localhost'
+cd backend
+npm test                   # ejecutar tests
+npm run test:coverage      # ejecutar con reporte de cobertura
 ```
-**Solución**:
-1. Verificar credenciales en `.env`
-2. Verificar que MySQL esté ejecutándose
-3. Confirmar permisos del usuario
 
-#### Puerto en Uso
+| Módulo | Tests | Cobertura |
+|--------|-------|-----------|
+| `utils/alertaLogica.js` — `evaluarCondicion()` | 17 | 100% |
+| `utils/prediccionValidacion.js` — validación parámetros | 17 | 100% |
+| `utils/userValidaciones.js` — email/password/nombre | 26 | 100% |
+| `middleware/auth.js` — JWT + roles | 23 | 100% |
+| **Total** | **83** | **100% ramas/funciones** |
+
+No requiere MySQL ni servidor activo.
+
+### Caja blanca — ML Service (pytest)
+
 ```bash
-Error: listen EADDRINUSE: address already in use :::3000
-```
-**Solución**:
-```bash
-# Cambiar puerto en .env
-PORT=3001
-
-# O matar proceso en puerto 3000 (Windows)
-netstat -ano | findstr :3000
-taskkill /PID <PID> /F
+cd ml_service
+pip install -r requirements-dev.txt   # solo la primera vez
+python -m pytest tests/ --cov=app --cov=features_utils --cov-report=term-missing -v
 ```
 
-### Frontend
+| Módulo | Tests | Cobertura |
+|--------|-------|-----------|
+| `features_utils.py` — `construir_lags()` | 14 | 100% |
+| `app.py` — `calcular_confianza()` | 18 | función completa |
+| `app.py` — `_get_metricas_variable()` | 10 | función completa |
+| **Total** | **42** | **44% de app.py** |
 
-#### Problemas con Dependencias
-```bash
-npm ERR! peer dep missing: react@">=16.8.0"
-```
-**Solución**:
-```bash
-rm -rf node_modules package-lock.json
-npm install
-```
+El 56% restante de `app.py` son endpoints FastAPI, carga de `.pkl` y llamadas a Open-Meteo — requieren infraestructura activa y están fuera del alcance unitario.
 
-#### Errores de TypeScript
-```bash
-Module '"@types/leaflet"' has no exported member 'HeatLatLngTuple'
-```
-**Solución**:
-```bash
-npm install --save-dev @types/leaflet.heat@latest
-```
+No requiere modelos `.pkl` ni conexión a internet.
 
-### Base de Datos
+### Caja negra (documentada)
 
-#### Tablas No Encontradas
-```sql
-Table 'plataformaiot.estaciones' doesn't exist
-```
-**Solución**:
-```bash
-mysql -u root -p plataformaiot < backend/init.sql
-```
-
-```
-## 👥 Equipo de Desarrollo
-
-### Desarrollador Principal
-- **Erik Soza** - *Full Stack Developer* - [@ErikSoza](https://github.com/ErikSoza)
-
-### Universidad de Talca
-- **Campus Curicó** - *Institución Patrocinadora*
-- **Facultad de Ingeniería** - *Departamento Técnico*
+Ver [`docs/pruebas_caja_negra_blanca.md`](docs/pruebas_caja_negra_blanca.md):
+- Partición de equivalencia (PE-01 a PE-29)
+- Análisis de valores límite (VL-01 a VL-26)
+- Pruebas de casos de uso (CU-01 a CU-05)
+- Pruebas de transición de estados (TS-01 a TS-16)
+- Pruebas de API REST (API-01 a API-17)
+- Matriz de trazabilidad completa
 
 ---
 
+## Accesibilidad
 
-## 📊 Estadísticas del Proyecto
+Auditoría con **WAVE Web Accessibility Evaluation Tool** sobre la vista principal:
 
-![GitHub repo size](https://img.shields.io/github/repo-size/ErikSoza/plataformaIoT)
-![GitHub last commit](https://img.shields.io/github/last-commit/ErikSoza/plataformaIoT)
-![GitHub issues](https://img.shields.io/github/issues/ErikSoza/plataformaIoT)
-![GitHub pull requests](https://img.shields.io/github/issues-pr/ErikSoza/plataformaIoT)
+| Métrica | Antes | Después |
+|---------|-------|---------|
+| AIM Score | 4.3 / 10 | ~8+ / 10 |
+| Errores de contraste | 31 | 0 |
+| Errores de formulario | 2 | 0 |
+| Alertas de estructura HTML | 18 | 0 |
+
+Cambios aplicados: landmarks semánticos (`<main>`, `<header>`, `<nav>`), jerarquía de encabezados correcta, tabs navegables con teclado (`<button>` + `aria-current`), ratios de contraste WCAG AA en todos los textos.
+
+Ver [`docs/accesibilidad_wave.md`](docs/accesibilidad_wave.md) para el detalle completo.
 
 ---
 
-<div align="center">
+## Hardware — Estación meteorológica
 
-*Sistema de Monitoreo IoT - Campus Curicó*
+**Placa principal:** ZY-ESP32 (ESP-WROOM-32 estándar)
 
-</div>
+| Sensor | Variable medida | Interfaz |
+|--------|----------------|----------|
+| DHT11 | Temperatura (°C), Humedad (%) | GPIO 4 digital |
+| BMP280 | Presión atmosférica (hPa) | I2C (SDA/SCL) |
+| MQ135 | CO₂, NH₃, alcohol, humo, benceno, acetona | GPIO 34 (ADC) |
+| Anemómetro WH-SP-WS01 | Velocidad del viento (m/s) | GPIO 27 pulsos |
+
+El firmware incluye modelo TinyML (entrenado en Edge Impulse, R²=0.96) para predicción local de temperatura a 1 hora, enviado como campo `prediccionTemp` en el payload MQTT.
+
+**Hardware anterior descartado:** TTGO LoRa32 T3 v1.6.1 con AHT20 + MQ-2 — reemplazado por problemas físicos con la placa.
+
+---
+
+## Ecuaciones físicas implementadas
+
+- **Zambretti:** predicción cualitativa de lluvia basada en tendencia de presión barométrica
+- **Magnus-Tetens:** cálculo de punto de rocío (dew point) a partir de temperatura y humedad
+
+Son indicadores físicos complementarios al modelo ML principal, no el sistema de predicción central.
+
+---
+
+## Convenciones de desarrollo
+
+- **Backend:** JavaScript ES6+, rutas en `backend/src/routes/`
+- **Frontend:** TypeScript estricto, componentes funcionales con hooks
+- **Python:** PEP 8, type hints, docstrings en español
+- **Commits:** formato convencional — `feat(scope): descripción` / `fix(scope): descripción`
+- **No commitear:** `.pkl`, `.env`, `node_modules/`, `__pycache__/`, `coverage/`
+- **Sí commitear:** `metricas.json` (documentación del modelo entrenado)
+
+---
+
+## Solución de problemas frecuentes
+
+### `npm test` falla con SyntaxError en Windows
+El `.bin/jest` es un script bash, no compatible con Node en Windows. Usar:
+```bash
+node --experimental-vm-modules node_modules/jest/bin/jest.js
+```
+El `package.json` ya tiene esta corrección aplicada.
+
+### ML Service — warnings de FastAPI `on_event`
+Resuelto: `app.py` ya usa el patrón `lifespan` con `@asynccontextmanager` en lugar del deprecado `@app.on_event("startup")`.
+
+### MySQL no conecta
+1. Verificar que el servicio MySQL esté corriendo
+2. Confirmar credenciales en `backend/.env`
+3. Verificar que la BD `plataformaiot` exista — si no: `mysql -u root -p < backend/init.sql`
+
+### ML Service arranca pero todas las variables retornan 503
+Los modelos `.pkl` no están entrenados aún. Ejecutar `python train_model.py` desde `ml_service/`.
+
+---
+
+## Objetivos específicos de la memoria universitaria
+
+| OE | Descripción | Estado |
+|----|-------------|--------|
+| OE2 | Modelo ML con métricas documentadas | Completado |
+| OE3 | Endpoint + visualización en plataforma web | Completado |
+| OE4 | Comparación XGBoost vs Open-Meteo (badge de confianza) | Completado |
+| OE5 | Revalidación al instalar estaciones en terreno | Pendiente — instalación física |
+
+---
+
+*Universidad de Talca — Facultad de Ingeniería — Ingeniería en Computación — Curicó, Chile*

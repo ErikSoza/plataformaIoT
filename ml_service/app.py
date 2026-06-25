@@ -35,6 +35,7 @@ from typing import Optional
 import numpy as np
 import joblib
 import httpx
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -146,6 +147,12 @@ def cargar_modelos() -> None:
 # ============================================================
 # APP FASTAPI
 # ============================================================
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    cargar_modelos()
+    yield
+
+
 app = FastAPI(
     title="ML Service v2 — Predicción Meteorológica Multi-Variable IoT",
     description=(
@@ -153,6 +160,7 @@ app = FastAPI(
         "presión, viento) a 24h/48h/72h para estaciones meteorológicas en Curicó, Chile."
     ),
     version="2.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -162,11 +170,6 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    cargar_modelos()
 
 
 # ============================================================
